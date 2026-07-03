@@ -711,12 +711,18 @@
           else if (h.indexOf("set") === 0) cols.sets = ci;
           else if (h.indexOf("rep") === 0) cols.reps = ci;
           else if (h.indexOf("rpe") === 0) cols.rpe = ci;
+          else if (h.indexOf("log") === 0) cols.lognote = ci;   // "Log Note" (before "note")
           else if (h.indexOf("note") === 0) cols.notes = ci;
+          else if (h.indexOf("status") === 0) cols.status = ci;
+          else if (h.indexOf("done") === 0) cols.done = ci;
+          else if (h.indexOf("skip") === 0) cols.skipped = ci;
         }
       }
     }
     if (!profile.name) return null;
     if (headerIdx === null) { profile.weeks = []; return profile; }
+    // Whether this file carries progress columns we can restore on load.
+    profile._hasStatus = (cols.done != null || cols.skipped != null || cols.status != null);
 
     // second pass: data rows grouped by week (preserve first-seen order)
     var weekMap = {};       // week -> { week, order, dayMap:{}, dayOrder:[] }
@@ -724,6 +730,8 @@
     var rowSeq = 0;
 
     function pick(cells, idx) { return idx == null ? "" : (cells[idx] || "").trim(); }
+    var TRUEY = /^(true|1|yes|y|x|done)$/i;
+    var SKIPY = /^(true|1|yes|y|x|skip|skipped)$/i;
 
     for (var d = headerIdx + 1; d < rows.length; d++) {
       var cc = rows[d];
@@ -735,6 +743,9 @@
       if (wk === "" && ex === "") continue;     // truly empty
 
       var day = pick(cc, cols.day);
+      var statusVal = pick(cc, cols.status).toLowerCase();
+      var doneFlag = TRUEY.test(pick(cc, cols.done)) || statusVal === "done";
+      var skipFlag = SKIPY.test(pick(cc, cols.skipped)) || statusVal === "skipped";
       var rowObj = {
         rid: profile.name + "|w" + wk + "|r" + (rowSeq++),
         week: wk,
@@ -744,7 +755,10 @@
         sets: pick(cc, cols.sets),
         reps: pick(cc, cols.reps),
         rpe: pick(cc, cols.rpe),
-        notes: cleanNotes(pick(cc, cols.notes))
+        notes: cleanNotes(pick(cc, cols.notes)),
+        _done: doneFlag,
+        _skip: skipFlag && !doneFlag,
+        _logNote: pick(cc, cols.lognote)
       };
 
       if (!weekMap[wk]) { weekMap[wk] = { week: wk, dayMap: {}, dayOrder: [] }; weekOrder.push(wk); }
@@ -1637,8 +1651,31 @@
     var profile = buildProfile(rows);
     if (!profile || !profile.name) return { ok: false, reason: "no name value", file: filename };
     profile.sourceFile = filename || "";   // remember exactly what was uploaded, for Save
-    PROFILES[profile.name] = profile;
-    return { ok: true, name: profile.name };
+    var nm = profile.name;
+
+    // A (re)loaded CSV is the source of truth for this lifter's rows, so drop any
+    // previously-added custom items — otherwise re-importing an export (which already
+    // contains those rows) would duplicate them.
+    CUSTOM[nm] = [];
+
+    // Restore Done / Skipped / Log Note from the file when those columns are present.
+    if (profile._hasStatus) { DONE[nm] = {}; SKIP[nm] = {}; NOTES[nm] = {}; }
+    profile.weeks.forEach(function (w) {
+      w.rows.forEach(function (r) {
+        if (r._done) { (DONE[nm] = DONE[nm] || {})[r.rid] = true; }
+        else if (r._skip) { (SKIP[nm] = SKIP[nm] || {})[r.rid] = true; }
+        if (r._logNote) { (NOTES[nm] = NOTES[nm] || {})[r.rid] = r._logNote; }
+        delete r._done; delete r._skip; delete r._logNote;
+      });
+    });
+    delete profile._hasStatus;
+
+    PROFILES[nm] = profile;
+    safeWrite(STORE_DONE, DONE);
+    safeWrite(STORE_SKIP, SKIP);
+    safeWrite(STORE_NOTES, NOTES);
+    safeWrite(STORE_CUSTOM, CUSTOM);
+    return { ok: true, name: nm };
   }
 
   function loadFromFiles(files) {

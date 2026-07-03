@@ -1611,7 +1611,7 @@
     });
 
     var csv = lines.join("\r\n");
-    var fname = sanitizeName(p.name + (p.block ? "_" + p.block : "")) + "_progress_" + new Date().toISOString().slice(0, 10) + ".csv";
+    var fname = p.sourceFile || (sanitizeName(p.name + (p.block ? "_" + p.block : "")) + "_progress_" + new Date().toISOString().slice(0, 10) + ".csv");
     var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
@@ -1636,6 +1636,7 @@
     if (!hasNameHeader(rows)) return { ok: false, reason: "no #Name", file: filename };
     var profile = buildProfile(rows);
     if (!profile || !profile.name) return { ok: false, reason: "no name value", file: filename };
+    profile.sourceFile = filename || "";   // remember exactly what was uploaded, for Save
     PROFILES[profile.name] = profile;
     return { ok: true, name: profile.name };
   }

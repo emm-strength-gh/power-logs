@@ -219,6 +219,23 @@
   .analytics-btn .ab-sub { font-size: 13px; color: var(--muted); }
   .analytics-btn .ab-arrow { color: var(--faint); flex: none; width: 20px; height: 20px; }
 
+  /* Program notes (collapsible) */
+  .pn-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); margin: 12px 0 4px; overflow: hidden; }
+  .pn-toggle { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 15px 18px; background: transparent; border-radius: 0; }
+  .pn-toggle:hover { background: var(--bg); }
+  .pn-labels { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .pn-title { font-family: "Bricolage Grotesque", sans-serif; font-weight: 600; font-size: 16px; }
+  .pn-sub { font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pn-chev { flex: none; color: var(--faint); display: grid; place-items: center; transition: transform .18s ease; }
+  .pn-chev svg { width: 20px; height: 20px; }
+  .pn-card.open .pn-chev { transform: rotate(180deg); }
+  .pn-body { display: none; padding: 4px 18px 18px; border-top: 1px solid var(--border); }
+  .pn-card.open .pn-body { display: block; }
+  .pn-h { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); margin: 16px 0 6px; }
+  .pn-h:first-child { margin-top: 10px; }
+  .pn-line { font-size: 13px; line-height: 1.5; color: var(--muted); white-space: pre-wrap; word-break: break-word; }
+  .pn-gap { height: 8px; }
+
   /* Analytics view */
   .seg { display: inline-flex; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 999px; padding: 3px; gap: 3px; box-shadow: var(--shadow); margin-bottom: 18px; }
   .seg-btn { padding: 8px 16px; font-size: 13px; font-weight: 600; border-radius: 999px; background: transparent; color: var(--muted); }
@@ -394,16 +411,16 @@
     <select class="lifter" id="lifterSelect" aria-label="Select lifter"></select>
     <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
   </div>
-  <button class="icon-btn" id="loadBtn" aria-label="Load CSV files" title="Load CSV files">
+  <button class="icon-btn" id="loadBtn" aria-label="Load CSV or JSON files" title="Load CSV or JSON files">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg>
   </button>
-  <button class="icon-btn" id="saveBtn" aria-label="Save progress CSV" title="Save progress (CSV)">
+  <button class="icon-btn" id="saveBtn" aria-label="Save progress JSON" title="Save progress (JSON)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
   </button>
   <button class="icon-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle theme">
     <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
   </button>
-  <input type="file" id="fileInput" accept=".csv,text/csv" multiple style="display:none" />
+  <input type="file" id="fileInput" accept=".csv,.json,text/csv,application/json" multiple style="display:none" />
 </header>
 
 <div class="layout" id="layout">
@@ -418,7 +435,7 @@
       <div class="foot-spacer"></div>
       <button class="chip" id="loadBtn2">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-        Load CSV files
+        Load CSV / JSON
       </button>
       <button class="chip" id="scanBtn" style="display:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
@@ -426,7 +443,7 @@
       </button>
       <button class="chip primary" id="saveBtn2">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
-        Save progress (CSV)
+        Save progress (JSON)
       </button>
       <button class="chip danger" id="unloadBtn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/><path d="M10 11v6M14 11v6"/></svg>
@@ -447,14 +464,14 @@
           <div class="empty-actions">
             <button class="chip primary" id="loadBtnEmpty">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg>
-              Load CSV files
+              Load CSV / JSON files
             </button>
             <button class="chip" id="scanBtnEmpty" style="display:none">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
               Scan a folder
             </button>
           </div>
-          <p class="empty-note">Each file must start with <code>#Name,…</code> on the very first row — that name is what you'll pick from the dropdown. Files without it are skipped. <span id="scanNote"></span></p>
+          <p class="empty-note">CSV files must start with <code>#Name,…</code> on the very first row — that name is what you'll pick from the dropdown. You can also load a <code>.json</code> file you previously saved from this app to restore a lifter's full program and progress. Files that are neither are skipped. <span id="scanNote"></span></p>
         </div>
       </section>
 
@@ -469,6 +486,7 @@
           <span class="ab-main"><span class="ab-title">Analytics</span><span class="ab-sub">Tonnage, number of lifts &amp; heaviest top sets</span></span>
           <svg class="ab-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
         </button>
+        <div id="ovNotes"></div>
         <p class="sec-cap">Weeks</p>
         <div class="weeks-grid" id="ovWeeks"></div>
       </section>
@@ -664,11 +682,14 @@
     return rows;
   }
 
-  // Validate: first row's first cell must be "#Name" (case-insensitive).
+  // Validate: a "#Name" metadata line must appear in the header (anywhere before the data header row).
   function hasNameHeader(rows) {
-    if (!rows.length) return false;
-    var first = (rows[0][0] || "").trim().toLowerCase();
-    return first === "#name";
+    for (var i = 0; i < rows.length; i++) {
+      var c0 = (rows[i][0] || "").trim().toLowerCase();
+      if (c0 === "#name") return true;
+      if (c0 === "week") return false;   // reached the data header without a #Name
+    }
+    return false;
   }
 
   function cleanNotes(s) {
@@ -680,23 +701,33 @@
   function buildProfile(rows) {
     if (!hasNameHeader(rows)) return null;
 
-    var profile = { name: "", block: "", classWt: "", maxes: {}, weeks: [] };
-    var headerIdx = null, cols = {};
+    var profile = { name: "", block: "", classWt: "", program: "", bodyweight: "", maxes: {}, weeks: [], programNotes: "" };
+    var headerIdx = null, cols = {}, noteLines = [];
 
     // first pass: meta + locate header
     for (var r = 0; r < rows.length; r++) {
       var cells = rows[r];
       var key = (cells[0] || "").trim();
       if (key.charAt(0) === "#") {
+        // prose/comment line: "# something" or a bare "#" — collect as program notes
+        if (key.length === 1 || key.charAt(1) === " ") {
+          noteLines.push(cells.join(",").replace(/^#[ \t]?/, ""));
+          continue;
+        }
         var tag = key.slice(1).toLowerCase();
         if (tag === "name") profile.name = (cells[1] || "").trim();
         else if (tag === "block") profile.block = (cells[1] || "").trim();
         else if (tag === "class") profile.classWt = (cells[1] || "").trim();
+        else if (tag === "program") profile.program = (cells[1] || "").trim();
+        else if (tag === "bodyweight") profile.bodyweight = (cells[1] || "").trim();
         else if (tag === "max") {
-          var lift = (cells[1] || "").trim();
-          var val = (cells[2] || "").trim();
-          if (lift) profile.maxes[lift] = val;
+          // supports "#Max,Squat,195" and "#Max,Squat raw,210,Squat equipped,250"
+          for (var mi = 1; mi + 1 < cells.length; mi += 2) {
+            var lift = (cells[mi] || "").trim(), val = (cells[mi + 1] || "").trim();
+            if (lift && val) profile.maxes[lift] = val;
+          }
         }
+        // unknown keys (e.g. #FirstMeetInGear) are ignored
         continue;
       }
       // header row: first cell == "week"
@@ -720,6 +751,10 @@
       }
     }
     if (!profile.name) return null;
+    // collapse leading/trailing blank note lines, keep internal structure
+    while (noteLines.length && noteLines[0].trim() === "") noteLines.shift();
+    while (noteLines.length && noteLines[noteLines.length - 1].trim() === "") noteLines.pop();
+    profile.programNotes = noteLines.join("\n");
     if (headerIdx === null) { profile.weeks = []; return profile; }
     // Whether this file carries progress columns we can restore on load.
     profile._hasStatus = (cols.done != null || cols.skipped != null || cols.status != null);
@@ -786,15 +821,17 @@
   var REST = /^rest(\s*day)?$/i;   // matches "Rest", "Rest Day", "RestDay" (any case/spacing)
 
   // "D1 - Squat: 70 1x8"  /  "D1 - Squat: 155 1x4 [Comp, Heavy]"  /  "D2 - Rest"
-  function titleParts(row) {
-    var head = "D" + row.day + " - " + (row.exercise || "—");
+  // a weight cell counts as "has weight" unless it's blank or just dashes (— / - / –)
+  function hasWeight(w) { w = String(w == null ? "" : w).trim(); return w !== "" && !/^[—–-]+$/.test(w); }
+
+  function titleParts(row) {    var head = "D" + row.day + " - " + (row.exercise || "—");
     var detail = "";
     if (!REST.test(row.exercise)) {
       var sxr = "";
       if (row.sets && row.reps) sxr = row.sets + "x" + row.reps;
       else if (row.reps) sxr = row.reps;
       var bits = [];
-      if (row.weight) bits.push(row.weight);
+      if (hasWeight(row.weight)) bits.push(row.weight);
       if (sxr) bits.push(sxr);
       if (bits.length) detail = ": " + bits.join(" ");
     }
@@ -989,6 +1026,8 @@
       });
     }
 
+    renderProgramNotes(p);
+
     var ww = $("ovWeeks"); clear(ww);
     if (!p.weeks.length) { ww.appendChild(el("div", "wk-empty", "This file has no training rows.")); return; }
     p.weeks.forEach(function (w) {
@@ -1019,6 +1058,40 @@
   function getWeek(p, week) {
     for (var i = 0; i < p.weeks.length; i++) if (String(p.weeks[i].week) === String(week)) return p.weeks[i];
     return null;
+  }
+
+  // Collapsible "Program notes" card built from the CSV's # comment lines.
+  function renderProgramNotes(p) {
+    var host = $("ovNotes"); clear(host);
+    if (!p.programNotes || !p.programNotes.trim()) return;
+
+    var card = el("div", "pn-card");
+    var toggle = el("button", "pn-toggle");
+    var lab = el("span", "pn-labels");
+    lab.appendChild(el("span", "pn-title", "Program notes"));
+    var subBits = [];
+    if (p.program) subBits.push(p.program);
+    if (p.bodyweight) subBits.push(p.bodyweight);
+    if (subBits.length) lab.appendChild(el("span", "pn-sub", subBits.join(" · ")));
+    toggle.appendChild(lab);
+    var chev = el("span", "pn-chev");
+    chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+    toggle.appendChild(chev);
+
+    var body = el("div", "pn-body");
+    p.programNotes.split("\n").forEach(function (raw) {
+      var line = raw.replace(/\s+$/, "");
+      var t = line.trim();
+      if (t === "") { body.appendChild(el("div", "pn-gap")); return; }
+      var h = t.match(/^=+\s*(.*?)\s*=+$/);
+      if (h) { body.appendChild(el("div", "pn-h", h[1])); return; }
+      body.appendChild(el("div", "pn-line", line));
+    });
+
+    toggle.onclick = function () { card.classList.toggle("open"); };
+    card.appendChild(toggle);
+    card.appendChild(body);
+    host.appendChild(card);
   }
 
   function renderWeek() {
@@ -1445,7 +1518,16 @@
   function renderAnalytics() {
     var p = PROFILES[current]; if (!p) return;
     var rows = analyticsRows(p);
-    var maxes = { Squat: parseFloat(p.maxes.Squat) || 0, Bench: parseFloat(p.maxes.Bench) || 0, Deadlift: parseFloat(p.maxes.Deadlift) || 0 };
+    // Pick a reference 1RM per lift: the largest max whose label starts with that lift
+    // (handles "Squat", "Squat raw", "Squat equipped", etc.)
+    function bestMaxFor(lift) {
+      var best = 0, lc = lift.toLowerCase();
+      Object.keys(p.maxes).forEach(function (k) {
+        if (k.toLowerCase().indexOf(lc) === 0) { var v = parseFloat(p.maxes[k]); if (!isNaN(v) && v > best) best = v; }
+      });
+      return best;
+    }
+    var maxes = { Squat: bestMaxFor("Squat"), Bench: bestMaxFor("Bench"), Deadlift: bestMaxFor("Deadlift") };
 
     var work = rows.filter(function (r) { return !REST.test(r.exercise); });
     var sessions = new Set(work.map(function (r) { return r.week + "-" + r.day; })).size;
@@ -1538,7 +1620,7 @@
   // Wipe everything from this device and return to the first-load screen.
   function unloadAll() {
     if (!Object.keys(PROFILES).length) { toast("Nothing loaded."); return; }
-    var ok = window.confirm("Unload everything?\n\nThis clears all loaded lifters plus their Done, Skipped, Notes and added items from this device. It can't be undone — export a CSV first if you want to keep your progress.");
+    var ok = window.confirm("Unload everything?\n\nThis clears all loaded lifters plus their Done, Skipped, Notes and added items from this device. It can't be undone — save progress (JSON) first if you want to keep it.");
     if (!ok) return;
     PROFILES = {}; DONE = {}; SKIP = {}; NOTES = {}; CUSTOM = {};
     current = null; currentWeek = null; dayFilterSel = "all"; noteCtx = null;
@@ -1587,46 +1669,45 @@
   }
 
   // ───────────────────────── CSV export ─────────────────────────
-  function csvCell(v) {
-    var s = (v === null || v === undefined) ? "" : String(v);
-    return (s.indexOf(",") !== -1 || s.indexOf('"') !== -1 || s.indexOf("\n") !== -1 || s.indexOf("\r") !== -1)
-      ? '"' + s.replace(/"/g, '""') + '"' : s;
-  }
   function sanitizeName(s) { return (s || "lifter").replace(/[^\w.-]+/g, "_").replace(/^_+|_+$/g, ""); }
 
-  function exportCSV() {
+  function stripExt(s) { return String(s || "").replace(/\.[^.\/\\]+$/, ""); }
+
+  function exportJSON() {
     var p = PROFILES[current];
     if (!p) { toast("Load a lifter first."); return; }
 
-    var lines = [];
-    lines.push("#Name," + csvCell(p.name));
-    if (p.block) lines.push("#Block," + csvCell(p.block));
-    Object.keys(p.maxes).forEach(function (k) { lines.push("#Max," + csvCell(k) + "," + csvCell(p.maxes[k])); });
-    if (p.classWt) lines.push("#Class," + csvCell(p.classWt));
-
-    var header = ["Week", "Day", "Exercise", "Weight (kg)", "Sets", "Reps", "RPE", "Notes", "Status", "Done", "Skipped", "Log Note"];
-    lines.push(header.map(csvCell).join(","));
-
+    // Count work/done/skipped for the toast (rest rows don't count).
     var doneCount = 0, skipCount = 0, workCount = 0;
     p.weeks.forEach(function (w) {
       mergedWeek(p, w).rows.forEach(function (r) {
-        var rest = REST.test(r.exercise);
-        var done = isDone(p.name, r.rid);
-        var sk = isSkipped(p.name, r.rid);
-        if (!rest) { workCount++; if (done) doneCount++; if (sk) skipCount++; }
-        var status = done ? "Done" : (sk ? "Skipped" : (rest ? "" : "Pending"));
-        var override = getNoteOverride(p.name, r.rid);
-        var logNote = (override !== undefined && override !== derivedNote(r)) ? override : "";
-        lines.push([
-          r.week, r.day, r.exercise, r.weight, r.sets, r.reps, r.rpe, r.notes,
-          status, done ? "true" : "", sk ? "true" : "", logNote
-        ].map(csvCell).join(","));
+        if (REST.test(r.exercise)) return;
+        workCount++;
+        if (isDone(p.name, r.rid)) doneCount++;
+        else if (isSkipped(p.name, r.rid)) skipCount++;
       });
     });
 
-    var csv = lines.join("\r\n");
-    var fname = p.sourceFile || (sanitizeName(p.name + (p.block ? "_" + p.block : "")) + "_progress_" + new Date().toISOString().slice(0, 10) + ".csv");
-    var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    // Full state for this lifter: the parsed program plus all progress.
+    var now = new Date();
+    var payload = {
+      spotter: "progress",
+      version: 1,
+      exportedAt: now.toISOString(),
+      lifter: p.name,
+      profile: p,                       // name, block, classWt, maxes, weeks, rawHeader, sourceFile
+      done:   DONE[p.name]   || {},
+      skip:   SKIP[p.name]   || {},
+      notes:  NOTES[p.name]  || {},     // per-item note overrides (keyed by rid)
+      custom: CUSTOM[p.name] || []      // user-added items
+    };
+
+    var base = p.sourceFile
+      ? stripExt(p.sourceFile)
+      : sanitizeName(p.name + (p.block ? "_" + p.block : "")) + "_progress_" + now.toISOString().slice(0, 10);
+    var fname = base + ".json";
+
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8;" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
     a.href = url; a.download = fname; document.body.appendChild(a); a.click();
@@ -1651,6 +1732,12 @@
     var profile = buildProfile(rows);
     if (!profile || !profile.name) return { ok: false, reason: "no name value", file: filename };
     profile.sourceFile = filename || "";   // remember exactly what was uploaded, for Save
+    // keep the original header block (all lines before the data header) verbatim,
+    // so #Program / #Bodyweight / the comment notes survive a Save round-trip
+    var rawLines = String(text).replace(/^\uFEFF/, "").split(/\r?\n/);
+    var hdrLine = -1;
+    for (var li = 0; li < rawLines.length; li++) { if (/^\s*week\s*,/i.test(rawLines[li])) { hdrLine = li; break; } }
+    profile.rawHeader = hdrLine > 0 ? rawLines.slice(0, hdrLine).join("\n").replace(/\s+$/, "") : "";
     var nm = profile.name;
 
     // A (re)loaded CSV is the source of truth for this lifter's rows, so drop any
@@ -1678,11 +1765,51 @@
     return { ok: true, name: nm };
   }
 
+  // Import a JSON file previously produced by "Save progress (JSON)".
+  // Restores the full state for that lifter: program + Done/Skipped/note overrides/custom items.
+  function ingestJSON(text, filename) {
+    var data;
+    try { data = JSON.parse(text); } catch (e) { return { ok: false, reason: "invalid JSON", file: filename }; }
+    if (!data || typeof data !== "object" || !data.profile || typeof data.profile !== "object") {
+      return { ok: false, reason: "not a Spotter export", file: filename };
+    }
+    var prof = data.profile;
+    // A usable program needs at least a name and a weeks array — the renderer relies on both.
+    if (!prof.name || !Array.isArray(prof.weeks)) {
+      return { ok: false, reason: "not a Spotter export", file: filename };
+    }
+    var nm = prof.name;
+
+    // Defensive defaults so a hand-edited or partial file can't crash the renderer.
+    if (!prof.maxes || typeof prof.maxes !== "object") prof.maxes = {};
+    if (!prof.sourceFile) prof.sourceFile = filename || "";   // so a re-export keeps a sensible name
+
+    function asMap(v) { return (v && typeof v === "object" && !Array.isArray(v)) ? v : {}; }
+    PROFILES[nm] = prof;
+    DONE[nm]   = asMap(data.done);
+    SKIP[nm]   = asMap(data.skip);
+    NOTES[nm]  = asMap(data.notes);
+    CUSTOM[nm] = Array.isArray(data.custom) ? data.custom : [];
+
+    safeWrite(STORE_DONE, DONE);
+    safeWrite(STORE_SKIP, SKIP);
+    safeWrite(STORE_NOTES, NOTES);
+    safeWrite(STORE_CUSTOM, CUSTOM);
+    return { ok: true, name: nm };
+  }
+
+  // Route a file to the right importer by extension (CSV or JSON).
+  function ingestFile(text, filename) {
+    return /\.json$/i.test(filename || "") ? ingestJSON(text, filename) : ingestText(text, filename);
+  }
+
   function loadFromFiles(files) {
-    var list = Array.prototype.slice.call(files).filter(function (f) { return /\.csv$/i.test(f.name) || f.type === "text/csv"; });
-    if (!list.length) { toast("No CSV files selected."); return; }
+    var list = Array.prototype.slice.call(files).filter(function (f) {
+      return /\.(csv|json)$/i.test(f.name) || f.type === "text/csv" || f.type === "application/json";
+    });
+    if (!list.length) { toast("No CSV or JSON files selected."); return; }
     Promise.all(list.map(function (f) {
-      return readFileText(f).then(function (txt) { return ingestText(txt, f.name); })
+      return readFileText(f).then(function (txt) { return ingestFile(txt, f.name); })
         .catch(function () { return { ok: false, reason: "read error", file: f.name }; });
     })).then(function (results) {
       finishLoad(results);
@@ -1693,7 +1820,7 @@
     var loaded = results.filter(function (r) { return r.ok; });
     var skipped = results.filter(function (r) { return !r.ok; });
     if (!loaded.length && !Object.keys(PROFILES).length) {
-      toast(skipped.length ? "Skipped " + skipped.length + " file(s) — none had #Name on row 1." : "Nothing loaded.");
+      toast(skipped.length ? "Skipped " + skipped.length + " file(s) — not a valid CSV (needs #Name on row 1) or Spotter JSON." : "Nothing loaded.");
       return;
     }
     safeWrite(STORE_PROFILES, PROFILES);
@@ -1717,8 +1844,8 @@
         return iter.next().then(function (res) {
           if (res.done) return Promise.all(jobs);
           var entry = res.value, name = entry[0], handle = entry[1];
-          if (handle.kind === "file" && /\.csv$/i.test(name)) {
-            jobs.push(handle.getFile().then(readFileText).then(function (txt) { return ingestText(txt, name); })
+          if (handle.kind === "file" && /\.(csv|json)$/i.test(name)) {
+            jobs.push(handle.getFile().then(readFileText).then(function (txt) { return ingestFile(txt, name); })
               .catch(function () { return { ok: false, reason: "read error", file: name }; }));
           }
           return step();
@@ -1817,8 +1944,8 @@
     $("menuBtn").onclick = openNav;
     $("scrim").onclick = closeNav;
 
-    $("saveBtn").onclick = exportCSV;
-    $("saveBtn2").onclick = exportCSV;
+    $("saveBtn").onclick = exportJSON;
+    $("saveBtn2").onclick = exportJSON;
     $("unloadBtn").onclick = unloadAll;
     wireNotes();
 

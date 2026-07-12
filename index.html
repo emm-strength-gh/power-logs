@@ -355,6 +355,56 @@
   .note-saved { font-size: 12.5px; color: var(--faint); }
   .btn-solid { padding: 11px 22px; background: var(--pine); color: #fff; border-radius: 10px; font-weight: 600; }
   .btn-solid:hover { background: var(--pine-dark); }
+  .btn-danger { padding: 11px 22px; background: var(--clay); color: #fff; border-radius: 10px; font-weight: 600; border: 1px solid var(--clay); }
+  .btn-danger:hover { filter: brightness(.93); }
+  .confirm-body { font-size: 14px; line-height: 1.55; margin: 6px 0 0; }
+  .confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+  .pin-input { width: 100%; margin-top: 14px; padding: 13px 15px; font-family: inherit; font-size: 20px; letter-spacing: .35em; text-align: center; color: var(--ink); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px; }
+  .pin-input:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(46,90,78,.12); }
+  .pin-err { color: var(--clay); font-size: 13px; font-weight: 600; margin: 10px 0 0; display: none; }
+  .pin-err.show { display: block; }
+
+  /* ---------- Day management ---------- */
+  .dm-sec { margin-top: 24px; }
+  .dm-sec:first-child { margin-top: 6px; }
+  .dm-blockedit { display: flex; flex-direction: column; gap: 6px; }
+  .dm-blockedit > label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+  .dm-blockinput { width: 100%; max-width: 420px; padding: 11px 14px; font-family: inherit; font-weight: 600; font-size: 15px; color: var(--ink); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; }
+  .dm-blockinput:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(46,90,78,.12); }
+  .dm-blockhint { font-size: 12px; color: var(--faint); margin: 2px 0 0; }
+  .dm-sec-cap { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); margin: 0 0 12px; }
+  .dm-selrow { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+  .dm-field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 130px; }
+  .dm-field > label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+  .dm-field .picker.sm { display: flex; }
+  .dm-field .picker.sm select { width: 100%; }
+  .dm-preview { min-height: 20px; }
+  .dm-row { display: flex; gap: 12px; padding: 11px 2px; border-bottom: 1px solid var(--border); align-items: flex-start; -webkit-user-select: none; user-select: none; }
+  .dm-row:last-child { border-bottom: 0; }
+  .dm-row.dm-dragging { opacity: .9; background: var(--bg); border-radius: 10px; border-bottom-color: transparent; box-shadow: 0 8px 22px rgba(27,36,32,.16); }
+  .dm-grip { flex: none; align-self: center; width: 26px; height: 34px; display: grid; place-items: center; color: var(--faint); cursor: grab; touch-action: none; }
+  .dm-grip:active { cursor: grabbing; color: var(--muted); }
+  .dm-grip svg { width: 18px; height: 18px; }
+  .dm-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; margin-top: 5px; }
+  .dm-main { flex: 1; min-width: 0; }
+  .dm-title { font-weight: 600; font-size: 14.5px; line-height: 1.35; }
+  .dm-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .dm-del { flex: none; align-self: center; width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; color: var(--muted); background: transparent; border: 1px solid transparent; }
+  .dm-del:hover { color: var(--clay); background: var(--clay-soft); border-color: var(--clay); }
+  .dm-del svg { width: 16px; height: 16px; }
+  .dm-empty { color: var(--muted); font-size: 14px; padding: 12px 2px; }
+  .dm-import-hint { color: var(--muted); font-size: 13.5px; line-height: 1.5; margin: 0 0 12px; }
+  .dm-donor-name { color: var(--ink); font-weight: 600; }
+  .dm-swap-label { font-size: 13.5px; color: var(--muted); line-height: 1.5; margin: 0 0 10px; }
+  .dm-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .btn-solid:disabled, .btn-ghost:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-ghost { padding: 11px 22px; background: var(--surface); color: var(--ink); border-radius: 10px; font-weight: 600; border: 1px solid var(--border-strong); }
+  .btn-ghost:hover:not(:disabled) { border-color: var(--pine); color: var(--pine); }
+  .btn-ghost.sm { padding: 9px 16px; font-size: 13.5px; }
+  .dm-addday { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 4px 0 12px; }
+  .dm-addday-lab { font-size: 13px; color: var(--muted); }
+  .dm-daynum { width: 72px; padding: 9px 11px; font-family: inherit; font-weight: 600; font-size: 14px; color: var(--ink); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 9px; }
+  .dm-daynum:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(46,90,78,.12); }
   .note-reset { display: block; margin: 12px auto 0; font-size: 12.5px; color: var(--muted); background: transparent; padding: 6px 10px; }
   .note-reset:hover { color: var(--clay); }
 
@@ -421,6 +471,7 @@
     <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
   </button>
   <input type="file" id="fileInput" accept=".csv,.json,text/csv,application/json" multiple style="display:none" />
+  <input type="file" id="donorInput" accept=".csv,.json,text/csv,application/json" style="display:none" />
 </header>
 
 <div class="layout" id="layout">
@@ -550,7 +601,7 @@
             </span>
             <span class="add-field">
               <label for="wkAddWeight">Weight (kg)</label>
-              <input id="wkAddWeight" class="add-weight" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 60 or BW" aria-label="Weight in kg" />
+              <input id="wkAddWeight" class="add-weight" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 147.5 or BW" aria-label="Weight in kg" />
             </span>
             <span class="add-field">
               <label for="wkAddSets">Sets</label>
@@ -588,6 +639,17 @@
           </div>
         </div>
       </section>
+
+      <!-- Day management -->
+      <section class="view" id="viewDayMgr">
+        <button class="wk-back" id="dmBack">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          Back
+        </button>
+        <h1 class="section-head">Manage days</h1>
+        <p class="section-sub">Preview any day of the loaded program, import another program, and swap one of its days in — keeping the original week &amp; day label. The imported program is temporary and is discarded when you go back.</p>
+        <div id="dmBody"></div>
+      </section>
     </div>
   </main>
 </div>
@@ -607,6 +669,40 @@
       <button class="btn-solid" id="noteDone">Done</button>
     </div>
     <button class="note-reset" id="noteReset">Reset to RPE + notes</button>
+  </div>
+</div>
+
+<div class="modal-scrim" id="confirmScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="modal-head">
+      <h2 id="confirmTitle">Are you sure?</h2>
+      <button class="icon-x" id="confirmClose" aria-label="Cancel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="confirm-body" id="confirmBody"></p>
+    <div class="confirm-actions">
+      <button class="chip" id="confirmNo">Cancel</button>
+      <button class="btn-danger" id="confirmYes">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-scrim" id="pinScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pinTitle">
+    <div class="modal-head">
+      <h2 id="pinTitle">Enter PIN</h2>
+      <button class="icon-x" id="pinClose" aria-label="Cancel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="confirm-body">Manage days is protected. Enter the 8-digit super-user PIN to continue.</p>
+    <input id="pinInput" class="pin-input" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="········" aria-label="8-digit PIN" />
+    <p class="pin-err" id="pinErr" aria-live="polite"></p>
+    <div class="confirm-actions">
+      <button class="chip" id="pinCancel">Cancel</button>
+      <button class="btn-solid" id="pinOk">Unlock</button>
+    </div>
   </div>
 </div>
 
@@ -636,6 +732,11 @@
   var dayFilterSel = "all"; // selected day in week view
   var composerWeek = null;  // which week the add-item Day select was last built for
   var inAnalytics = false;  // whether the Analytics view is showing
+  var inDayMgr = false;     // whether the Day-management view is showing
+  var donor = null;         // a program imported ONLY inside Day management (never committed to PROFILES)
+  var dmSel = { tw: null, td: null, dw: null, dd: null }; // day-mgr selections: target week/day, donor week/day
+  var rowUid = 0;           // monotonic counter for unique rids on grafted/merged rows
+  var dmUnlocked = false;   // has the Manage-days PIN been entered this session?
   var analyticsGran = "daily"; // 'daily' (per session) | 'weekly'
   var anTonChart = null, anNlChart = null, anTopChart = null;
 
@@ -936,7 +1037,8 @@
 
   // ───────────────────────── Rendering ─────────────────────────
   function showView(id) {
-    ["viewEmpty", "viewOverview", "viewWeek", "viewAnalytics"].forEach(function (v) {
+    if (id !== "viewDayMgr") dmUnlocked = false;   // leaving Manage days re-locks it
+    ["viewEmpty", "viewOverview", "viewWeek", "viewAnalytics", "viewDayMgr"].forEach(function (v) {
       $(v).classList.toggle("active", v === id);
     });
     window.scrollTo({ top: 0, behavior: "auto" });
@@ -965,7 +1067,7 @@
     if (p.classWt) tags.appendChild(el("span", "pill cls", p.classWt + "kg"));
 
     // Overview link
-    var ov = el("button", "nav-item" + (currentWeek === null && !inAnalytics ? " active" : ""));
+    var ov = el("button", "nav-item" + (currentWeek === null && !inAnalytics && !inDayMgr ? " active" : ""));
     ov.appendChild(iconSpan('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>'));
     ov.appendChild(el("span", "nav-label", "Overview"));
     ov.onclick = function () { openOverview(); closeNav(); };
@@ -977,6 +1079,13 @@
     an.appendChild(el("span", "nav-label", "Analytics"));
     an.onclick = function () { openAnalytics(); closeNav(); };
     nav.appendChild(an);
+
+    // Day management link
+    var dm = el("button", "nav-item" + (inDayMgr ? " active" : ""));
+    dm.appendChild(iconSpan('<path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/>'));
+    dm.appendChild(el("span", "nav-label", "Manage days"));
+    dm.onclick = function () { closeNav(); requestDayMgr(); };
+    nav.appendChild(dm);
 
     nav.appendChild(el("div", "nav-cap", "Weeks"));
     p.weeks.forEach(function (w) {
@@ -1200,21 +1309,24 @@
   }
 
   // Weight accepts a whole number or "BW"/"bw" only. Keep the field clean as the user types.
+  // Clean a weight field's live value: allow "BW", or a number with one decimal point.
+  function sanitizeWeightValue(v) {
+    v = v || "";
+    if (/^b/i.test(v)) { var m = v.match(/^b[w]?/i); return m ? m[0] : ""; }  // "b" then "bw"
+    v = v.replace(/[^0-9.]/g, "");                                            // digits + dots only
+    var i = v.indexOf(".");
+    if (i !== -1) v = v.slice(0, i + 1) + v.slice(i + 1).replace(/\./g, "");  // keep only the first dot
+    return v;
+  }
   function sanitizeWeightField() {
     var e = $("wkAddWeight");
-    var v = e.value;
-    if (/^b/i.test(v)) {
-      var m = v.match(/^b[w]?/i);        // allow "b" then "bw"
-      e.value = m ? m[0] : "";
-    } else {
-      e.value = v.replace(/[^0-9]/g, "");  // integers only
-    }
+    e.value = sanitizeWeightValue(e.value);
   }
   function normalizeWeight(v) {
     v = (v || "").trim();
     if (v === "") return "";
     if (/^bw$/i.test(v)) return "BW";
-    if (/^\d+$/.test(v)) return v;
+    if (/^\d*\.?\d*$/.test(v) && /\d/.test(v)) return String(parseFloat(v));  // 147, 147.5, .5, 147.
     return null;   // invalid
   }
   function addItemFromComposer() {
@@ -1373,6 +1485,7 @@
   // ───────────────────────── Navigation ─────────────────────────
   function openOverview() {
     inAnalytics = false;
+    inDayMgr = false;
     currentWeek = null;
     showView("viewOverview");
     renderOverview();
@@ -1380,6 +1493,7 @@
   }
   function openWeek(week) {
     inAnalytics = false;
+    inDayMgr = false;
     currentWeek = week;
     dayFilterSel = "all";
     showView("viewWeek");
@@ -1389,6 +1503,7 @@
   function openAnalytics() {
     var p = PROFILES[current]; if (!p) return;
     inAnalytics = true;
+    inDayMgr = false;
     currentWeek = null;
     showView("viewAnalytics");
     renderAnalytics();
@@ -1397,6 +1512,7 @@
   function selectLifter(name) {
     if (!PROFILES[name]) return;
     current = name; currentWeek = null;
+    donor = null; dmSel = { tw: null, td: null, dw: null, dd: null }; // day-mgr context is per-lifter
     safeWrite(STORE_LAST, name);
     renderPicker();
     openOverview();
@@ -1404,6 +1520,651 @@
 
   function closeNav() { $("layout").classList.remove("nav-open"); }
   function openNav() { $("layout").classList.add("nav-open"); }
+
+  // ───────────────────────── Manage-days PIN gate ─────────────────────────
+  // The plaintext PIN is NOT in this file. We only store a salted SHA-256 hash
+  // of it and compare hashes. Note: this is a client-side deterrent, not real
+  // security — the hash ships in the page and an 8-digit PIN is brute-forceable.
+  var DM_PIN_SALT = "spotter.dm.v1:";
+  var DM_PIN_HASH = "c30a18e5dc82ddb4ee8bc6f9c01972b90f190e069413009c68f7c709217c1c6b";
+
+  // Compact, self-contained SHA-256 (no crypto.subtle / secure-context dependency).
+  function sha256(ascii) {
+    function rr(n, x) { return (x >>> n) | (x << (32 - n)); }
+    var mathPow = Math.pow, maxWord = mathPow(2, 32), result = "";
+    var words = [], asciiBitLength = ascii.length * 8;
+    var hash = sha256.h = sha256.h || [];
+    var k = sha256.k = sha256.k || [];
+    var primeCounter = k.length;
+    var isComposite = {};
+    for (var candidate = 2; primeCounter < 64; candidate++) {
+      if (!isComposite[candidate]) {
+        for (var i = 0; i < 313; i += candidate) isComposite[i] = candidate;
+        hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
+        k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+      }
+    }
+    ascii += "\x80";
+    while (ascii.length % 64 - 56) ascii += "\x00";
+    for (i = 0; i < ascii.length; i++) {
+      var j = ascii.charCodeAt(i);
+      if (j >> 8) return;
+      words[i >> 2] |= j << ((3 - i) % 4) * 8;
+    }
+    words[words.length] = (asciiBitLength / maxWord) | 0;
+    words[words.length] = asciiBitLength;
+    for (j = 0; j < words.length;) {
+      var w = words.slice(j, j += 16);
+      var oldHash = hash;
+      hash = hash.slice(0, 8);
+      for (i = 0; i < 64; i++) {
+        var w15 = w[i - 15], w2 = w[i - 2];
+        var a = hash[0], e = hash[4];
+        var temp1 = hash[7]
+          + (rr(6, e) ^ rr(11, e) ^ rr(25, e))
+          + ((e & hash[5]) ^ (~e & hash[6]))
+          + k[i]
+          + (w[i] = (i < 16) ? w[i] : (
+              w[i - 16]
+              + (rr(7, w15) ^ rr(18, w15) ^ (w15 >>> 3))
+              + w[i - 7]
+              + (rr(17, w2) ^ rr(19, w2) ^ (w2 >>> 10))
+            ) | 0
+          );
+        var temp2 = (rr(2, a) ^ rr(13, a) ^ rr(22, a))
+          + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+        hash = [(temp1 + temp2) | 0].concat(hash);
+        hash[4] = (hash[4] + temp1) | 0;
+      }
+      for (i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
+    }
+    for (i = 0; i < 8; i++)
+      for (j = 3; j + 1; j--) {
+        var b = (hash[i] >> (j * 8)) & 255;
+        result += ((b < 16) ? 0 : "") + b.toString(16);
+      }
+    return result;
+  }
+
+  function verifyPin(pin) {
+    if (!/^\d{8}$/.test(pin)) return false;
+    return sha256(DM_PIN_SALT + pin) === DM_PIN_HASH;
+  }
+
+  // ───────────────────────── Day management ─────────────────────────
+  // Parse a program file WITHOUT committing it to PROFILES/localStorage — used for
+  // the temporary "donor" program you pull a day from.
+  function parseProgram(text, filename) {
+    if (/\.json$/i.test(filename || "")) {
+      var data; try { data = JSON.parse(text); } catch (e) { return null; }
+      if (!data || typeof data !== "object" || !data.profile || !data.profile.name || !Array.isArray(data.profile.weeks)) return null;
+      var pr = data.profile;
+      if (!pr.maxes || typeof pr.maxes !== "object") pr.maxes = {};
+      return pr;
+    }
+    var rows = parseCSV(text);
+    if (!hasNameHeader(rows)) return null;
+    var prof = buildProfile(rows);
+    if (!prof || !prof.name) return null;
+    prof.sourceFile = filename || "";
+    delete prof._hasStatus;
+    // flat week rows are the same objects as the day rows, so this clears both
+    prof.weeks.forEach(function (w) {
+      w.rows.forEach(function (r) { delete r._done; delete r._skip; delete r._logNote; });
+    });
+    return prof;
+  }
+
+  function dayGroup(prof, week, day) {
+    var w = getWeek(prof, week); if (!w) return null;
+    for (var i = 0; i < w.days.length; i++) if (String(w.days[i].day) === String(day)) return w.days[i];
+    return null;
+  }
+
+  function dropProgress(name, rid) {
+    if (DONE[name])  delete DONE[name][rid];
+    if (SKIP[name])  delete SKIP[name][rid];
+    if (NOTES[name]) delete NOTES[name][rid];
+  }
+  function rebuildWeekFlat(tw) {
+    var flat = []; tw.days.forEach(function (g) { g.rows.forEach(function (rw) { flat.push(rw); }); }); tw.rows = flat;
+  }
+  function saveProgram() {
+    safeWrite(STORE_PROFILES, PROFILES);
+    safeWrite(STORE_DONE, DONE); safeWrite(STORE_SKIP, SKIP); safeWrite(STORE_NOTES, NOTES);
+  }
+  // Edit the program's block / title.
+  function setBlock(targetName, newBlock) {
+    var p = PROFILES[targetName]; if (!p) return false;
+    p.block = String(newBlock == null ? "" : newBlock).trim();
+    safeWrite(STORE_PROFILES, PROFILES);
+    return true;
+  }
+
+  // Reorder the rows of a day to match a given list of rids.
+  function reorderDay(targetName, tWeek, tDay, ridOrder) {
+    var p = PROFILES[targetName]; if (!p) return false;
+    var tw = getWeek(p, tWeek); if (!tw) return false;
+    var g = dayGroup(p, tWeek, tDay); if (!g) return false;
+    var byRid = {}; g.rows.forEach(function (r) { byRid[r.rid] = r; });
+    var newRows = [];
+    ridOrder.forEach(function (rid) { if (byRid[rid]) { newRows.push(byRid[rid]); delete byRid[rid]; } });
+    g.rows.forEach(function (r) { if (byRid[r.rid]) newRows.push(r); });   // keep any stragglers
+    if (newRows.length !== g.rows.length) return false;                    // sanity: no loss
+    g.rows = newRows;
+    rebuildWeekFlat(tw);
+    saveProgram();
+    return true;
+  }
+  // Clone a donor day's rows, relabeled to the target week/day with fresh unique rids.
+  function freshRowsFromGroup(srcGroup, targetName, tWeek, tDay) {
+    return srcGroup.rows.map(function (r) {
+      return {
+        rid: targetName + "|w" + tWeek + "|graft" + Date.now() + "_" + (rowUid++),
+        week: String(tWeek), day: String(tDay),
+        exercise: r.exercise, weight: r.weight, sets: r.sets,
+        reps: r.reps, rpe: r.rpe, notes: r.notes
+      };
+    });
+  }
+  function putDayGroup(tw, tDay, rows) {
+    tw.days.push({ day: String(tDay), rows: rows });
+    tw.days.sort(function (a, b) { return (parseFloat(a.day) || 0) - (parseFloat(b.day) || 0); });
+  }
+
+  // Append a manually-entered exercise as a real program row (fresh unique rid),
+  // so it behaves exactly like every other row here (deletable, reorderable).
+  function addRowToDay(targetName, tWeek, tDay, fields) {
+    var p = PROFILES[targetName]; if (!p) return false;
+    var tw = getWeek(p, tWeek); if (!tw) return false;
+    var row = {
+      rid: targetName + "|w" + tWeek + "|add" + Date.now() + "_" + (rowUid++),
+      week: String(tWeek), day: String(tDay),
+      exercise: fields.exercise,
+      weight: fields.weight || "", sets: fields.sets || "",
+      reps: fields.reps || "", rpe: fields.rpe || "", notes: fields.notes || ""
+    };
+    var g = dayGroup(p, tWeek, tDay);
+    if (g) g.rows.push(row); else putDayGroup(tw, tDay, [row]);
+    rebuildWeekFlat(tw);
+    saveProgram();
+    return true;
+  }
+
+  // Overwrite target W/D with the donor's W/D rows, keeping the target's week & day
+  // labels. New rows get fresh rids, and the target day's progress is reset.
+  function replaceDay(targetName, tWeek, tDay, donorProf, dWeek, dDay) {
+    var p = PROFILES[targetName]; if (!p) return false;
+    var tw = getWeek(p, tWeek); if (!tw) return false;
+    var srcGroup = dayGroup(donorProf, dWeek, dDay); if (!srcGroup) return false;
+    var tGroup = dayGroup(p, tWeek, tDay);
+    if (tGroup) tGroup.rows.forEach(function (r) { dropProgress(targetName, r.rid); }); // old rids vanish
+    var newRows = freshRowsFromGroup(srcGroup, targetName, tWeek, tDay);
+    if (tGroup) tGroup.rows = newRows; else putDayGroup(tw, tDay, newRows);
+    rebuildWeekFlat(tw);
+    saveProgram();
+    return true;
+  }
+
+  // Append the donor's W/D rows to the target W/D, keeping the target's existing
+  // rows (and their progress) intact. New rows get fresh rids and start unticked.
+  function mergeDay(targetName, tWeek, tDay, donorProf, dWeek, dDay) {
+    var p = PROFILES[targetName]; if (!p) return false;
+    var tw = getWeek(p, tWeek); if (!tw) return false;
+    var srcGroup = dayGroup(donorProf, dWeek, dDay); if (!srcGroup) return false;
+    var newRows = freshRowsFromGroup(srcGroup, targetName, tWeek, tDay);
+    var tGroup = dayGroup(p, tWeek, tDay);
+    if (tGroup) tGroup.rows = tGroup.rows.concat(newRows); else putDayGroup(tw, tDay, newRows);
+    rebuildWeekFlat(tw);
+    saveProgram();
+    return true;
+  }
+
+  // Delete a single exercise row from the current program. The day is kept even
+  // when it becomes empty, so a donor day can later be merged into it.
+  function deleteRow(targetName, tWeek, tDay, rid) {
+    var p = PROFILES[targetName]; if (!p) return false;
+    var tw = getWeek(p, tWeek); if (!tw) return false;
+    var g = dayGroup(p, tWeek, tDay); if (!g) return false;
+    var idx = -1;
+    for (var i = 0; i < g.rows.length; i++) { if (g.rows[i].rid === rid) { idx = i; break; } }
+    if (idx === -1) return false;
+    dropProgress(targetName, rid);
+    g.rows.splice(idx, 1);
+    rebuildWeekFlat(tw);
+    saveProgram();
+    return true;
+  }
+
+  // Smallest positive integer day number not already used in this week
+  // (days [1,2,3] -> 4; days [2,4] -> 1).
+  function nextDayNum(tw) {
+    var have = {};
+    tw.days.forEach(function (g) { var n = parseInt(g.day, 10); if (n >= 1) have[n] = true; });
+    var n = 1; while (have[n]) n++;
+    return n;
+  }
+
+  // Add an empty day to a week. Fails if that day number already exists.
+  function addEmptyDay(targetName, tWeek, dayNum) {
+    var p = PROFILES[targetName]; if (!p) return { ok: false, reason: "no lifter" };
+    var tw = getWeek(p, tWeek); if (!tw) return { ok: false, reason: "no week" };
+    var n = parseInt(dayNum, 10);
+    if (!(n >= 1)) return { ok: false, reason: "bad" };
+    if (tw.days.some(function (g) { return parseInt(g.day, 10) === n || String(g.day) === String(n); })) {
+      return { ok: false, reason: "exists" };
+    }
+    putDayGroup(tw, String(n), []);
+    rebuildWeekFlat(tw);
+    saveProgram();
+    return { ok: true, day: String(n) };
+  }
+
+  function caretSvg() {
+    var s = el("span");
+    s.innerHTML = '<svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+    return s.firstChild;
+  }
+  function labeledSelect(label, items, currentVal, onChange) {
+    var field = el("span", "dm-field");
+    field.appendChild(el("label", null, label));
+    var span = el("span", "picker sm");
+    var sel = el("select");
+    items.forEach(function (it) { var o = el("option", null, it.label); o.value = it.value; sel.appendChild(o); });
+    if (currentVal != null) sel.value = String(currentVal);
+    sel.addEventListener("change", function () { onChange(this.value); });
+    span.appendChild(sel);
+    span.appendChild(caretSvg());
+    field.appendChild(span);
+    return field;
+  }
+  // Pointer-based (mouse + touch) drag reorder. Listeners live on `document`
+  // (not the handle) so a fast mouse that leaves the small grip can't strand the
+  // drag, and text selection is suppressed for the duration.
+  function enableRowDrag(container, handle, rowEl, onReorder) {
+    function order() {
+      return Array.prototype.slice.call(container.querySelectorAll(".dm-row"))
+        .map(function (c) { return c.getAttribute("data-rid"); });
+    }
+    handle.addEventListener("pointerdown", function (e) {
+      if (e.pointerType === "mouse" && e.button !== 0) return;   // left button only
+      e.preventDefault();
+      var startOrder = order().join("|");
+      rowEl.classList.add("dm-dragging");
+      var prevSel = document.body.style.userSelect;
+      document.body.style.userSelect = "none";
+      document.body.style.webkitUserSelect = "none";
+
+      function onMove(ev) {
+        if (ev.cancelable) ev.preventDefault();
+        var y = ev.clientY;
+        var sibs = Array.prototype.slice.call(container.querySelectorAll(".dm-row"))
+          .filter(function (c) { return c !== rowEl; });
+        var placed = false;
+        for (var i = 0; i < sibs.length; i++) {
+          var rect = sibs[i].getBoundingClientRect();
+          if (y < rect.top + rect.height / 2) { container.insertBefore(rowEl, sibs[i]); placed = true; break; }
+        }
+        if (!placed) container.appendChild(rowEl);
+      }
+      function onUp() {
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerup", onUp);
+        document.removeEventListener("pointercancel", onUp);
+        rowEl.classList.remove("dm-dragging");
+        document.body.style.userSelect = prevSel;
+        document.body.style.webkitUserSelect = prevSel;
+        try { if (window.getSelection) window.getSelection().removeAllRanges(); } catch (err) {}
+        if (order().join("|") !== startOrder) onReorder(order());
+      }
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onUp);
+      document.addEventListener("pointercancel", onUp);
+    });
+  }
+
+  function renderPreviewInto(container, prof, week, day, onDelete, onReorder) {
+    clear(container);
+    var g = dayGroup(prof, week, day);
+    var rows = g ? g.rows : [];
+    if (!rows.length) { container.appendChild(el("div", "dm-empty", "No items for this day.")); return; }
+    rows.forEach(function (r) {
+      var row = el("div", "dm-row");
+      row.setAttribute("data-rid", r.rid);
+      if (onReorder) {
+        var grip = el("span", "dm-grip");
+        grip.setAttribute("aria-label", "Drag to reorder");
+        grip.setAttribute("title", "Drag to reorder");
+        grip.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>';
+        enableRowDrag(container, grip, row, onReorder);
+        row.appendChild(grip);
+      }
+      var dot = el("span", "dm-dot"); dot.style.background = liftColor(r.exercise); row.appendChild(dot);
+      var main = el("div", "dm-main");
+      var tp = titleParts(r);
+      main.appendChild(el("div", "dm-title", tp.main + (tp.bracket || "")));
+      var dn = derivedNote(r);
+      if (dn) main.appendChild(el("div", "dm-sub", dn));
+      row.appendChild(main);
+      if (onDelete) {
+        var del = el("button", "dm-del");
+        del.setAttribute("aria-label", "Delete " + (r.exercise || "item"));
+        del.setAttribute("title", "Delete");
+        del.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+        del.onclick = (function (rr) { return function () { onDelete(rr); }; })(r);
+        row.appendChild(del);
+      }
+      container.appendChild(row);
+    });
+  }
+
+  function renderDayMgr() {
+    var p = PROFILES[current];
+    var body = $("dmBody"); clear(body);
+    if (!p) { body.appendChild(el("div", "dm-empty", "Load a lifter first.")); return; }
+
+    // ---- Program block / title (editable) ----
+    var secB = el("div", "dm-sec");
+    secB.appendChild(el("p", "dm-sec-cap", "Program"));
+    var editWrap = el("div", "dm-blockedit");
+    editWrap.appendChild(el("label", null, "Block / title"));
+    var binp = el("input", "dm-blockinput");
+    binp.type = "text"; binp.value = p.block || "";
+    binp.placeholder = "e.g. Block 3"; binp.setAttribute("aria-label", "Block or program title");
+    binp.autocomplete = "off";
+    var commit = function () {
+      var v = binp.value.trim();
+      if (v !== (p.block || "")) {
+        setBlock(p.name, v);
+        renderPicker();   // dropdown shows "Name · Block"
+        renderSidebar();  // block pill in the sidebar
+        toast(v ? "Block set to \u201C" + v + "\u201D." : "Block cleared.");
+      }
+    };
+    binp.addEventListener("blur", commit);
+    binp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); binp.blur(); } });
+    editWrap.appendChild(binp);
+    editWrap.appendChild(el("p", "dm-blockhint", "Used for the export filename: Name_Block.json"));
+    secB.appendChild(editWrap);
+    body.appendChild(secB);
+
+    // keep target selection valid
+    var weeks = p.weeks.map(function (w) { return String(w.week); });
+    if (weeks.indexOf(String(dmSel.tw)) === -1) dmSel.tw = weeks[0] || null;
+    var twObj = getWeek(p, dmSel.tw);
+    var tdays = twObj ? twObj.days.map(function (g) { return String(g.day); }) : [];
+    if (tdays.indexOf(String(dmSel.td)) === -1) dmSel.td = tdays[0] || null;
+
+    // ---- Target (current program) ----
+    var secT = el("div", "dm-sec");
+    secT.appendChild(el("p", "dm-sec-cap", "Current program — pick the day to preview / replace"));
+    var rowT = el("div", "dm-selrow");
+    rowT.appendChild(labeledSelect("Week", weeks.map(function (w) { return { label: "Week " + w, value: w }; }),
+      dmSel.tw, function (v) { dmSel.tw = v; dmSel.td = null; renderDayMgr(); }));
+    rowT.appendChild(labeledSelect("Day", tdays.map(function (d) { return { label: "Day " + d, value: d }; }),
+      dmSel.td, function (v) { dmSel.td = v; renderDayMgr(); }));
+    secT.appendChild(rowT);
+
+    // Add-an-empty-day control (only meaningful when the program has a week)
+    if (weeks.length) {
+      var addWrap = el("div", "dm-addday");
+      addWrap.appendChild(el("span", "dm-addday-lab", "Add empty day to Week " + dmSel.tw + ":"));
+      var inp = el("input", "dm-daynum");
+      inp.type = "number"; inp.min = "1"; inp.step = "1";
+      inp.setAttribute("inputmode", "numeric");
+      inp.setAttribute("aria-label", "New day number");
+      inp.value = String(nextDayNum(twObj));
+      addWrap.appendChild(inp);
+      var addBtn = el("button", "btn-ghost sm"); addBtn.textContent = "Add day";
+      addBtn.onclick = function () {
+        var res = addEmptyDay(p.name, dmSel.tw, inp.value);
+        if (res.ok) {
+          dmSel.td = res.day;
+          toast("Added empty Day " + res.day + " to Week " + dmSel.tw + ".");
+          renderDayMgr(); renderSidebar();
+        } else if (res.reason === "exists") {
+          toast("Week " + dmSel.tw + " already has a Day " + parseInt(inp.value, 10) + ".");
+        } else {
+          toast("Enter a day number (1 or higher).");
+        }
+      };
+      addWrap.appendChild(addBtn);
+      secT.appendChild(addWrap);
+    }
+    var panelT = el("div", "panel"); var prevT = el("div", "dm-preview");
+    renderPreviewInto(prevT, p, dmSel.tw, dmSel.td, function (row) {
+      askConfirm({
+        title: "Delete this exercise?",
+        body: "Remove \u201C" + (row.exercise || "item") + "\u201D from W" + dmSel.tw + "D" + dmSel.td + " of " + p.name + ". This can't be undone.",
+        confirmLabel: "Delete"
+      }).then(function (ok) {
+        if (!ok) return;
+        if (deleteRow(p.name, dmSel.tw, dmSel.td, row.rid)) {
+          toast("Deleted \u201C" + (row.exercise || "item") + "\u201D.");
+          renderDayMgr(); renderSidebar();
+        }
+      });
+    }, function (order) {
+      if (reorderDay(p.name, dmSel.tw, dmSel.td, order)) { renderDayMgr(); renderSidebar(); }
+    });
+    panelT.appendChild(prevT); secT.appendChild(panelT);
+    body.appendChild(secT);
+
+    // ---- Add an exercise (adds a real program row to the selected day) ----
+    if (weeks.length) {
+      var secAdd = el("div", "dm-sec");
+      secAdd.appendChild(el("p", "dm-sec-cap", "Add an exercise to W" + dmSel.tw + "D" + dmSel.td));
+      var box = el("div", "panel addbox");
+
+      var exText = el("textarea", "add-area"); exText.rows = 2;
+      exText.placeholder = "Exercise name, e.g. Leg press"; exText.setAttribute("aria-label", "Exercise name");
+      box.appendChild(exText);
+
+      var fieldsRow = el("div", "add-row");
+      // weight
+      var fW = el("span", "add-field"); fW.appendChild(el("label", null, "Weight (kg)"));
+      var inW = el("input", "add-weight"); inW.type = "text"; inW.setAttribute("inputmode", "decimal");
+      inW.autocomplete = "off"; inW.placeholder = "e.g. 147.5 or BW";
+      inW.addEventListener("input", function () { inW.value = sanitizeWeightValue(inW.value); });
+      fW.appendChild(inW); fieldsRow.appendChild(fW);
+      // sets / reps
+      function numField(labelTxt) {
+        var f = el("span", "add-field"); f.appendChild(el("label", null, labelTxt));
+        var pk = el("span", "picker sm"); var sel = el("select");
+        var blank = el("option", null, "\u2014"); blank.value = ""; sel.appendChild(blank);
+        for (var i = 1; i <= 20; i++) { var o = el("option", null, String(i)); o.value = String(i); sel.appendChild(o); }
+        pk.appendChild(sel); pk.appendChild(caretSvg()); f.appendChild(pk); fieldsRow.appendChild(f);
+        return sel;
+      }
+      var selS = numField("Sets");
+      var selR = numField("Reps");
+      // rpe
+      var fRpe = el("span", "add-field"); fRpe.appendChild(el("label", null, "RPE"));
+      var pRpe = el("span", "picker sm"); var selRpe = el("select");
+      ["", "5", "6", "7", "8", "9", "10"].forEach(function (v) { var o = el("option", null, v === "" ? "\u2014" : v); o.value = v; selRpe.appendChild(o); });
+      pRpe.appendChild(selRpe); pRpe.appendChild(caretSvg()); fRpe.appendChild(pRpe); fieldsRow.appendChild(fRpe);
+      box.appendChild(fieldsRow);
+
+      var notesArea = el("textarea", "add-area add-notes"); notesArea.rows = 2;
+      notesArea.placeholder = "Notes (optional)"; notesArea.setAttribute("aria-label", "Notes");
+      box.appendChild(notesArea);
+
+      var addActions = el("div", "add-row add-actions");
+      var addBtn = el("button", "btn-solid"); addBtn.textContent = "Add exercise";
+      var doAdd = function () {
+        var name = exText.value.trim();
+        if (!name) { exText.focus(); toast("Type the exercise name first."); return; }
+        var isRest = REST.test(name);
+        var weight = "";
+        if (!isRest) {
+          weight = normalizeWeight(inW.value);
+          if (weight === null) { inW.focus(); toast("Weight must be a whole number or BW."); return; }
+        }
+        var ok = addRowToDay(p.name, dmSel.tw, dmSel.td, {
+          exercise: name,
+          weight: isRest ? "" : weight,
+          sets: isRest ? "" : selS.value,
+          reps: isRest ? "" : selR.value,
+          rpe: isRest ? "" : selRpe.value,
+          notes: isRest ? "" : notesArea.value.trim()
+        });
+        if (ok) { toast("Added \u201C" + name + "\u201D to W" + dmSel.tw + "D" + dmSel.td + "."); renderDayMgr(); renderSidebar(); }
+      };
+      addBtn.onclick = doAdd;
+      exText.addEventListener("keydown", function (e) {
+        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); doAdd(); }
+      });
+      addActions.appendChild(addBtn); box.appendChild(addActions);
+      secAdd.appendChild(box);
+      body.appendChild(secAdd);
+    }
+
+    // ---- Donor (imported program) ----
+    var secD = el("div", "dm-sec");
+    secD.appendChild(el("p", "dm-sec-cap", "Import a program to pull a day from"));
+    if (!donor) {
+      secD.appendChild(el("p", "dm-import-hint", "Load a CSV or JSON program (same formats as usual). It stays separate from your lifters and is discarded when you go back."));
+      var imp = el("button", "chip primary"); imp.textContent = "Import CSV / JSON";
+      imp.onclick = function () { $("donorInput").click(); };
+      secD.appendChild(imp);
+    } else {
+      var dweeks = donor.weeks.map(function (w) { return String(w.week); });
+      if (dweeks.indexOf(String(dmSel.dw)) === -1) dmSel.dw = dweeks[0] || null;
+      var dwObj = getWeek(donor, dmSel.dw);
+      var ddays = dwObj ? dwObj.days.map(function (g) { return String(g.day); }) : [];
+      if (ddays.indexOf(String(dmSel.dd)) === -1) dmSel.dd = ddays[0] || null;
+
+      var nameLine = el("p", "dm-import-hint");
+      nameLine.appendChild(document.createTextNode("Imported: "));
+      nameLine.appendChild(el("span", "dm-donor-name", donor.name + (donor.block ? " · " + donor.block : "")));
+      secD.appendChild(nameLine);
+      var rowD = el("div", "dm-selrow");
+      rowD.appendChild(labeledSelect("Week", dweeks.map(function (w) { return { label: "Week " + w, value: w }; }),
+        dmSel.dw, function (v) { dmSel.dw = v; dmSel.dd = null; renderDayMgr(); }));
+      rowD.appendChild(labeledSelect("Day", ddays.map(function (d) { return { label: "Day " + d, value: d }; }),
+        dmSel.dd, function (v) { dmSel.dd = v; renderDayMgr(); }));
+      secD.appendChild(rowD);
+      var panelD = el("div", "panel"); var prevD = el("div", "dm-preview");
+      renderPreviewInto(prevD, donor, dmSel.dw, dmSel.dd); panelD.appendChild(prevD); secD.appendChild(panelD);
+    }
+    body.appendChild(secD);
+
+    // ---- Swap action ----
+    if (donor) {
+      var secS = el("div", "dm-sec");
+      var ready = dmSel.tw != null && dmSel.td != null && dmSel.dw != null && dmSel.dd != null;
+      if (ready) {
+        var lab = el("p", "dm-swap-label",
+          "Replace W" + dmSel.tw + "D" + dmSel.td + " with the imported W" + dmSel.dw + "D" + dmSel.dd +
+          ". It keeps its W" + dmSel.tw + "D" + dmSel.td + " label, and that day's Done / Skipped ticks are reset.");
+        secS.appendChild(lab);
+      }
+      var acts = el("div", "dm-actions");
+      var repl = el("button", "btn-solid");
+      repl.textContent = ready ? ("Replace W" + dmSel.tw + "D" + dmSel.td) : "Replace day";
+      repl.disabled = !ready;
+      repl.onclick = function () {
+        if (!ready) return;
+        var tw = dmSel.tw, td = dmSel.td, dw = dmSel.dw, dd = dmSel.dd;
+        askConfirm({
+          title: "Replace W" + tw + "D" + td + "?",
+          body: "This overwrites W" + tw + "D" + td + " in " + p.name + " with the imported W" + dw + "D" + dd +
+                ". The label stays W" + tw + "D" + td + " and that day's progress is reset. This can't be undone.",
+          confirmLabel: "Replace day"
+        }).then(function (ok) {
+          if (!ok) return;
+          if (replaceDay(p.name, tw, td, donor, dw, dd)) {
+            toast("Replaced W" + tw + "D" + td + " with imported W" + dw + "D" + dd + ".");
+            renderDayMgr();
+            renderSidebar();
+          } else { toast("Couldn't replace that day."); }
+        });
+      };
+      acts.appendChild(repl);
+
+      var mrg = el("button", "btn-ghost");
+      mrg.textContent = ready ? ("Merge into W" + dmSel.tw + "D" + dmSel.td) : "Merge day";
+      mrg.disabled = !ready;
+      mrg.onclick = function () {
+        if (!ready) return;
+        var tw = dmSel.tw, td = dmSel.td, dw = dmSel.dw, dd = dmSel.dd;
+        askConfirm({
+          title: "Merge into W" + tw + "D" + td + "?",
+          body: "This adds the imported W" + dw + "D" + dd + " exercises to the end of W" + tw + "D" + td + " in " + p.name +
+                ", keeping the existing exercises and their progress. The added exercises start unticked.",
+          confirmLabel: "Merge day"
+        }).then(function (ok) {
+          if (!ok) return;
+          if (mergeDay(p.name, tw, td, donor, dw, dd)) {
+            toast("Merged imported W" + dw + "D" + dd + " into W" + tw + "D" + td + ".");
+            renderDayMgr();
+            renderSidebar();
+          } else { toast("Couldn't merge that day."); }
+        });
+      };
+      acts.appendChild(mrg);
+
+      var clr = el("button", "chip"); clr.textContent = "Clear import";
+      clr.onclick = function () { donor = null; dmSel.dw = null; dmSel.dd = null; renderDayMgr(); };
+      acts.appendChild(clr);
+      secS.appendChild(acts);
+      body.appendChild(secS);
+    }
+  }
+
+  function openDayMgr() {
+    var p = PROFILES[current]; if (!p) { toast("Load a lifter first."); return; }
+    inAnalytics = false; inDayMgr = true; currentWeek = null;
+    showView("viewDayMgr");
+    renderDayMgr();
+    renderSidebar();
+  }
+  function closeDayMgr() {
+    donor = null; dmSel.dw = null; dmSel.dd = null;   // discard the imported program
+    openOverview();                                    // keeps all edits; sets inDayMgr = false
+  }
+
+  // Ask for the PIN. Resolves true once the correct PIN is entered, false if cancelled.
+  function askPin() {
+    return new Promise(function (resolve) {
+      var scrim = $("pinScrim"), inp = $("pinInput"), err = $("pinErr");
+      var ok = $("pinOk"), no = $("pinCancel"), x = $("pinClose");
+      inp.value = ""; err.textContent = ""; err.classList.remove("show");
+      function done(result) {
+        scrim.classList.remove("show");
+        ok.onclick = no.onclick = x.onclick = scrim.onclick = inp.onkeydown = inp.oninput = null;
+        resolve(result);
+      }
+      function attempt() {
+        if (verifyPin((inp.value || "").trim())) { done(true); }
+        else {
+          err.textContent = "Incorrect PIN. Try again.";
+          err.classList.add("show");
+          inp.value = ""; inp.focus();
+        }
+      }
+      inp.oninput = function () {
+        var v = (inp.value || "").replace(/\D/g, "").slice(0, 8);   // digits only, max 8
+        if (v !== inp.value) inp.value = v;
+        if (err.classList.contains("show")) { err.classList.remove("show"); err.textContent = ""; }
+        if (v.length === 8) attempt();                              // auto-submit on the 8th digit
+      };
+      ok.onclick = attempt;
+      no.onclick = function () { done(false); };
+      x.onclick = function () { done(false); };
+      scrim.onclick = function (e) { if (e.target === scrim) done(false); };
+      inp.onkeydown = function (e) { if (e.key === "Enter") { e.preventDefault(); attempt(); } };
+      scrim.classList.add("show");
+      setTimeout(function () { inp.focus(); }, 30);
+    });
+  }
+
+  // Entry point for Manage days: PIN-gated, then unlocked for the rest of the session.
+  function requestDayMgr() {
+    var p = PROFILES[current]; if (!p) { toast("Load a lifter first."); return; }
+    if (dmUnlocked) { openDayMgr(); return; }
+    askPin().then(function (ok) { if (ok) { dmUnlocked = true; openDayMgr(); } });
+  }
 
   // ───────────────────────── Analytics ─────────────────────────
   // Ported from gym-logger-pro (tonnage / number-of-lifts / heaviest-top-set),
@@ -1618,21 +2379,51 @@
   }
 
   // Wipe everything from this device and return to the first-load screen.
+  // In-app confirmation modal. Returns a Promise<boolean>. Works in sandboxed
+  // iframes and embedded webviews where the native window.confirm() is blocked.
+  function askConfirm(opts) {
+    opts = opts || {};
+    return new Promise(function (resolve) {
+      var scrim = $("confirmScrim"), yes = $("confirmYes"), no = $("confirmNo"), x = $("confirmClose");
+      $("confirmTitle").textContent = opts.title || "Are you sure?";
+      $("confirmBody").textContent = opts.body || "";
+      yes.textContent = opts.confirmLabel || "Confirm";
+      function done(result) {
+        scrim.classList.remove("show");
+        yes.onclick = no.onclick = x.onclick = scrim.onclick = null;
+        resolve(result);
+      }
+      yes.onclick = function () { done(true); };
+      no.onclick = function () { done(false); };
+      x.onclick = function () { done(false); };
+      scrim.onclick = function (e) { if (e.target === scrim) done(false); };
+      scrim.classList.add("show");
+      yes.focus();
+    });
+  }
+
   function unloadAll() {
     if (!Object.keys(PROFILES).length) { toast("Nothing loaded."); return; }
-    var ok = window.confirm("Unload everything?\n\nThis clears all loaded lifters plus their Done, Skipped, Notes and added items from this device. It can't be undone — save progress (JSON) first if you want to keep it.");
-    if (!ok) return;
-    PROFILES = {}; DONE = {}; SKIP = {}; NOTES = {}; CUSTOM = {};
-    current = null; currentWeek = null; dayFilterSel = "all"; noteCtx = null;
-    [STORE_PROFILES, STORE_DONE, STORE_SKIP, STORE_NOTES, STORE_CUSTOM, STORE_LAST].forEach(function (k) {
-      try { localStorage.removeItem(k); } catch (e) {}
+    askConfirm({
+      title: "Unload everything?",
+      body: "This clears all loaded lifters plus their Done, Skipped, Notes and added items from this device. It can't be undone — save progress (JSON) first if you want to keep it.",
+      confirmLabel: "Unload everything"
+    }).then(function (ok) {
+      if (!ok) return;
+      PROFILES = {}; DONE = {}; SKIP = {}; NOTES = {}; CUSTOM = {};
+      current = null; currentWeek = null; dayFilterSel = "all"; noteCtx = null;
+      inDayMgr = false; inAnalytics = false; donor = null; dmSel = { tw: null, td: null, dw: null, dd: null };
+      dmUnlocked = false;
+      [STORE_PROFILES, STORE_DONE, STORE_SKIP, STORE_NOTES, STORE_CUSTOM, STORE_LAST].forEach(function (k) {
+        try { localStorage.removeItem(k); } catch (e) {}
+      });
+      if ($("noteScrim").classList.contains("show")) $("noteScrim").classList.remove("show");
+      renderPicker();
+      renderSidebar();
+      closeNav();
+      showView("viewEmpty");
+      toast("Unloaded everything.");
     });
-    if ($("noteScrim").classList.contains("show")) $("noteScrim").classList.remove("show");
-    renderPicker();
-    renderSidebar();
-    closeNav();
-    showView("viewEmpty");
-    toast("Unloaded everything.");
   }
 
   // ───────────────────────── Notes editor (Busy Bee style) ─────────────────────────
@@ -1671,8 +2462,6 @@
   // ───────────────────────── CSV export ─────────────────────────
   function sanitizeName(s) { return (s || "lifter").replace(/[^\w.-]+/g, "_").replace(/^_+|_+$/g, ""); }
 
-  function stripExt(s) { return String(s || "").replace(/\.[^.\/\\]+$/, ""); }
-
   function exportJSON() {
     var p = PROFILES[current];
     if (!p) { toast("Load a lifter first."); return; }
@@ -1702,9 +2491,7 @@
       custom: CUSTOM[p.name] || []      // user-added items
     };
 
-    var base = p.sourceFile
-      ? stripExt(p.sourceFile)
-      : sanitizeName(p.name + (p.block ? "_" + p.block : "")) + "_progress_" + now.toISOString().slice(0, 10);
+    var base = p.block ? (sanitizeName(p.name) + "_" + sanitizeName(p.block)) : sanitizeName(p.name);
     var fname = base + ".json";
 
     var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8;" });
@@ -1914,6 +2701,19 @@
       if (this.files && this.files.length) loadFromFiles(this.files);
       this.value = "";
     });
+    $("donorInput").addEventListener("change", function () {
+      var f = this.files && this.files[0];
+      this.value = "";
+      if (!f) return;
+      readFileText(f).then(function (txt) {
+        var prof = parseProgram(txt, f.name);
+        if (!prof) { toast("Couldn't read that as a program (needs a #Name CSV or a Spotter JSON)."); return; }
+        if (!prof.weeks || !prof.weeks.length) { toast("That program has no weeks to pull a day from."); return; }
+        donor = prof; dmSel.dw = null; dmSel.dd = null;
+        renderDayMgr();
+        toast("Imported " + prof.name + " — pick a week and day to pull in.");
+      }).catch(function () { toast("Couldn't read that file."); });
+    });
     function openPicker() { $("fileInput").click(); }
     $("loadBtn").onclick = openPicker;
     $("loadBtn2").onclick = openPicker;
@@ -1930,6 +2730,7 @@
     };
 
     $("wkBack").onclick = openOverview;
+    $("dmBack").onclick = closeDayMgr;
     $("anBack").onclick = openOverview;
     $("ovAnalyticsBtn").onclick = openAnalytics;
     Array.prototype.forEach.call(document.querySelectorAll("#anGran .seg-btn"), function (b) {
@@ -1970,7 +2771,9 @@
 
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") {
-        if ($("noteScrim").classList.contains("show")) closeNote();
+        if ($("pinScrim").classList.contains("show")) $("pinCancel").click();
+        else if ($("confirmScrim").classList.contains("show")) $("confirmNo").click();
+        else if ($("noteScrim").classList.contains("show")) closeNote();
         else closeNav();
       }
     });

@@ -1861,6 +1861,28 @@
     return { ok: true, day: String(n) };
   }
 
+  // Smallest positive integer week number not already used in the program.
+  function nextWeekNum(p) {
+    var have = {};
+    p.weeks.forEach(function (w) { var n = parseInt(w.week, 10); if (n >= 1) have[n] = true; });
+    var n = 1; while (have[n]) n++;
+    return n;
+  }
+
+  // Add an empty week (no days) to the program. Fails if that week already exists.
+  function addEmptyWeek(targetName, weekNum) {
+    var p = PROFILES[targetName]; if (!p) return { ok: false, reason: "no lifter" };
+    var n = parseInt(weekNum, 10);
+    if (!(n >= 1)) return { ok: false, reason: "bad" };
+    if (p.weeks.some(function (w) { return parseInt(w.week, 10) === n || String(w.week) === String(n); })) {
+      return { ok: false, reason: "exists" };
+    }
+    p.weeks.push({ week: String(n), days: [], rows: [] });
+    p.weeks.sort(function (a, b) { return (parseFloat(a.week) || 0) - (parseFloat(b.week) || 0); });
+    saveProgram();
+    return { ok: true, week: String(n) };
+  }
+
   function caretSvg() {
     var s = el("span");
     s.innerHTML = '<svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
@@ -1995,6 +2017,29 @@
     editWrap.appendChild(binp);
     editWrap.appendChild(el("p", "dm-blockhint", "Used for the export filename: Name_Block.json"));
     secB.appendChild(editWrap);
+
+    var addWk = el("div", "dm-addday");
+    addWk.appendChild(el("span", "dm-addday-lab", "Add empty week (no days):"));
+    var winp = el("input", "dm-daynum");
+    winp.type = "number"; winp.min = "1"; winp.step = "1";
+    winp.setAttribute("inputmode", "numeric"); winp.setAttribute("aria-label", "New week number");
+    winp.value = String(nextWeekNum(p));
+    addWk.appendChild(winp);
+    var addWkBtn = el("button", "btn-ghost sm"); addWkBtn.textContent = "Add week";
+    addWkBtn.onclick = function () {
+      var res = addEmptyWeek(p.name, winp.value);
+      if (res.ok) {
+        dmSel.tw = res.week; dmSel.td = null;
+        toast("Added empty Week " + res.week + ".");
+        renderDayMgr(); renderSidebar();
+      } else if (res.reason === "exists") {
+        toast("Week " + parseInt(winp.value, 10) + " already exists.");
+      } else {
+        toast("Enter a week number (1 or higher).");
+      }
+    };
+    addWk.appendChild(addWkBtn);
+    secB.appendChild(addWk);
     body.appendChild(secB);
 
     // keep target selection valid
@@ -2100,7 +2145,7 @@
     body.appendChild(secT);
 
     // ---- Add an exercise (adds a real program row to the selected day) ----
-    if (weeks.length) {
+    if (weeks.length && dmSel.td != null) {
       var secAdd = el("div", "dm-sec");
       secAdd.appendChild(el("p", "dm-sec-cap", "Add an exercise to W" + dmSel.tw + "D" + dmSel.td));
       var box = el("div", "panel addbox");

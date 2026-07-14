@@ -187,6 +187,7 @@
   .ov-sub { color: var(--muted); font-size: 14.5px; margin: 0 0 24px; }
 
   .maxes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+  .pn-body .maxes { margin-bottom: 4px; margin-top: 10px; }
   .max-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 16px 14px; position: relative; overflow: hidden; }
   .max-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--accent, var(--pine)); }
   .max-card .k { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
@@ -541,7 +542,7 @@
         <p class="eyebrow" id="ovEyebrow">Training block</p>
         <h1 class="ov-h1" id="ovName">—</h1>
         <p class="ov-sub" id="ovSub">—</p>
-        <div class="maxes" id="ovMaxes"></div>
+        <div id="ovMaxes"></div>
         <button class="analytics-btn" id="ovAnalyticsBtn">
           <span class="ab-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="6" rx="1"/><rect x="12" y="7" width="3" height="10" rx="1"/><rect x="17" y="13" width="3" height="4" rx="1"/></svg></span>
           <span class="ab-main"><span class="ab-title">Analytics</span><span class="ab-sub">Tonnage, number of lifts &amp; heaviest top sets</span></span>
@@ -1151,15 +1152,38 @@
     if (!ordered.length) { mx.style.display = "none"; }
     else {
       mx.style.display = "";
+      var collapsed = false;
+      try { collapsed = localStorage.getItem("spotter.maxesCollapsed") === "1"; } catch (e) {}
+
+      var card = el("div", "pn-card mx-card" + (collapsed ? "" : " open"));
+      var toggle = el("button", "pn-toggle");
+      var lab = el("span", "pn-labels");
+      lab.appendChild(el("span", "pn-title", "1-rep maxes"));
+      toggle.appendChild(lab);
+      var chev = el("span", "pn-chev");
+      chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+      toggle.appendChild(chev);
+
+      var body = el("div", "pn-body");
+      var grid = el("div", "maxes");
       ordered.forEach(function (k) {
-        var card = el("div", "max-card");
-        card.style.setProperty("--accent", liftColor(k));
-        card.appendChild(el("div", "k", k));
+        var mcard = el("div", "max-card");
+        mcard.style.setProperty("--accent", liftColor(k));
+        mcard.appendChild(el("div", "k", k));
         var nv = el("div", "n", p.maxes[k]);
         nv.appendChild(el("span", "u", "kg"));
-        card.appendChild(nv);
-        mx.appendChild(card);
+        mcard.appendChild(nv);
+        grid.appendChild(mcard);
       });
+      body.appendChild(grid);
+
+      toggle.onclick = function () {
+        card.classList.toggle("open");
+        try { localStorage.setItem("spotter.maxesCollapsed", card.classList.contains("open") ? "0" : "1"); } catch (e) {}
+      };
+      card.appendChild(toggle);
+      card.appendChild(body);
+      mx.appendChild(card);
     }
 
     renderProgramNotes(p);
@@ -2405,7 +2429,8 @@
     nField.appendChild(inN); body.appendChild(nField);
 
     var save = $("editSave"), cancel = $("editCancel"), x = $("editClose");
-    function done() { scrim.classList.remove("show"); save.onclick = cancel.onclick = x.onclick = scrim.onclick = null; }
+    var downSelf = false;
+    function done() { scrim.classList.remove("show"); save.onclick = cancel.onclick = x.onclick = scrim.onclick = scrim.onpointerdown = null; }
     save.onclick = function () {
       var w = normalizeWeight(inW.value);
       if (w === null) { inW.focus(); toast("Weight must be a number or BW."); return; }
@@ -2417,7 +2442,8 @@
     };
     cancel.onclick = function () { done(); };
     x.onclick = function () { done(); };
-    scrim.onclick = function (e) { if (e.target === scrim) done(); };
+    scrim.onpointerdown = function (e) { downSelf = (e.target === scrim); };
+    scrim.onclick = function (e) { if (downSelf && e.target === scrim) done(); };
     scrim.classList.add("show");
     setTimeout(function () { inW.focus(); }, 30);
   }
@@ -2428,9 +2454,10 @@
       var scrim = $("pinScrim"), inp = $("pinInput"), err = $("pinErr");
       var ok = $("pinOk"), no = $("pinCancel"), x = $("pinClose");
       inp.value = ""; err.textContent = ""; err.classList.remove("show");
+      var downSelf = false;
       function done(result) {
         scrim.classList.remove("show");
-        ok.onclick = no.onclick = x.onclick = scrim.onclick = inp.onkeydown = inp.oninput = null;
+        ok.onclick = no.onclick = x.onclick = scrim.onclick = scrim.onpointerdown = inp.onkeydown = inp.oninput = null;
         resolve(result);
       }
       function attempt() {
@@ -2450,7 +2477,8 @@
       ok.onclick = attempt;
       no.onclick = function () { done(false); };
       x.onclick = function () { done(false); };
-      scrim.onclick = function (e) { if (e.target === scrim) done(false); };
+      scrim.onpointerdown = function (e) { downSelf = (e.target === scrim); };
+      scrim.onclick = function (e) { if (downSelf && e.target === scrim) done(false); };
       inp.onkeydown = function (e) { if (e.key === "Enter") { e.preventDefault(); attempt(); } };
       scrim.classList.add("show");
       setTimeout(function () { inp.focus(); }, 30);
@@ -2686,15 +2714,17 @@
       $("confirmTitle").textContent = opts.title || "Are you sure?";
       $("confirmBody").textContent = opts.body || "";
       yes.textContent = opts.confirmLabel || "Confirm";
+      var downSelf = false;
       function done(result) {
         scrim.classList.remove("show");
-        yes.onclick = no.onclick = x.onclick = scrim.onclick = null;
+        yes.onclick = no.onclick = x.onclick = scrim.onclick = scrim.onpointerdown = null;
         resolve(result);
       }
       yes.onclick = function () { done(true); };
       no.onclick = function () { done(false); };
       x.onclick = function () { done(false); };
-      scrim.onclick = function (e) { if (e.target === scrim) done(false); };
+      scrim.onpointerdown = function (e) { downSelf = (e.target === scrim); };
+      scrim.onclick = function (e) { if (downSelf && e.target === scrim) done(false); };
       scrim.classList.add("show");
       yes.focus();
     });
@@ -2992,6 +3022,18 @@
       openOverview();
     } else {
       showView("viewEmpty");
+    }
+
+    // If the browser blocks storage (private mode / sandboxed preview), writes
+    // silently fail — warn once so it isn't a surprise. On the deployed site this
+    // never fires and everything persists across browser closes automatically.
+    try {
+      localStorage.setItem("spotter.__probe", "1");
+      localStorage.removeItem("spotter.__probe");
+    } catch (e) {
+      setTimeout(function () {
+        toast("This browser is blocking storage, so changes won't be saved between visits. On the live site they save automatically.");
+      }, 700);
     }
 
     // wiring

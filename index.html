@@ -373,6 +373,8 @@
   .dm-blockinput { width: 100%; max-width: 420px; padding: 11px 14px; font-family: inherit; font-weight: 600; font-size: 15px; color: var(--ink); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; }
   .dm-blockinput:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(46,90,78,.12); }
   .dm-blockhint { font-size: 12px; color: var(--faint); margin: 2px 0 0; }
+  .dm-export { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 14px; }
+  .dm-export-hint { font-size: 12px; color: var(--faint); flex: 1 1 200px; }
   .dm-sec-cap { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); margin: 0 0 12px; }
   .dm-selrow { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
   .dm-field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 130px; }
@@ -416,6 +418,9 @@
   .dm-addday-lab { font-size: 13px; color: var(--muted); }
   .dm-daynum { width: 72px; padding: 9px 11px; font-family: inherit; font-weight: 600; font-size: 14px; color: var(--ink); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 9px; }
   .dm-daynum:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(46,90,78,.12); }
+  .dm-charts { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--border); }
+  .dm-charts .seg { margin-bottom: 0; }
+  .dm-charts .dm-selrow { align-items: flex-end; }
   .note-reset { display: block; margin: 12px auto 0; font-size: 12.5px; color: var(--muted); background: transparent; padding: 6px 10px; }
   .note-reset:hover { color: var(--clay); }
 
@@ -660,6 +665,7 @@
         <h1 class="section-head">Manage program</h1>
         <p class="section-sub">Preview, edit, and reorganise the loaded program — edit, add, delete, or reorder exercises, add or delete days, delete weeks, and replace or merge a day or a whole week from another program you import. The imported program is temporary and is discarded when you go back.</p>
         <div id="dmBody"></div>
+        <div id="dmCharts" class="dm-charts"></div>
       </section>
     </div>
   </main>
@@ -767,6 +773,17 @@
   var dmUnlocked = false;   // has the Manage-days PIN been entered this session?
   var analyticsGran = "daily"; // 'daily' (per session) | 'weekly'
   var anTonChart = null, anNlChart = null, anTopChart = null;
+
+  // Manage-program charts (number of lifts, heaviest top set, fatigue)
+  var dmGran = "weekly";             // Manage-view charts granularity: 'weekly' | 'daily'
+  var dmFatigueBaseline = "c";       // starting-condition seed: a=fresh, b=fatigued, c=balanced
+  var dmNlChart = null, dmTopChart = null, dmFatChart = null;
+  var BASELINE_SCORES = { a: 1.5, b: 5.5, c: 3.5 };
+  var BASELINE_OPTS = [
+    { value: "a", label: "A — Fresh: deload / cold start (1.5)" },
+    { value: "b", label: "B — Fatigued: straight off a block (5.5)" },
+    { value: "c", label: "C — Balanced: light week before (3.5)" }
+  ];
 
   // ───────────────────────── Tiny helpers ─────────────────────────
   function $(id) { return document.getElementById(id); }
@@ -2016,7 +2033,7 @@
   function renderDayMgr() {
     var p = PROFILES[current];
     var body = $("dmBody"); clear(body);
-    if (!p) { body.appendChild(el("div", "dm-empty", "Load a lifter first.")); return; }
+    if (!p) { body.appendChild(el("div", "dm-empty", "Load a lifter first.")); renderDMCharts(); return; }
 
     // ---- Program block / title (editable) ----
     var secB = el("div", "dm-sec");
@@ -2039,8 +2056,18 @@
     binp.addEventListener("blur", commit);
     binp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); binp.blur(); } });
     editWrap.appendChild(binp);
-    editWrap.appendChild(el("p", "dm-blockhint", "Used for the export filename: Name_Block.json"));
+    editWrap.appendChild(el("p", "dm-blockhint", "Used for the export filename: Name_Block.json / Name_Block.csv"));
     secB.appendChild(editWrap);
+
+    // ---- Export the current program as a standard-format CSV ----
+    var expRow = el("div", "dm-export");
+    var expBtn = el("button", "btn-ghost sm", "Export CSV");
+    expBtn.type = "button";
+    expBtn.setAttribute("aria-label", "Export program as CSV");
+    expBtn.onclick = exportProgramCSV;
+    expRow.appendChild(expBtn);
+    expRow.appendChild(el("span", "dm-export-hint", "Downloads the current program (including edits and added items) in the usual CSV format."));
+    secB.appendChild(expRow);
 
     var addWk = el("div", "dm-addday");
     addWk.appendChild(el("span", "dm-addday-lab", "Add empty week (no days):"));
@@ -2380,6 +2407,8 @@
 
       body.appendChild(secS);
     }
+
+    renderDMCharts();   // program charts live below the manage-program controls
   }
 
   function openDayMgr() {
@@ -2530,11 +2559,11 @@
     });
     return out;
   }
-  function anKey(r) { return analyticsGran === "weekly" ? ("W" + r.week) : (r.week + "-" + r.day); }
-  function anLabel(r) { return analyticsGran === "weekly" ? ("W" + r.week) : ("W" + r.week + "D" + r.day); }
+  function anKey(r, gran) { var g = gran || analyticsGran; return g === "weekly" ? ("W" + r.week) : (r.week + "-" + r.day); }
+  function anLabel(r, gran) { var g = gran || analyticsGran; return g === "weekly" ? ("W" + r.week) : ("W" + r.week + "D" + r.day); }
   function anSort(map) { return Array.from(map.values()).sort(function (a, b) { return a.week !== b.week ? a.week - b.week : a.day - b.day; }); }
 
-  function anTonnage(rows) {
+  function anTonnage(rows, gran) {
     var map = new Map(), grand = 0;
     rows.forEach(function (r) {
       if (REST.test(r.exercise)) return;
@@ -2542,14 +2571,14 @@
       if (isNaN(sets) || isNaN(reps)) return;
       var w = parseFloat(r.weight); var load = (isNaN(w) || w <= 0) ? 0 : w;   // bodyweight adds 0
       var ton = load * sets * reps; grand += ton;
-      var k = anKey(r);
-      if (!map.has(k)) map.set(k, { label: anLabel(r), total: 0, week: r.week, day: r.day });
+      var k = anKey(r, gran);
+      if (!map.has(k)) map.set(k, { label: anLabel(r, gran), total: 0, week: r.week, day: r.day });
       map.get(k).total += ton;
     });
     var arr = anSort(map);
     return { labels: arr.map(function (x) { return x.label; }), totals: arr.map(function (x) { return x.total; }), grand: grand };
   }
-  function anNL(rows, maxes) {
+  function anNL(rows, maxes, gran) {
     var map = new Map(), grand = 0, skippedNoMax = 0;
     rows.forEach(function (r) {
       if (REST.test(r.exercise)) return;
@@ -2560,21 +2589,21 @@
       var oneRM = maxes[lift]; if (!oneRM || oneRM <= 0) { skippedNoMax++; return; }
       if (w / oneRM < 0.50) return;
       var nl = sets * reps; grand += nl;
-      var k = anKey(r);
-      if (!map.has(k)) map.set(k, { label: anLabel(r), nl: 0, week: r.week, day: r.day });
+      var k = anKey(r, gran);
+      if (!map.has(k)) map.set(k, { label: anLabel(r, gran), nl: 0, week: r.week, day: r.day });
       map.get(k).nl += nl;
     });
     var arr = anSort(map);
     return { labels: arr.map(function (x) { return x.label; }), values: arr.map(function (x) { return x.nl; }), grand: grand, skippedNoMax: skippedNoMax };
   }
-  function anTopSet(rows) {
+  function anTopSet(rows, gran) {
     var map = new Map();
     rows.forEach(function (r) {
       if (REST.test(r.exercise)) return;
       var w = parseFloat(r.weight); if (isNaN(w) || w <= 0) return;
       var lift = classifyLift(r.exercise); if (!lift) return;
-      var k = anKey(r);
-      if (!map.has(k)) map.set(k, { label: anLabel(r), week: r.week, day: r.day, top: { Squat: null, Bench: null, Deadlift: null }, tng: { Squat: false, Bench: false, Deadlift: false } });
+      var k = anKey(r, gran);
+      if (!map.has(k)) map.set(k, { label: anLabel(r, gran), week: r.week, day: r.day, top: { Squat: null, Bench: null, Deadlift: null }, tng: { Squat: false, Bench: false, Deadlift: false } });
       var slot = map.get(k);
       if (slot.top[lift] == null || w > slot.top[lift]) { slot.top[lift] = w; slot.tng[lift] = isTNGNote(r.notes); }
     });
@@ -2704,6 +2733,269 @@
     }
   }
 
+  // ──────────────── Manage-program charts (NL / top set / fatigue) ────────────────
+  // Number-of-lifts and heaviest-top-set reuse the analytics builders above.
+  // Fatigue uses the sports-science standard for load monitoring: an exponentially
+  // weighted moving average (EWMA) of daily training load, which models how fatigue
+  // accumulates on training days and decays on rest days (Williams et al. 2017;
+  // Murray et al. 2017, Br J Sports Med). Acute decay constant N = 7 days, so
+  // lambda = 2/(N+1) = 0.25. The score is seeded from the lifter's starting
+  // condition and normalised to their own hardest sessions, then clamped to 0–10.
+  var DM_WD = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  // Weekly template: Mon/Tue train · Wed rest · Thu train · Fri rest · Sat train · Sun rest.
+  // Place the k-th training day of a week on training slots [0,1,3,5] (rests 2,4,6).
+  function dmSlots(n) {
+    var base = [0, 1, 3, 5];
+    if (n <= 4) return base.slice(0, n);
+    var out = base.slice(), extra = [2, 4, 6], i;      // 5th/6th/7th day spill onto the rest slots
+    for (i = 0; i < extra.length && out.length < n; i++) out.push(extra[i]);
+    for (i = out.length; i < n; i++) out.push(i);      // >7 days: just run consecutive
+    return out.sort(function (a, b) { return a - b; });
+  }
+
+  function dmFatigueSeries(p, gran) {
+    gran = gran || dmGran;
+    var rows = analyticsRows(p);
+    var byWeek = {}, weekSet = {};
+    rows.forEach(function (r) {
+      weekSet[r.week] = true;
+      if (REST.test(r.exercise)) return;
+      var sets = parseInt(r.sets, 10), reps = parseInt(r.reps, 10);
+      if (isNaN(sets) || isNaN(reps)) return;
+      var w = parseFloat(r.weight); var load = (isNaN(w) || w <= 0) ? 0 : w;   // bodyweight adds 0
+      var ton = load * sets * reps;
+      if (!byWeek[r.week]) byWeek[r.week] = {};
+      byWeek[r.week][r.day] = (byWeek[r.week][r.day] || 0) + ton;
+    });
+    var weeks = Object.keys(weekSet).map(parseFloat).sort(function (a, b) { return a - b; });
+
+    // Continuous day-by-day grid: each week laid out as 7 days (4 train, 3 rest).
+    var timeline = [];
+    weeks.forEach(function (wk) {
+      var dayTon = byWeek[wk] || {};
+      var dayNums = Object.keys(dayTon).map(parseFloat).sort(function (a, b) { return a - b; });
+      var slots = dmSlots(dayNums.length), slotTon = {};
+      dayNums.forEach(function (dn, i) { slotTon[slots[i]] = dayTon[dn]; });
+      var span = Math.max(7, slots.length ? (slots[slots.length - 1] + 1) : 7);
+      for (var wd = 0; wd < span; wd++) {
+        var has = Object.prototype.hasOwnProperty.call(slotTon, wd);
+        timeline.push({ week: wk, wd: wd, ton: has ? slotTon[wd] : 0, isTrain: has });
+      }
+    });
+
+    // Reference "hard session" = 90th-percentile training-day tonnage (robust to outliers).
+    var trainTons = timeline.filter(function (t) { return t.isTrain && t.ton > 0; })
+      .map(function (t) { return t.ton; }).sort(function (a, b) { return a - b; });
+    var hasData = trainTons.length > 0;
+    var ref = 1;
+    if (trainTons.length) ref = trainTons[Math.floor(0.9 * (trainTons.length - 1))] || trainTons[trainTons.length - 1];
+    if (!ref || ref <= 0) ref = 1;
+
+    var lambda = 2 / (7 + 1);                              // 0.25 — 7-day acute decay
+    var F = BASELINE_SCORES[dmFatigueBaseline]; if (F == null) F = 3.5;
+    timeline.forEach(function (t) {
+      var stress = t.isTrain ? Math.min(12, 10 * (t.ton / ref)) : 0;  // 10 ≈ a typical hard day
+      F = lambda * stress + (1 - lambda) * F;
+      t.fatigue = Math.max(0, Math.min(10, F));
+    });
+    var current = timeline.length ? timeline[timeline.length - 1].fatigue : F;
+    var peak = 0; timeline.forEach(function (t) { if (t.fatigue > peak) peak = t.fatigue; });
+
+    if (gran === "weekly") {
+      var wmap = {}, worder = [];
+      timeline.forEach(function (t) {
+        if (!(t.week in wmap)) { wmap[t.week] = { label: "W" + t.week, pk: 0 }; worder.push(t.week); }
+        if (t.fatigue > wmap[t.week].pk) wmap[t.week].pk = t.fatigue;
+      });
+      worder.sort(function (a, b) { return a - b; });
+      return {
+        labels: worder.map(function (w) { return wmap[w].label; }),
+        values: worder.map(function (w) { return +wmap[w].pk.toFixed(2); }),
+        isTrain: worder.map(function () { return true; }),
+        tons: worder.map(function () { return 0; }),
+        hasData: hasData, current: current, peak: peak
+      };
+    }
+    return {
+      labels: timeline.map(function (t) { return "W" + t.week + " " + (DM_WD[t.wd] || ("d" + (t.wd + 1))); }),
+      values: timeline.map(function (t) { return +t.fatigue.toFixed(2); }),
+      isTrain: timeline.map(function (t) { return t.isTrain; }),
+      tons: timeline.map(function (t) { return t.ton; }),
+      hasData: hasData, current: current, peak: peak
+    };
+  }
+
+  function renderDMCharts() {
+    var wrap = $("dmCharts"); if (!wrap) return;
+    if (dmNlChart) { dmNlChart.destroy(); dmNlChart = null; }
+    if (dmTopChart) { dmTopChart.destroy(); dmTopChart = null; }
+    if (dmFatChart) { dmFatChart.destroy(); dmFatChart = null; }
+    clear(wrap);
+
+    var p = PROFILES[current]; if (!p) return;
+
+    // ---- header + controls (granularity toggle + fatigue baseline) ----
+    var sec = el("div", "dm-sec");
+    sec.appendChild(el("p", "dm-sec-cap", "Program charts"));
+    sec.appendChild(el("p", "dm-import-hint", "Number of lifts, heaviest top sets, and a fatigue estimate for the whole loaded program."));
+    var ctrl = el("div", "dm-selrow");
+
+    var segField = el("span", "dm-field");
+    segField.appendChild(el("label", null, "View"));
+    var seg = el("div", "seg");
+    [["weekly", "Weekly"], ["daily", "Daily"]].forEach(function (o) {
+      var b = el("button", "seg-btn" + (dmGran === o[0] ? " active" : "")); b.type = "button";
+      b.textContent = o[1];
+      b.onclick = function () { if (dmGran !== o[0]) { dmGran = o[0]; renderDMCharts(); } };
+      seg.appendChild(b);
+    });
+    segField.appendChild(seg);
+    ctrl.appendChild(segField);
+    ctrl.appendChild(labeledSelect("Starting condition (fatigue)", BASELINE_OPTS, dmFatigueBaseline, function (v) {
+      dmFatigueBaseline = v; renderDMCharts();
+    }));
+    sec.appendChild(ctrl);
+    wrap.appendChild(sec);
+
+    var rows = analyticsRows(p);
+    var ready = (typeof Chart !== "undefined");
+    var ink = cssVar("--muted", "#6b736c"), line = cssVar("--border", "#e2e5df");
+    var tipBg = cssVar("--ink", "#1b2420"), tipTx = cssVar("--bg", "#ffffff");
+
+    function bestMaxFor(lift) {
+      var best = 0, lc = lift.toLowerCase();
+      Object.keys(p.maxes).forEach(function (k) {
+        if (k.toLowerCase().indexOf(lc) === 0) { var v = parseFloat(p.maxes[k]); if (!isNaN(v) && v > best) best = v; }
+      });
+      return best;
+    }
+    var maxes = { Squat: bestMaxFor("Squat"), Bench: bestMaxFor("Bench"), Deadlift: bestMaxFor("Deadlift") };
+
+    function panel(title, unit, descText, emptyText) {
+      var pnl = el("div", "panel an-panel");
+      var head = el("div", "an-head");
+      head.appendChild(el("div", "an-title", title));
+      var kpi = el("div", "an-kpi");
+      var kv = el("span"); kv.textContent = "–"; kpi.appendChild(kv);
+      if (unit) { kpi.appendChild(document.createTextNode(" ")); kpi.appendChild(el("span", "an-unit", unit)); }
+      head.appendChild(kpi); pnl.appendChild(head);
+      var desc = el("div", "an-desc", descText || ""); pnl.appendChild(desc);
+      var cw = el("div", "an-chart"); var cv = el("canvas"); cw.appendChild(cv); pnl.appendChild(cw);
+      var empty = el("div", "an-empty", emptyText || "No data yet."); pnl.appendChild(empty);
+      wrap.appendChild(pnl);
+      return { panel: pnl, kpi: kv, desc: desc, canvas: cv, empty: empty };
+    }
+    function noLib(ui) { ui.empty.textContent = "Couldn't load the chart library — check your connection."; ui.panel.classList.add("is-empty"); }
+
+    // ---------- Number of lifts (line, gold) ----------
+    var nlUI = panel("Number of lifts", "reps", "Total reps at \u226550% of 1RM for squat, bench & deadlift (Sheiko NL).", "Set 1-rep maxes and log squat / bench / deadlift working sets to see NL.");
+    var nl = anNL(rows, maxes, dmGran);
+    nlUI.kpi.textContent = nl.grand.toLocaleString();
+    var noMax = ["Squat", "Bench", "Deadlift"].filter(function (l) { return !maxes[l]; });
+    if (noMax.length && nl.skippedNoMax > 0) nlUI.desc.textContent = "Reps at \u226550% of 1RM (Sheiko NL). Add 1-rep maxes for " + noMax.join(" / ") + " to include those reps.";
+    var nlHas = nl.values.length > 0;
+    nlUI.panel.classList.toggle("is-empty", !nlHas);
+    if (nlHas && !ready) noLib(nlUI);
+    else if (nlHas) {
+      var gold = cssVar("--gold", "#b07c12");
+      dmNlChart = new Chart(nlUI.canvas, {
+        type: "line",
+        data: { labels: nl.labels, datasets: [{ label: "NL", data: nl.values, borderColor: gold, backgroundColor: hexA(gold, 0.12), pointBackgroundColor: gold, pointRadius: nl.values.length > 30 ? 2 : 4, pointHoverRadius: 6, borderWidth: 2.5, tension: 0.35, fill: true }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { backgroundColor: tipBg, titleColor: tipTx, bodyColor: tipTx, padding: 10, displayColors: false, callbacks: { label: function (c) { return " " + c.parsed.y.toLocaleString() + " reps (\u226550% 1RM)"; } } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: ink, font: { size: 11 }, autoSkip: true, maxRotation: 0 }, border: { color: line } },
+            y: { beginAtZero: true, grid: { color: line }, ticks: { color: ink, font: { size: 11 }, precision: 0 }, border: { display: false } }
+          }
+        }
+      });
+    }
+
+    // ---------- Heaviest top set (multi-line, lift colours) ----------
+    var tsUI = panel("Heaviest top set", "", "Heaviest logged weight per period for squat, bench & deadlift.", "Log squat, bench or deadlift sets with a weight to see top sets.");
+    var ts = anTopSet(rows, dmGran);
+    var kpiTxt = ["Squat", "Bench", "Deadlift"].filter(function (l) { return ts.peak[l] != null; }).map(function (l) { return l[0] + " " + ts.peak[l]; });
+    tsUI.kpi.textContent = kpiTxt.length ? kpiTxt.join("  \u00b7  ") : "\u2013";
+    tsUI.panel.classList.toggle("is-empty", !ts.hasAny);
+    if (ts.hasAny && !ready) noLib(tsUI);
+    else if (ts.hasAny) {
+      var col = { Squat: cssVar("--lift-squat", "#2e5a4e"), Bench: cssVar("--lift-bench", "#2f6d8f"), Deadlift: cssVar("--lift-dead", "#b34732") };
+      var ds = function (l) { return { label: l, data: ts.series[l], borderColor: col[l], backgroundColor: col[l], pointBackgroundColor: col[l], pointRadius: ts.labels.length > 30 ? 2 : 4, pointHoverRadius: 6, borderWidth: 2.5, tension: 0.3, spanGaps: false, fill: false }; };
+      dmTopChart = new Chart(tsUI.canvas, {
+        type: "line",
+        data: { labels: ts.labels, datasets: [ds("Squat"), ds("Bench"), ds("Deadlift")] },
+        options: {
+          responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { display: true, position: "top", align: "end", labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: "circle", color: ink, font: { size: 12 } } },
+            tooltip: { backgroundColor: tipBg, titleColor: tipTx, bodyColor: tipTx, padding: 10, callbacks: { label: function (c) { if (c.parsed.y == null) return null; var l = c.dataset.label; return " " + l + ": " + c.parsed.y + " kg" + ((ts.tng[l] || [])[c.dataIndex] ? "  [TNG]" : ""); } } }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: ink, font: { size: 11 }, autoSkip: true, maxRotation: 0 }, border: { color: line } },
+            y: { beginAtZero: true, grid: { color: line }, ticks: { color: ink, font: { size: 11 }, callback: function (v) { return v + " kg"; } }, border: { display: false } }
+          }
+        }
+      });
+    }
+
+    // ---------- Fatigue estimate (line, clay, 0–10 with zone bands) ----------
+    var fatDesc = "Estimated systemic fatigue, 0\u201310, from an EWMA of daily training load (7-day acute decay). "
+      + "Week = Mon/Tue train \u00b7 Wed rest \u00b7 Thu train \u00b7 Fri rest \u00b7 Sat train \u00b7 Sun rest, so fatigue climbs on the 4 training days and recovers across the 3 rest days. "
+      + (dmGran === "weekly" ? "Weekly view shows each week's peak." : "Daily view shows the day-by-day curve.");
+    var fatUI = panel("Fatigue estimate", "/ 10", fatDesc, "Log sets with a weight, sets and reps to estimate fatigue.");
+    var fs = dmFatigueSeries(p, dmGran);
+    fatUI.kpi.textContent = fs.hasData ? fs.current.toFixed(1) : "\u2013";
+    fatUI.panel.classList.toggle("is-empty", !fs.hasData);
+    if (fs.hasData && !ready) noLib(fatUI);
+    else if (fs.hasData) {
+      var clay = cssVar("--clay", "#b34732"), pine = cssVar("--pine", "#2e5a4e"), gold2 = cssVar("--gold", "#b07c12");
+      var zonePlugin = {
+        id: "fatZones",
+        beforeDraw: function (chart) {
+          var yx = chart.scales.y, xa = chart.chartArea; if (!yx || !xa) return;
+          var ctx = chart.ctx;
+          function band(lo, hi, color) {
+            var y1 = yx.getPixelForValue(hi), y2 = yx.getPixelForValue(lo);
+            ctx.save(); ctx.fillStyle = color; ctx.fillRect(xa.left, y1, xa.right - xa.left, y2 - y1); ctx.restore();
+          }
+          band(0, 3, hexA(pine, 0.07)); band(3, 6.5, hexA(gold2, 0.07)); band(6.5, 10, hexA(clay, 0.09));
+        }
+      };
+      var many = fs.values.length > 30, baseR = many ? 0 : 3;
+      dmFatChart = new Chart(fatUI.canvas, {
+        type: "line",
+        data: { labels: fs.labels, datasets: [{
+          label: "Fatigue", data: fs.values, borderColor: clay, backgroundColor: hexA(clay, 0.10),
+          pointBackgroundColor: fs.values.map(function (v, i) { return fs.isTrain[i] ? clay : hexA(clay, 0.30); }),
+          pointRadius: fs.values.map(function (v, i) { return fs.isTrain[i] ? baseR : Math.max(0, baseR - 1); }),
+          pointHoverRadius: 6, borderWidth: 2.5, tension: 0.35, fill: true
+        }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: tipBg, titleColor: tipTx, bodyColor: tipTx, padding: 10, displayColors: false,
+              callbacks: {
+                label: function (c) {
+                  var out = [" Fatigue " + c.parsed.y.toFixed(1) + " / 10"];
+                  if (dmGran === "daily") out.push(fs.isTrain[c.dataIndex] ? (" Training \u00b7 " + Math.round(fs.tons[c.dataIndex]).toLocaleString() + " kg") : " Rest day");
+                  return out;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: ink, font: { size: 11 }, autoSkip: true, maxRotation: 0 }, border: { color: line } },
+            y: { min: 0, max: 10, grid: { color: line }, ticks: { color: ink, font: { size: 11 }, stepSize: 2 }, border: { display: false } }
+          }
+        },
+        plugins: [zonePlugin]
+      });
+    }
+  }
+
   // Wipe everything from this device and return to the first-load screen.
   // In-app confirmation modal. Returns a Promise<boolean>. Works in sandboxed
   // iframes and embedded webviews where the native window.confirm() is blocked.
@@ -2829,6 +3121,70 @@
     document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     toast("Saved " + fname + " · " + doneCount + "/" + workCount + " done" + (skipCount ? ", " + skipCount + " skipped" : ""));
+  }
+
+  // Escape one CSV cell: quote it only when it contains a comma, quote, or newline.
+  function csvCell(v) {
+    var s = (v == null) ? "" : String(v);
+    if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+  // Pad a metadata row to the 7-column width used by the standard program CSV.
+  function csvMetaRow(cells) {
+    var out = cells.slice();
+    while (out.length < 7) out.push("");
+    return out.map(csvCell).join(",");
+  }
+
+  // Rebuild the current program as a standard-format CSV string, straight from
+  // the live in-memory profile — so any edits, added rows, and custom items are
+  // reflected. Layout matches what the generators produce:
+  //   #Name / #Block / #Program / #Bodyweight / #Class / #Max… , then
+  //   Week,Day,Exercise,Weight (kg),Sets,Reps,Notes , then the set rows.
+  function programToCSV(p) {
+    var lines = [];
+    lines.push(csvMetaRow(["#Name", p.name]));
+    if (p.block)      lines.push(csvMetaRow(["#Block", p.block]));
+    if (p.program)    lines.push(csvMetaRow(["#Program", p.program]));
+    if (p.bodyweight) lines.push(csvMetaRow(["#Bodyweight", p.bodyweight]));
+    if (p.classWt)    lines.push(csvMetaRow(["#Class", p.classWt]));
+    Object.keys(p.maxes || {}).forEach(function (lift) {
+      var val = p.maxes[lift];
+      if (lift && val != null && String(val).trim() !== "") lines.push(csvMetaRow(["#Max", lift, val]));
+    });
+    // preserve any free-text program notes as "# …" comment lines
+    if (p.programNotes) {
+      String(p.programNotes).split("\n").forEach(function (ln) { lines.push("# " + ln); });
+    }
+
+    lines.push("Week,Day,Exercise,Weight (kg),Sets,Reps,Notes");
+
+    var count = 0;
+    p.weeks.forEach(function (w) {
+      mergedWeek(p, w).rows.forEach(function (r) {
+        lines.push([r.week, r.day, r.exercise, r.weight, r.sets, r.reps, derivedNote(r)].map(csvCell).join(","));
+        count++;
+      });
+    });
+    return { text: lines.join("\r\n") + "\r\n", rows: count };
+  }
+
+  function exportProgramCSV() {
+    var p = PROFILES[current];
+    if (!p) { toast("Load a lifter first."); return; }
+    var built = programToCSV(p);
+    if (!built.rows) { toast("Nothing to export — this program has no rows."); return; }
+
+    var base = p.block ? (sanitizeName(p.name) + "_" + sanitizeName(p.block)) : sanitizeName(p.name);
+    var fname = base + ".csv";
+
+    var blob = new Blob([built.text], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = fname; document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    toast("Saved " + fname + " · " + p.weeks.length + " week" + (p.weeks.length === 1 ? "" : "s") + ", " + built.rows + " row" + (built.rows === 1 ? "" : "s"));
   }
 
   // ───────────────────────── Loading files ─────────────────────────
@@ -3067,6 +3423,7 @@
       var cur = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
       localStorage.setItem(STORE_THEME, cur); applyTheme(cur);
       if (inAnalytics) renderAnalytics();   // recolour charts for the new theme
+      if (inDayMgr) renderDMCharts();
     };
 
     $("wkBack").onclick = openOverview;

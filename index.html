@@ -365,6 +365,34 @@
   .pin-err { color: var(--clay); font-size: 13px; font-weight: 600; margin: 10px 0 0; display: none; }
   .pin-err.show { display: block; }
 
+  /* ---------- Gym tools (plate calculator + rest timer) ---------- */
+  .modal-lg { max-width: 620px; }
+  .tool-tabs { margin: 2px 0 18px; }
+  .tool-pane-hd { font-size: 13.5px; color: var(--muted); line-height: 1.5; margin: 0 0 16px; }
+  .tool-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+  .tool-field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 130px; }
+  .tool-field > label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+  .tool-input { width: 100%; font-family: inherit; font-size: 15px; font-weight: 600; color: var(--ink); background: #fcfdfb; border: 1px solid var(--border-strong); border-radius: 10px; padding: 11px 13px; }
+  html[data-theme="dark"] .tool-input { background: var(--bg); }
+  .tool-input:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(46,90,78,.12); }
+  .tool-collar-hint { font-size: 12px; color: var(--faint); margin: 8px 0 0; }
+  .plate-kpi { display: flex; align-items: baseline; gap: 8px; margin: 4px 0 4px; }
+  .plate-kpi .n { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 30px; letter-spacing: -.01em; }
+  .plate-kpi .u { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .plate-diff { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+  .plate-diff.off { color: var(--clay); font-weight: 600; }
+  .plate-stack { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+  .plate-chip { display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; border-radius: 999px; font-size: 13.5px; font-weight: 700; background: var(--surface); color: var(--ink); border: 1px solid var(--border-strong); }
+  .plate-chip .sw { width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(0,0,0,.25); flex: none; }
+  .plate-empty { color: var(--faint); font-size: 13.5px; padding: 6px 0 2px; }
+  .plate-note { font-size: 12.5px; color: var(--faint); margin-top: 10px; line-height: 1.5; }
+  .timer-display { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 56px; letter-spacing: -.02em; text-align: center; margin: 6px 0 18px; font-variant-numeric: tabular-nums; }
+  .timer-display.done { color: var(--clay); }
+  .timer-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; justify-content: center; }
+  .timer-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .timer-custom { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .timer-custom .tool-input { width: 84px; text-align: center; padding: 8px 10px; }
+
   /* ---------- Day management ---------- */
   .dm-sec { margin-top: 24px; }
   .dm-sec:first-child { margin-top: 6px; }
@@ -421,6 +449,11 @@
   .dm-charts { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--border); }
   .dm-charts .seg { margin-bottom: 0; }
   .dm-charts .dm-selrow { align-items: flex-end; }
+  .dm-tabs { margin: 2px 0 20px; }
+  .dm-an-intro { color: var(--muted); font-size: 13.5px; line-height: 1.55; margin: 0 0 16px; }
+  #dmAnControls { align-items: flex-end; }
+  #dmAnControls .seg { margin-bottom: 0; }
+  .dm-an-charts { margin-top: 4px; }
   .note-reset { display: block; margin: 12px auto 0; font-size: 12.5px; color: var(--muted); background: transparent; padding: 6px 10px; }
   .note-reset:hover { color: var(--clay); }
 
@@ -482,6 +515,9 @@
   </button>
   <button class="icon-btn" id="saveBtn" aria-label="Save progress JSON" title="Save progress (JSON)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+  </button>
+  <button class="icon-btn" id="toolsBtn" aria-label="Gym tools: plate calculator and rest timer" title="Gym tools: plate calculator &amp; rest timer">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h2"/><path d="M18 12h2"/><rect x="6" y="9" width="2.4" height="6" rx="0.6"/><rect x="15.6" y="9" width="2.4" height="6" rx="0.6"/><rect x="8.4" y="7" width="1.8" height="10" rx="0.6"/><rect x="13.8" y="7" width="1.8" height="10" rx="0.6"/><path d="M10.2 12h3.6"/></svg>
   </button>
   <button class="icon-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle theme">
     <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
@@ -663,9 +699,20 @@
           Back
         </button>
         <h1 class="section-head">Manage program</h1>
-        <p class="section-sub">Preview, edit, and reorganise the loaded program — edit, add, delete, or reorder exercises, add or delete days, delete weeks, and replace or merge a day or a whole week from another program you import. The imported program is temporary and is discarded when you go back.</p>
-        <div id="dmBody"></div>
-        <div id="dmCharts" class="dm-charts"></div>
+        <div class="seg dm-tabs" id="dmTabs" role="tablist" aria-label="Manage program sections">
+          <button type="button" class="seg-btn active" data-tab="manage" role="tab" aria-selected="true">Manage program</button>
+          <button type="button" class="seg-btn" data-tab="analytics" role="tab" aria-selected="false">Analytics</button>
+        </div>
+        <div id="dmPaneManage" role="tabpanel" aria-label="Manage program">
+          <p class="section-sub">Preview, edit, and reorganise the loaded program — edit, add, delete, or reorder exercises, add or delete days, delete weeks, and replace or merge a day or a whole week from another program you import. The imported program is temporary and is discarded when you go back.</p>
+          <div id="dmBody"></div>
+          <div id="dmCharts" class="dm-charts"></div>
+        </div>
+        <div id="dmPaneAnalytics" class="hidden" role="tabpanel" aria-label="Analytics">
+          <p class="dm-an-intro">Progression and load-management views for the whole loaded program. Estimated 1RM and volume are built from the programmed sets; adherence and ACWR use what you've actually ticked off as Done and Skipped.</p>
+          <div id="dmAnControls" class="dm-selrow"></div>
+          <div id="dmAnBody" class="dm-an-charts"></div>
+        </div>
       </section>
     </div>
   </main>
@@ -740,6 +787,60 @@
   </div>
 </div>
 
+<div class="modal-scrim" id="toolsScrim">
+  <div class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="toolsTitle">
+    <div class="modal-head">
+      <h2 id="toolsTitle">Gym tools</h2>
+      <button class="icon-x" id="toolsClose" aria-label="Close gym tools">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="seg tool-tabs" id="toolsTabs" role="tablist" aria-label="Gym tools sections">
+      <button type="button" class="seg-btn active" data-ttab="plate" role="tab" aria-selected="true">Plate calculator</button>
+      <button type="button" class="seg-btn" data-ttab="timer" role="tab" aria-selected="false">Rest timer</button>
+    </div>
+
+    <div id="toolsPanePlate" role="tabpanel" aria-label="Plate calculator">
+      <p class="tool-pane-hd">Enter the weight you're loading to and the bar you're using — plates per side come out below.</p>
+      <div class="tool-row">
+        <span class="tool-field">
+          <label for="plateTarget">Target weight (kg)</label>
+          <input class="tool-input" id="plateTarget" type="number" inputmode="decimal" step="1.25" min="0" placeholder="e.g. 140" />
+        </span>
+        <span class="tool-field">
+          <label for="plateBar">Bar weight (kg)</label>
+          <input class="tool-input" id="plateBar" type="number" inputmode="decimal" step="0.5" min="0" placeholder="20" />
+        </span>
+      </div>
+      <div class="tool-field" style="margin-bottom:14px;">
+        <label>Collars</label>
+        <div class="seg" id="plateCollarSeg">
+          <button type="button" class="seg-btn" data-collar="calibrated">Calibrated collars · 2.5 kg</button>
+          <button type="button" class="seg-btn" data-collar="clips">Weight clips · 0 kg</button>
+        </div>
+        <p class="tool-collar-hint" id="plateCollarHint"></p>
+      </div>
+      <div id="plateResult"></div>
+    </div>
+
+    <div id="toolsPaneTimer" class="hidden" role="tabpanel" aria-label="Rest timer">
+      <p class="tool-pane-hd">Set a rest period between sets. It keeps running even if you close this — you'll get a toast (and a beep, if your sound's on) when it's done.</p>
+      <div class="timer-display" id="timerDisplay">01:30</div>
+      <div class="timer-presets" id="timerPresets"></div>
+      <div class="timer-custom">
+        <span>Custom:</span>
+        <input class="tool-input" id="timerCustomInput" type="number" inputmode="numeric" min="1" step="1" placeholder="seconds" />
+        <button class="chip" id="timerCustomBtn" type="button">Set</button>
+      </div>
+      <div class="timer-actions">
+        <button class="btn-solid" id="timerStartBtn" type="button">Start</button>
+        <button class="btn-ghost" id="timerPauseBtn" type="button">Pause</button>
+        <button class="btn-ghost" id="timerResetBtn" type="button">Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -754,6 +855,7 @@
   var STORE_CUSTOM   = "spotter.custom.v1";
   var STORE_THEME    = "spotter.theme";
   var STORE_LAST     = "spotter.lastLifter";
+  var STORE_TOOLS    = "spotter.tools.v1";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -778,6 +880,32 @@
   var dmGran = "weekly";             // Manage-view charts granularity: 'weekly' | 'daily'
   var dmFatigueBaseline = "c";       // starting-condition seed: a=fresh, b=fatigued, c=balanced
   var dmNlChart = null, dmTopChart = null, dmFatChart = null;
+
+  // Manage-program tabs + the additional Analytics tab (e1RM / adherence / ACWR / volume)
+  var dmTab = "manage";              // 'manage' | 'analytics'
+  var dmAnGran = "weekly";           // Analytics-tab granularity: 'weekly' | 'daily'
+  var dmAnFormula = "epley";         // estimated-1RM formula: 'epley' | 'brzycki'
+  var dmAcwrSource = "completed";    // ACWR daily-load source: 'completed' | 'prescribed'
+  var dmE1rmChart = null, dmAdhChart = null, dmAcwrChart = null, dmVolChart = null;
+
+  // Gym tools: plate calculator + rest timer (global utility, no lifter required)
+  var toolsTab = "plate";            // 'plate' | 'timer'
+  var plateCollarMode = "calibrated"; // 'calibrated' (2.5kg each) | 'clips' (0kg each)
+  var PLATE_DENOMS = [
+    { kg: 25,   color: "#c0392b", label: "Red" },
+    { kg: 20,   color: "#2560c4", label: "Blue" },
+    { kg: 15,   color: "#d0b514", label: "Yellow" },
+    { kg: 10,   color: "#2e7d46", label: "Green" },
+    { kg: 5,    color: "#f7f7f2", label: "White", border: true },
+    { kg: 2.5,  color: "#1c1c1c", label: "Black" },
+    { kg: 1.25, color: "#b7b9bb", label: "Silver" }
+  ];
+  var timerDuration = 90;    // seconds — last-selected preset/custom length
+  var timerEndAt = null;     // ms epoch when the running timer hits 0; null = not running
+  var timerRemainingMs = null; // frozen remaining ms while paused/reset (null = full duration, not started)
+  var timerTickHandle = null;  // the persistent setInterval id (runs for the whole session)
+  var TIMER_PRESETS = [60, 90, 120, 180, 300];
+
   var BASELINE_SCORES = { a: 1.5, b: 5.5, c: 3.5 };
   var BASELINE_OPTS = [
     { value: "a", label: "A — Fresh: deload / cold start (1.5)" },
@@ -2415,6 +2543,15 @@
     var p = PROFILES[current]; if (!p) { toast("Load a lifter first."); return; }
     inAnalytics = false; inDayMgr = true; currentWeek = null;
     showView("viewDayMgr");
+    dmTab = "manage";                                  // always land on the Manage tab
+    destroyDMAnalyticsCharts();
+    $("dmPaneAnalytics").classList.add("hidden");
+    $("dmPaneManage").classList.remove("hidden");
+    Array.prototype.forEach.call(document.querySelectorAll("#dmTabs .seg-btn"), function (b) {
+      var on = b.getAttribute("data-tab") === "manage";
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+    });
     renderDayMgr();
     renderSidebar();
   }
@@ -2996,6 +3133,537 @@
     }
   }
 
+  // ──────────────── Manage-program · Analytics tab ────────────────
+  // Four extra views: estimated-1RM trend, adherence, acute:chronic workload
+  // ratio (ACWR), and tonnage split by lift. e1RM & volume read the programmed
+  // sets (analyticsRows); adherence & ACWR read the lifter's Done/Skipped marks.
+
+  function destroyDMAnalyticsCharts() {
+    if (dmE1rmChart) { dmE1rmChart.destroy(); dmE1rmChart = null; }
+    if (dmAdhChart)  { dmAdhChart.destroy();  dmAdhChart = null; }
+    if (dmAcwrChart) { dmAcwrChart.destroy(); dmAcwrChart = null; }
+    if (dmVolChart)  { dmVolChart.destroy();  dmVolChart = null; }
+  }
+
+  // Estimated 1RM per period per lift, from the heaviest e1RM working set.
+  function dmE1RM(rows, gran, formula) {
+    function est(w, reps) {
+      if (reps <= 1) return w;                                  // a true single is its own 1RM
+      if (formula === "brzycki") return reps < 37 ? w * 36 / (37 - reps) : w * (1 + reps / 30);
+      return w * (1 + reps / 30);                               // Epley (default)
+    }
+    var map = new Map();
+    rows.forEach(function (r) {
+      if (REST.test(r.exercise)) return;
+      var w = parseFloat(r.weight); if (isNaN(w) || w <= 0) return;
+      var reps = parseInt(r.reps, 10); if (isNaN(reps) || reps < 1) return;
+      var lift = classifyLift(r.exercise); if (!lift) return;
+      var e = est(w, reps);
+      var k = anKey(r, gran);
+      if (!map.has(k)) map.set(k, { label: anLabel(r, gran), week: r.week, day: r.day, est: { Squat: null, Bench: null, Deadlift: null } });
+      var slot = map.get(k);
+      if (slot.est[lift] == null || e > slot.est[lift]) slot.est[lift] = e;
+    });
+    var arr = anSort(map);
+    var series = { Squat: [], Bench: [], Deadlift: [] }, peak = { Squat: null, Bench: null, Deadlift: null };
+    arr.forEach(function (x) {
+      ["Squat", "Bench", "Deadlift"].forEach(function (l) {
+        var v = x.est[l] == null ? null : Math.round(x.est[l] * 10) / 10;
+        series[l].push(v);
+        if (v != null && (peak[l] == null || v > peak[l])) peak[l] = v;
+      });
+    });
+    var hasAny = ["Squat", "Bench", "Deadlift"].some(function (l) { return series[l].some(function (v) { return v != null; }); });
+    return { labels: arr.map(function (x) { return x.label; }), series: series, peak: peak, hasAny: hasAny };
+  }
+
+  // Adherence per week: Done / Skipped / Remaining working sets (rest rows excluded).
+  function dmAdherence(p) {
+    var labels = [], done = [], skip = [], rem = [], gDone = 0, gSkip = 0, gTotal = 0;
+    p.weeks.forEach(function (w) {
+      var pr = weekProgress(p, w);                              // { done, skipped, total }
+      labels.push("W" + (parseFloat(w.week) || w.week));
+      done.push(pr.done); skip.push(pr.skipped);
+      rem.push(Math.max(0, pr.total - pr.done - pr.skipped));
+      gDone += pr.done; gSkip += pr.skipped; gTotal += pr.total;
+    });
+    return { labels: labels, done: done, skip: skip, rem: rem, gDone: gDone, gSkip: gSkip, gTotal: gTotal };
+  }
+
+  // Acute:chronic workload ratio over a continuous day grid (7 days/week, 4 train
+  // / 3 rest, same layout as the fatigue chart). Coupled rolling means: acute = 7d,
+  // chronic = 28d. Load = tonnage of that day's qualifying sets, from the chosen
+  // source ('completed' = only sets ticked Done; 'prescribed' = every programmed set).
+  function dmACWR(p, gran, source) {
+    var presByWeek = {}, loadByWeek = {}, weekSet = {};
+    p.weeks.forEach(function (w) {
+      var mv = mergedWeek(p, w), wk = parseFloat(w.week) || 0; weekSet[wk] = true;
+      mv.rows.forEach(function (r) {
+        if (REST.test(r.exercise)) return;
+        var dy = parseFloat(r.day) || 0;
+        if (!presByWeek[wk]) presByWeek[wk] = {};
+        presByWeek[wk][dy] = true;                              // day exists → fixes the calendar layout
+        if (source === "completed" && !isDone(p.name, r.rid)) return;
+        var sets = parseInt(r.sets, 10), reps = parseInt(r.reps, 10);
+        if (isNaN(sets) || isNaN(reps)) return;
+        var wt = parseFloat(r.weight); var load = (isNaN(wt) || wt <= 0) ? 0 : wt;
+        var ton = load * sets * reps;
+        if (!loadByWeek[wk]) loadByWeek[wk] = {};
+        loadByWeek[wk][dy] = (loadByWeek[wk][dy] || 0) + ton;
+      });
+    });
+    var weeks = Object.keys(weekSet).map(parseFloat).sort(function (a, b) { return a - b; });
+    var timeline = [];
+    weeks.forEach(function (wk) {
+      var days = Object.keys(presByWeek[wk] || {}).map(parseFloat).sort(function (a, b) { return a - b; });
+      var slots = dmSlots(days.length), slotLoad = {};
+      days.forEach(function (dn, i) { slotLoad[slots[i]] = (loadByWeek[wk] && loadByWeek[wk][dn]) || 0; });
+      var span = Math.max(7, slots.length ? (slots[slots.length - 1] + 1) : 7);
+      for (var wd = 0; wd < span; wd++) {
+        var isTrain = Object.prototype.hasOwnProperty.call(slotLoad, wd);
+        timeline.push({ week: wk, wd: wd, load: isTrain ? slotLoad[wd] : 0, isTrain: isTrain });
+      }
+    });
+    var ratio = [];
+    for (var i = 0; i < timeline.length; i++) {
+      var aN = Math.min(7, i + 1), cN = Math.min(28, i + 1), aSum = 0, cSum = 0, j;
+      for (j = i - aN + 1; j <= i; j++) aSum += timeline[j].load;
+      for (j = i - cN + 1; j <= i; j++) cSum += timeline[j].load;
+      var c = cSum / cN;
+      ratio.push(c > 0 ? +((aSum / aN) / c).toFixed(2) : null);
+    }
+    var hasData = ratio.some(function (v) { return v != null; });
+    var current = null; for (var m = ratio.length - 1; m >= 0; m--) { if (ratio[m] != null) { current = ratio[m]; break; } }
+
+    if (gran === "weekly") {
+      var lastIdx = {};
+      timeline.forEach(function (t, idx) { lastIdx[t.week] = idx; });
+      return {
+        labels: weeks.map(function (wk) { return "W" + wk; }),
+        values: weeks.map(function (wk) { return ratio[lastIdx[wk]]; }),
+        hasData: hasData, current: current
+      };
+    }
+    return {
+      labels: timeline.map(function (t) { return "W" + t.week + " " + (DM_WD[t.wd] || ("d" + (t.wd + 1))); }),
+      values: ratio, hasData: hasData, current: current
+    };
+  }
+
+  // Tonnage per period split into Squat / Bench / Deadlift / Other.
+  function dmVolByLift(rows, gran) {
+    var map = new Map(), grand = 0;
+    rows.forEach(function (r) {
+      if (REST.test(r.exercise)) return;
+      var sets = parseInt(r.sets, 10), reps = parseInt(r.reps, 10);
+      if (isNaN(sets) || isNaN(reps)) return;
+      var wt = parseFloat(r.weight); var load = (isNaN(wt) || wt <= 0) ? 0 : wt;
+      var ton = load * sets * reps; if (ton <= 0) return;
+      var lift = classifyLift(r.exercise) || "Other";
+      grand += ton;
+      var k = anKey(r, gran);
+      if (!map.has(k)) map.set(k, { label: anLabel(r, gran), week: r.week, day: r.day, v: { Squat: 0, Bench: 0, Deadlift: 0, Other: 0 } });
+      map.get(k).v[lift] += ton;
+    });
+    var arr = anSort(map);
+    var series = { Squat: [], Bench: [], Deadlift: [], Other: [] }, totals = { Squat: 0, Bench: 0, Deadlift: 0, Other: 0 };
+    arr.forEach(function (x) {
+      ["Squat", "Bench", "Deadlift", "Other"].forEach(function (l) { series[l].push(Math.round(x.v[l])); totals[l] += x.v[l]; });
+    });
+    return { labels: arr.map(function (x) { return x.label; }), series: series, totals: totals, grand: grand, hasAny: grand > 0 };
+  }
+
+  function renderDMAnalytics() {
+    var ctrlWrap = $("dmAnControls"), wrap = $("dmAnBody");
+    if (!ctrlWrap || !wrap) return;
+    destroyDMAnalyticsCharts();
+    clear(ctrlWrap); clear(wrap);
+
+    var p = PROFILES[current];
+    if (!p) { wrap.appendChild(el("div", "dm-empty", "Load a lifter first.")); return; }
+
+    // ---- controls: granularity · e1RM formula · ACWR source ----
+    var segField = el("span", "dm-field");
+    segField.appendChild(el("label", null, "View"));
+    var seg = el("div", "seg");
+    [["weekly", "Weekly"], ["daily", "Daily"]].forEach(function (o) {
+      var b = el("button", "seg-btn" + (dmAnGran === o[0] ? " active" : "")); b.type = "button";
+      b.textContent = o[1];
+      b.onclick = function () { if (dmAnGran !== o[0]) { dmAnGran = o[0]; renderDMAnalytics(); } };
+      seg.appendChild(b);
+    });
+    segField.appendChild(seg);
+    ctrlWrap.appendChild(segField);
+    ctrlWrap.appendChild(labeledSelect("Estimated-1RM formula",
+      [{ label: "Epley", value: "epley" }, { label: "Brzycki", value: "brzycki" }],
+      dmAnFormula, function (v) { dmAnFormula = v; renderDMAnalytics(); }));
+    ctrlWrap.appendChild(labeledSelect("ACWR load from",
+      [{ label: "Completed sets", value: "completed" }, { label: "Programmed sets", value: "prescribed" }],
+      dmAcwrSource, function (v) { dmAcwrSource = v; renderDMAnalytics(); }));
+
+    var rows = analyticsRows(p);
+    var ready = (typeof Chart !== "undefined");
+    var ink = cssVar("--muted", "#6b736c"), line = cssVar("--border", "#e2e5df");
+    var tipBg = cssVar("--ink", "#1b2420"), tipTx = cssVar("--bg", "#ffffff");
+    var col = { Squat: cssVar("--lift-squat", "#2e5a4e"), Bench: cssVar("--lift-bench", "#2f6d8f"), Deadlift: cssVar("--lift-dead", "#b34732"), Other: cssVar("--faint", "#9aa099") };
+
+    function panel(title, unit, descText, emptyText) {
+      var pnl = el("div", "panel an-panel");
+      var head = el("div", "an-head");
+      head.appendChild(el("div", "an-title", title));
+      var kpi = el("div", "an-kpi");
+      var kv = el("span"); kv.textContent = "\u2013"; kpi.appendChild(kv);
+      if (unit) { kpi.appendChild(document.createTextNode(" ")); kpi.appendChild(el("span", "an-unit", unit)); }
+      head.appendChild(kpi); pnl.appendChild(head);
+      var desc = el("div", "an-desc", descText || ""); pnl.appendChild(desc);
+      var cw = el("div", "an-chart"); var cv = el("canvas"); cw.appendChild(cv); pnl.appendChild(cw);
+      var empty = el("div", "an-empty", emptyText || "No data yet."); pnl.appendChild(empty);
+      wrap.appendChild(pnl);
+      return { panel: pnl, kpi: kv, desc: desc, canvas: cv, empty: empty };
+    }
+    function noLib(ui) { ui.empty.textContent = "Couldn't load the chart library — check your connection."; ui.panel.classList.add("is-empty"); }
+    var xScale = { grid: { display: false }, ticks: { color: ink, font: { size: 11 }, autoSkip: true, maxRotation: 0 }, border: { color: line } };
+
+    // ---------- Estimated 1RM trend (multi-line, lift colours) ----------
+    var e1 = dmE1RM(rows, dmAnGran, dmAnFormula);
+    var e1UI = panel("Estimated 1RM", "",
+      "Best working-set e1RM per " + (dmAnGran === "weekly" ? "week" : "session") + " for squat, bench & deadlift ("
+        + (dmAnFormula === "brzycki" ? "Brzycki" : "Epley") + "). A cleaner progression signal than raw top-set weight.",
+      "Log squat / bench / deadlift sets with a weight and reps to see estimated 1RM.");
+    var e1kpi = ["Squat", "Bench", "Deadlift"].filter(function (l) { return e1.peak[l] != null; }).map(function (l) { return l[0] + " " + e1.peak[l]; });
+    e1UI.kpi.textContent = e1kpi.length ? e1kpi.join("  \u00b7  ") : "\u2013";
+    e1UI.panel.classList.toggle("is-empty", !e1.hasAny);
+    if (e1.hasAny && !ready) noLib(e1UI);
+    else if (e1.hasAny) {
+      var e1ds = function (l) { return { label: l, data: e1.series[l], borderColor: col[l], backgroundColor: col[l], pointBackgroundColor: col[l], pointRadius: e1.labels.length > 30 ? 2 : 4, pointHoverRadius: 6, borderWidth: 2.5, tension: 0.3, spanGaps: false, fill: false }; };
+      dmE1rmChart = new Chart(e1UI.canvas, {
+        type: "line",
+        data: { labels: e1.labels, datasets: [e1ds("Squat"), e1ds("Bench"), e1ds("Deadlift")] },
+        options: {
+          responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { display: true, position: "top", align: "end", labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: "circle", color: ink, font: { size: 12 } } },
+            tooltip: { backgroundColor: tipBg, titleColor: tipTx, bodyColor: tipTx, padding: 10, callbacks: { label: function (c) { if (c.parsed.y == null) return null; return " " + c.dataset.label + ": " + c.parsed.y + " kg est."; } } }
+          },
+          scales: { x: xScale, y: { beginAtZero: false, grid: { color: line }, ticks: { color: ink, font: { size: 11 }, callback: function (v) { return v + " kg"; } }, border: { display: false } } }
+        }
+      });
+    }
+
+    // ---------- Adherence (stacked bar per week) ----------
+    var adh = dmAdherence(p);
+    var adhUI = panel("Adherence", "",
+      "Working sets per week you've ticked as Done vs Skipped vs still remaining. Always per week; rest days aren't counted.",
+      "Tick sets as Done or Skipped in the week view to see adherence.");
+    adhUI.kpi.textContent = adh.gTotal > 0 ? (Math.round((adh.gDone / adh.gTotal) * 100) + "%") : "\u2013";
+    var adhHas = adh.gTotal > 0;
+    adhUI.panel.classList.toggle("is-empty", !adhHas);
+    if (adhHas && !ready) noLib(adhUI);
+    else if (adhHas) {
+      var pine = cssVar("--pine", "#2e5a4e"), clay = cssVar("--clay", "#b34732"), rem = cssVar("--border-strong", "#d2d6cd");
+      dmAdhChart = new Chart(adhUI.canvas, {
+        type: "bar",
+        data: {
+          labels: adh.labels,
+          datasets: [
+            { label: "Done", data: adh.done, backgroundColor: pine, stack: "a", borderRadius: 4, maxBarThickness: 54 },
+            { label: "Skipped", data: adh.skip, backgroundColor: clay, stack: "a", borderRadius: 4, maxBarThickness: 54 },
+            { label: "Remaining", data: adh.rem, backgroundColor: rem, stack: "a", borderRadius: 4, maxBarThickness: 54 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { display: true, position: "top", align: "end", labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: "circle", color: ink, font: { size: 12 } } },
+            tooltip: {
+              backgroundColor: tipBg, titleColor: tipTx, bodyColor: tipTx, padding: 10,
+              callbacks: { label: function (c) { var tot = adh.done[c.dataIndex] + adh.skip[c.dataIndex] + adh.rem[c.dataIndex]; var pct = tot ? Math.round((c.parsed.y / tot) * 100) : 0; return " " + c.dataset.label + ": " + c.parsed.y + " (" + pct + "%)"; } }
+            }
+          },
+          scales: { x: Object.assign({ stacked: true }, xScale), y: { stacked: true, beginAtZero: true, grid: { color: line }, ticks: { color: ink, font: { size: 11 }, precision: 0 }, border: { display: false } } }
+        }
+      });
+    }
+
+    // ---------- Acute:chronic workload ratio (line, zone bands) ----------
+    var acwr = dmACWR(p, dmAnGran, dmAcwrSource);
+    var acwrUI = panel("Acute:chronic workload", "",
+      "Rolling 7-day load \u00f7 28-day load, from " + (dmAcwrSource === "completed" ? "completed" : "programmed") + " tonnage. "
+        + "The 0.8\u20131.3 band is the commonly-cited sweet spot; above ~1.5 is where injury risk rises (Gabbett).",
+      dmAcwrSource === "completed"
+        ? "Tick training sets as Done to build up the workload history."
+        : "Add weeks with weighted sets to compute the ratio.");
+    acwrUI.kpi.textContent = acwr.hasData && acwr.current != null ? acwr.current.toFixed(2) : "\u2013";
+    acwrUI.panel.classList.toggle("is-empty", !acwr.hasData);
+    if (acwr.hasData && !ready) noLib(acwrUI);
+    else if (acwr.hasData) {
+      var aPine = cssVar("--pine", "#2e5a4e"), aGold = cssVar("--gold", "#b07c12"), aClay = cssVar("--clay", "#b34732"), aDaily = cssVar("--daily", "#2f6d8f");
+      var maxR = acwr.values.reduce(function (m, v) { return v != null && v > m ? v : m; }, 0);
+      var yMax = Math.max(2, Math.ceil(maxR * 10) / 10);
+      var acwrZones = {
+        id: "acwrZones",
+        beforeDraw: function (chart) {
+          var yx = chart.scales.y, xa = chart.chartArea; if (!yx || !xa) return;
+          var ctx = chart.ctx;
+          function band(lo, hi, color) {
+            var y1 = yx.getPixelForValue(Math.min(hi, yMax)), y2 = yx.getPixelForValue(Math.max(lo, 0));
+            ctx.save(); ctx.fillStyle = color; ctx.fillRect(xa.left, y1, xa.right - xa.left, y2 - y1); ctx.restore();
+          }
+          band(0, 0.8, hexA(aGold, 0.07));      // under-loading
+          band(0.8, 1.3, hexA(aPine, 0.09));    // sweet spot
+          band(1.3, 1.5, hexA(aGold, 0.07));    // caution
+          band(1.5, yMax, hexA(aClay, 0.10));   // high risk
+        }
+      };
+      var manyA = acwr.values.length > 30, rA = manyA ? 0 : 3;
+      dmAcwrChart = new Chart(acwrUI.canvas, {
+        type: "line",
+        data: { labels: acwr.labels, datasets: [{ label: "ACWR", data: acwr.values, borderColor: aDaily, backgroundColor: hexA(aDaily, 0.10), pointBackgroundColor: aDaily, pointRadius: rA, pointHoverRadius: 6, borderWidth: 2.5, tension: 0.3, fill: false, spanGaps: false }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { backgroundColor: tipBg, titleColor: tipTx, bodyColor: tipTx, padding: 10, displayColors: false, callbacks: { label: function (c) { if (c.parsed.y == null) return " No history yet"; var z = c.parsed.y < 0.8 ? "under-loading" : c.parsed.y <= 1.3 ? "sweet spot" : c.parsed.y <= 1.5 ? "caution" : "high risk"; return " ACWR " + c.parsed.y.toFixed(2) + " \u00b7 " + z; } } }
+          },
+          scales: { x: xScale, y: { min: 0, suggestedMax: yMax, grid: { color: line }, ticks: { color: ink, font: { size: 11 } }, border: { display: false } } }
+        },
+        plugins: [acwrZones]
+      });
+    }
+
+    // ---------- Volume by lift (stacked tonnage) ----------
+    var vol = dmVolByLift(rows, dmAnGran);
+    var volUI = panel("Volume by lift", "kg",
+      "Tonnage (weight \u00d7 sets \u00d7 reps) per " + (dmAnGran === "weekly" ? "week" : "session") + ", split into squat, bench, deadlift and everything else — so the balance between the big three is visible at a glance.",
+      "Log weighted sets to see volume split by lift.");
+    volUI.kpi.textContent = vol.hasAny ? Math.round(vol.grand).toLocaleString() : "\u2013";
+    volUI.panel.classList.toggle("is-empty", !vol.hasAny);
+    if (vol.hasAny && !ready) noLib(volUI);
+    else if (vol.hasAny) {
+      var volDs = function (l) { return { label: l === "Other" ? "Other" : l, data: vol.series[l], backgroundColor: col[l], stack: "v", borderRadius: 3, maxBarThickness: 54 }; };
+      dmVolChart = new Chart(volUI.canvas, {
+        type: "bar",
+        data: { labels: vol.labels, datasets: [volDs("Squat"), volDs("Bench"), volDs("Deadlift"), volDs("Other")] },
+        options: {
+          responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { display: true, position: "top", align: "end", labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: "circle", color: ink, font: { size: 12 } } },
+            tooltip: { backgroundColor: tipBg, titleColor: tipTx, bodyColor: tipTx, padding: 10, callbacks: { label: function (c) { return " " + c.dataset.label + ": " + Math.round(c.parsed.y).toLocaleString() + " kg"; } } }
+          },
+          scales: { x: Object.assign({ stacked: true }, xScale), y: { stacked: true, beginAtZero: true, grid: { color: line }, ticks: { color: ink, font: { size: 11 }, callback: function (v) { return v >= 1000 ? (v / 1000) + "k" : v; } }, border: { display: false } } }
+        }
+      });
+    }
+  }
+
+  // Switch between the Manage-program and Analytics tabs.
+  function setDMTab(tab) {
+    dmTab = (tab === "analytics") ? "analytics" : "manage";
+    Array.prototype.forEach.call(document.querySelectorAll("#dmTabs .seg-btn"), function (b) {
+      var on = b.getAttribute("data-tab") === dmTab;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    var mp = $("dmPaneManage"), ap = $("dmPaneAnalytics");
+    if (dmTab === "analytics") {
+      mp.classList.add("hidden"); ap.classList.remove("hidden");
+      renderDMAnalytics();                 // build while visible so Chart.js sizes correctly
+    } else {
+      ap.classList.add("hidden"); mp.classList.remove("hidden");
+      renderDMCharts();                    // refresh (e.g. after a theme change) without rebuilding dmBody
+    }
+  }
+
+  // ──────────────────────── Gym tools: plate calculator ────────────────────────
+  // Pure math: how much to load per side, then greedily decompose it into plates
+  // (assumes an unlimited supply of each denomination — the usual gym-floor case).
+  function computePlates(target, bar, collarPerSide) {
+    var perSideNeeded = (target - bar - 2 * collarPerSide) / 2;
+    var negative = perSideNeeded < -1e-9;
+    var perSide = Math.max(0, perSideNeeded);
+    var remaining = Math.round(perSide * 1000) / 1000;
+    var plates = [];
+    PLATE_DENOMS.forEach(function (d) {
+      var count = Math.floor((remaining + 1e-9) / d.kg);
+      if (count > 0) {
+        plates.push({ kg: d.kg, count: count, color: d.color, label: d.label, border: !!d.border });
+        remaining = Math.round((remaining - count * d.kg) * 1000) / 1000;
+      }
+    });
+    var leftoverPerSide = Math.max(0, remaining);
+    var loadedPerSide = perSide - leftoverPerSide;
+    var achievedTotal = Math.round((bar + 2 * collarPerSide + 2 * loadedPerSide) * 100) / 100;
+    return {
+      perSide: perSide, plates: plates, leftoverPerSide: leftoverPerSide,
+      achievedTotal: achievedTotal, diff: Math.round((target - achievedTotal) * 100) / 100,
+      negative: negative
+    };
+  }
+
+  function syncCollarSegUI() {
+    Array.prototype.forEach.call(document.querySelectorAll("#plateCollarSeg .seg-btn"), function (b) {
+      b.classList.toggle("active", b.getAttribute("data-collar") === plateCollarMode);
+    });
+    var hint = $("plateCollarHint"); if (!hint) return;
+    hint.textContent = plateCollarMode === "calibrated"
+      ? "Calibrated collars add 2.5 kg each \u2014 5 kg total."
+      : "Weight clips add 0 kg.";
+  }
+
+  function saveToolsPrefs() {
+    var bar = parseFloat($("plateBar").value);
+    safeWrite(STORE_TOOLS, { barWeight: isNaN(bar) ? 20 : bar, collar: plateCollarMode, timerDuration: timerDuration });
+  }
+
+  function renderPlateCalc() {
+    var out = $("plateResult"); if (!out) return;
+    clear(out);
+    var target = parseFloat($("plateTarget").value);
+    var bar = parseFloat($("plateBar").value); if (isNaN(bar) || bar < 0) bar = 20;
+    var collarPerSide = plateCollarMode === "calibrated" ? 2.5 : 0;
+    saveToolsPrefs();
+
+    if (isNaN(target) || target <= 0) {
+      out.appendChild(el("p", "plate-empty", "Enter a target weight to see plates per side."));
+      return;
+    }
+    var r = computePlates(target, bar, collarPerSide);
+    if (r.negative) {
+      out.appendChild(el("p", "plate-empty", "Target is below the bar + collars (" + (bar + 2 * collarPerSide) + " kg) \u2014 no plates needed."));
+      return;
+    }
+    var kpi = el("div", "plate-kpi");
+    kpi.appendChild(el("span", "n", r.achievedTotal.toLocaleString()));
+    kpi.appendChild(el("span", "u", "kg total"));
+    out.appendChild(kpi);
+
+    var diffP = el("p", "plate-diff" + (r.diff !== 0 ? " off" : ""));
+    diffP.textContent = r.diff === 0
+      ? ("Exact \u2014 " + r.perSide.toLocaleString() + " kg per side.")
+      : ("Closest loadable \u2014 " + r.perSide.toLocaleString() + " kg needed per side, off by " + Math.abs(r.diff) + " kg total.");
+    out.appendChild(diffP);
+
+    var breakdown = el("p", "plate-note");
+    breakdown.textContent = "Bar " + bar.toLocaleString() + " kg"
+      + (collarPerSide > 0 ? " + collars " + collarPerSide.toLocaleString() + " kg \u00d7 2" : "")
+      + " + plates " + r.perSide.toLocaleString() + " kg per side \u00d7 2 sides.";
+    out.appendChild(breakdown);
+
+    if (!r.plates.length) {
+      out.appendChild(el("p", "plate-empty", "No plates needed \u2014 the bar and collars already cover this."));
+    } else {
+      var stack = el("div", "plate-stack");
+      r.plates.forEach(function (pl) {
+        var chip = el("span", "plate-chip");
+        var sw = el("span", "sw"); sw.style.background = pl.color;
+        if (pl.border) sw.style.borderColor = "rgba(0,0,0,.35)";
+        chip.appendChild(sw);
+        chip.appendChild(document.createTextNode(pl.kg + " kg (" + pl.label + ") \u00d7 " + pl.count));
+        stack.appendChild(chip);
+      });
+      out.appendChild(stack);
+    }
+    if (r.leftoverPerSide > 0) {
+      out.appendChild(el("p", "plate-note", "Smallest plate is 1.25 kg, so " + r.leftoverPerSide.toLocaleString()
+        + " kg per side isn't loadable exactly \u2014 the total above is the closest you can hit."));
+    }
+  }
+
+  // ──────────────────────── Gym tools: rest timer ────────────────────────
+  // Runs off a target end-timestamp (not a decrementing counter) so it stays
+  // correct across background-tab throttling; a persistent tick just re-reads
+  // Date.now() and re-renders. Keeps ticking even while the modal is closed —
+  // finishing fires a toast + beep + vibration regardless of what's on screen.
+  function formatMMSS(ms) {
+    var s = Math.max(0, Math.ceil(ms / 1000));
+    var m = Math.floor(s / 60), r = s % 60;
+    return (m < 10 ? "0" : "") + m + ":" + (r < 10 ? "0" : "") + r;
+  }
+  function timerRemainingMsNow() {
+    if (timerEndAt != null) return Math.max(0, timerEndAt - Date.now());
+    if (timerRemainingMs != null) return timerRemainingMs;
+    return timerDuration * 1000;
+  }
+  function presetLabel(sec) { var m = Math.floor(sec / 60), r = sec % 60; return m + ":" + (r < 10 ? "0" : "") + r; }
+
+  function timerSetDuration(sec) {
+    sec = Math.max(1, Math.round(sec));
+    timerDuration = sec; timerEndAt = null; timerRemainingMs = null;
+    saveToolsPrefs();
+    renderRestTimer();
+  }
+  function timerStart() {
+    var rem = timerRemainingMsNow();
+    if (rem <= 0) rem = timerDuration * 1000;   // finished or freshly reset -> full length
+    timerEndAt = Date.now() + rem; timerRemainingMs = null;
+    renderRestTimer();
+  }
+  function timerPause() {
+    if (timerEndAt != null) { timerRemainingMs = Math.max(0, timerEndAt - Date.now()); timerEndAt = null; }
+    renderRestTimer();
+  }
+  function timerReset() {
+    timerEndAt = null; timerRemainingMs = null;
+    renderRestTimer();
+  }
+  function timerFinish() {
+    toast("Rest's up \u2014 back to it.");
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) {
+        var ctx = new Ctx();
+        [880, 1046.5].forEach(function (freq, i) {
+          var o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = "sine"; o.frequency.value = freq;
+          var t0 = ctx.currentTime + i * 0.22;
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.2);
+          o.connect(g); g.connect(ctx.destination);
+          o.start(t0); o.stop(t0 + 0.22);
+        });
+      }
+    } catch (e) {}
+    if (navigator.vibrate) { try { navigator.vibrate([160, 90, 160]); } catch (e) {} }
+  }
+  function timerTick() {
+    if (timerEndAt != null && timerEndAt - Date.now() <= 0) {
+      timerEndAt = null; timerRemainingMs = 0;
+      timerFinish();
+    }
+    if (toolsTab === "timer" && $("toolsScrim") && $("toolsScrim").classList.contains("show")) renderRestTimer();
+  }
+  function renderRestTimer() {
+    var disp = $("timerDisplay"); if (!disp) return;
+    var rem = timerRemainingMsNow(), running = timerEndAt != null;
+    disp.textContent = formatMMSS(rem);
+    disp.classList.toggle("done", rem <= 0 && !running);
+    $("timerStartBtn").disabled = running;
+    $("timerStartBtn").textContent = (timerRemainingMs != null && timerRemainingMs > 0) ? "Resume" : "Start";
+    $("timerPauseBtn").disabled = !running;
+    var pr = $("timerPresets"); clear(pr);
+    TIMER_PRESETS.forEach(function (sec) {
+      var isCurrent = timerDuration === sec && timerEndAt == null && timerRemainingMs == null;
+      var b = el("button", "chip" + (isCurrent ? " primary" : ""), presetLabel(sec));
+      b.type = "button";
+      b.onclick = function () { timerSetDuration(sec); };
+      pr.appendChild(b);
+    });
+  }
+
+  function setToolsTab(tab) {
+    toolsTab = (tab === "timer") ? "timer" : "plate";
+    Array.prototype.forEach.call(document.querySelectorAll("#toolsTabs .seg-btn"), function (b) {
+      var on = b.getAttribute("data-ttab") === toolsTab;
+      b.classList.toggle("active", on); b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    var pp = $("toolsPanePlate"), pt = $("toolsPaneTimer");
+    if (toolsTab === "timer") { pp.classList.add("hidden"); pt.classList.remove("hidden"); renderRestTimer(); }
+    else { pt.classList.add("hidden"); pp.classList.remove("hidden"); renderPlateCalc(); }
+  }
+  function openTools() { setToolsTab(toolsTab); $("toolsScrim").classList.add("show"); }
+  function closeTools() { $("toolsScrim").classList.remove("show"); }
+
   // Wipe everything from this device and return to the first-load screen.
   // In-app confirmation modal. Returns a Promise<boolean>. Works in sandboxed
   // iframes and embedded webviews where the native window.confirm() is blocked.
@@ -3361,6 +4029,15 @@
     NOTES = safeRead(STORE_NOTES, {}) || {};
     CUSTOM = safeRead(STORE_CUSTOM, {}) || {};
 
+    // gym tools: plate calculator + rest timer preferences
+    var toolsPrefs = safeRead(STORE_TOOLS, null);
+    $("plateBar").value = (toolsPrefs && toolsPrefs.barWeight) ? toolsPrefs.barWeight : 20;
+    if (toolsPrefs && (toolsPrefs.collar === "calibrated" || toolsPrefs.collar === "clips")) plateCollarMode = toolsPrefs.collar;
+    if (toolsPrefs && toolsPrefs.timerDuration) timerDuration = toolsPrefs.timerDuration;
+    syncCollarSegUI();
+    renderPlateCalc();
+    renderRestTimer();
+
     // feature detection for folder scan
     if (window.showDirectoryPicker) {
       $("scanBtn").style.display = "";
@@ -3423,10 +4100,13 @@
       var cur = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
       localStorage.setItem(STORE_THEME, cur); applyTheme(cur);
       if (inAnalytics) renderAnalytics();   // recolour charts for the new theme
-      if (inDayMgr) renderDMCharts();
+      if (inDayMgr) { if (dmTab === "analytics") renderDMAnalytics(); else renderDMCharts(); }
     };
 
     $("wkBack").onclick = openOverview;
+    Array.prototype.forEach.call(document.querySelectorAll("#dmTabs .seg-btn"), function (b) {
+      b.onclick = function () { setDMTab(b.getAttribute("data-tab")); };
+    });
     $("dmBack").onclick = closeDayMgr;
     $("anBack").onclick = openOverview;
     $("ovAnalyticsBtn").onclick = openAnalytics;
@@ -3446,6 +4126,37 @@
     $("saveBtn2").onclick = exportJSON;
     $("unloadBtn").onclick = unloadAll;
     wireNotes();
+
+    // ---- Gym tools: plate calculator + rest timer ----
+    $("toolsBtn").onclick = openTools;
+    $("toolsClose").onclick = closeTools;
+    Array.prototype.forEach.call(document.querySelectorAll("#toolsTabs .seg-btn"), function (b) {
+      b.onclick = function () { setToolsTab(b.getAttribute("data-ttab")); };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("#plateCollarSeg .seg-btn"), function (b) {
+      b.onclick = function () { plateCollarMode = b.getAttribute("data-collar"); syncCollarSegUI(); renderPlateCalc(); };
+    });
+    $("plateTarget").addEventListener("input", renderPlateCalc);
+    $("plateBar").addEventListener("input", renderPlateCalc);
+    $("timerStartBtn").onclick = timerStart;
+    $("timerPauseBtn").onclick = timerPause;
+    $("timerResetBtn").onclick = timerReset;
+    $("timerCustomBtn").onclick = function () {
+      var v = parseInt($("timerCustomInput").value, 10);
+      if (!v || v <= 0) { toast("Enter a number of seconds."); return; }
+      timerSetDuration(v);
+      $("timerCustomInput").value = "";
+    };
+    (function () {
+      var scrim = $("toolsScrim"), downSelf = false;
+      scrim.onpointerdown = function (e) { downSelf = (e.target === scrim); };
+      scrim.onclick = function (e) { if (downSelf && e.target === scrim) closeTools(); };
+    })();
+    // Persistent countdown: ticks for the whole session so the rest timer keeps
+    // running even with the tools modal closed; resync immediately on foreground
+    // so a throttled background tab catches up instantly instead of drifting.
+    timerTickHandle = setInterval(timerTick, 250);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) timerTick(); });
 
     // populate Sets / Reps dropdowns (blank + 1..20)
     (function fillRange(sel, from, to) {
@@ -3472,6 +4183,7 @@
         else if ($("pinScrim").classList.contains("show")) $("pinCancel").click();
         else if ($("confirmScrim").classList.contains("show")) $("confirmNo").click();
         else if ($("noteScrim").classList.contains("show")) closeNote();
+        else if ($("toolsScrim").classList.contains("show")) closeTools();
         else closeNav();
       }
     });

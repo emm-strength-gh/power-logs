@@ -468,8 +468,11 @@
   }
 
   /* toast */
-  #toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); transform: translate(-50%, 16px); background: var(--ink); color: var(--bg); font-size: 13.5px; font-weight: 500; padding: 11px 18px; border-radius: 999px; box-shadow: 0 12px 30px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease; z-index: 200; max-width: 90vw; text-align: center; }
+  #toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); transform: translate(-50%, 16px); background: var(--ink); color: var(--bg); font-size: 13.5px; font-weight: 500; padding: 11px 18px; border-radius: 999px; box-shadow: 0 12px 30px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease; z-index: 200; max-width: 90vw; text-align: center; display: flex; align-items: center; gap: 12px; }
   #toast.show { opacity: 1; transform: translate(-50%, 0); }
+  #toast.has-undo { pointer-events: auto; }
+  .toast-undo-btn { flex: none; background: rgba(127,127,127,.22); border: 1px solid rgba(127,127,127,.4); color: inherit; font-weight: 700; font-size: 12.5px; padding: 5px 13px; border-radius: 999px; pointer-events: auto; }
+  .toast-undo-btn:hover { background: rgba(127,127,127,.34); }
 
   .hidden { display: none !important; }
 
@@ -841,7 +844,7 @@
   </div>
 </div>
 
-<div id="toast"></div>
+<div id="toast"><span id="toastMsg"></span><button id="toastUndoBtn" class="toast-undo-btn hidden" type="button">Undo</button></div>
 
 <script>
 (function () {
@@ -919,9 +922,41 @@
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
 
   var toastTimer = null;
+  var undoTimer = null;
+  var pendingUndo = null;   // { restore: fn } for the most recent undoable action, or null
+
+  // Dismiss whatever undo affordance is showing without running its restore —
+  // the deletion it refers to has already happened either way, this just closes
+  // the window to reverse it. Called before any new toast so only the most
+  // recently shown toast is ever interactive (matches what's on screen).
+  function clearPendingUndo() {
+    if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; }
+    pendingUndo = null;
+    var b = $("toastUndoBtn"); if (b) { b.classList.add("hidden"); b.onclick = null; }
+    var t = $("toast"); if (t) t.classList.remove("has-undo");
+  }
   function toast(msg) {
-    var t = $("toast"); t.textContent = msg; t.classList.add("show");
+    clearPendingUndo();
+    var t = $("toast"); $("toastMsg").textContent = msg; t.classList.add("show");
     clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove("show"); }, 2600);
+  }
+  // A toast with an inline Undo button. restoreFn is called once, only if the
+  // person taps Undo within `ms` (default 6s); otherwise the action just stands.
+  function toastUndo(msg, restoreFn, ms) {
+    clearPendingUndo();
+    pendingUndo = { restore: restoreFn };
+    var t = $("toast"), btn = $("toastUndoBtn");
+    $("toastMsg").textContent = msg;
+    btn.classList.remove("hidden");
+    btn.onclick = function () {
+      var fn = pendingUndo && pendingUndo.restore;
+      clearPendingUndo();
+      t.classList.remove("show");
+      if (fn) fn();
+    };
+    t.classList.add("has-undo"); t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove("show"); clearPendingUndo(); }, ms || 6000);
   }
 
   function safeRead(key, fallback) {
@@ -929,6 +964,9 @@
     catch (e) { return fallback; }
   }
   function safeWrite(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
+  // Plain-data deep clone for undo snapshots — every row/day/week/custom-item
+  // object here is JSON-safe (strings, numbers, booleans, nested plain objects).
+  function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
 
   // ───────────────────────── CSV parsing ─────────────────────────
   // RFC4180-ish: handles quoted fields, escaped quotes, commas & newlines inside quotes.
@@ -1177,6 +1215,17 @@
     CUSTOM[name] = CUSTOM[name].filter(function (c) { return c.cid !== cid; });
     safeWrite(STORE_CUSTOM, CUSTOM);
     setDone(name, cid, false); setSkipped(name, cid, false); setNoteOverride(name, cid, undefined);
+  }
+  // Undo for removeCustom: re-insert the exact item at its original array index
+  // and restore whatever Done/Skipped/note state it had.
+  function restoreCustomAt(name, itemClone, index, doneVal, skipVal, noteVal) {
+    if (!CUSTOM[name]) CUSTOM[name] = [];
+    var idx = Math.max(0, Math.min(index, CUSTOM[name].length));
+    CUSTOM[name].splice(idx, 0, itemClone);
+    safeWrite(STORE_CUSTOM, CUSTOM);
+    if (doneVal) setDone(name, itemClone.cid, true);
+    if (skipVal) setSkipped(name, itemClone.cid, true);
+    if (noteVal !== undefined) setNoteOverride(name, itemClone.cid, noteVal);
   }
 
   // Merge parsed week rows with the lifter's custom items, grouped by day.
@@ -1636,7 +1685,25 @@
         delBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>';
         delBtn.title = "Remove this item";
         delBtn.setAttribute("aria-label", "Remove item");
-        delBtn.onclick = function (e) { e.stopPropagation(); removeCustom(p.name, row.cid); renderWeek(); toast("Removed"); };
+        delBtn.onclick = function (e) {
+          e.stopPropagation();
+          var arr = CUSTOM[p.name] || [], idx = -1;
+          for (var i = 0; i < arr.length; i++) { if (arr[i].cid === row.cid) { idx = i; break; } }
+          var itemClone = idx !== -1 ? deepClone(arr[idx]) : null;
+          var st = snapshotProgress(p.name, [{ rid: row.cid }])[row.cid];
+          var label = row.exercise || "item";
+          removeCustom(p.name, row.cid);
+          renderWeek();
+          if (itemClone) {
+            toastUndo("Removed \u201C" + label + "\u201D.", function () {
+              restoreCustomAt(p.name, itemClone, idx, st.done, st.skip, st.note);
+              renderWeek();
+              toast("\u201C" + label + "\u201D restored.");
+            });
+          } else {
+            toast("Removed.");
+          }
+        };
         actions.appendChild(delBtn);
       }
 
@@ -1877,6 +1944,47 @@
     return true;
   }
 
+  // Capture each row's Done/Skipped/note-override state before a delete, so
+  // undo can put it back exactly as it was (dropProgress erases it otherwise).
+  function snapshotProgress(name, rows) {
+    var map = {};
+    rows.forEach(function (r) {
+      map[r.rid] = { done: isDone(name, r.rid), skip: isSkipped(name, r.rid), note: getNoteOverride(name, r.rid) };
+    });
+    return map;
+  }
+  function restoreProgress(name, rows, progressMap) {
+    rows.forEach(function (r) {
+      var st = progressMap[r.rid]; if (!st) return;
+      if (st.done) setDone(name, r.rid, true);
+      if (st.skip) setSkipped(name, r.rid, true);
+      if (st.note !== undefined) setNoteOverride(name, r.rid, st.note);
+    });
+  }
+  // Undo for deleteDay: re-insert the cloned day group at its original index
+  // within the week, then restore every row's progress.
+  function restoreDayAt(targetName, tWeek, dayIndex, groupClone, progressMap) {
+    var p = PROFILES[targetName]; if (!p) return false;
+    var tw = getWeek(p, tWeek); if (!tw) return false;
+    var idx = Math.max(0, Math.min(dayIndex, tw.days.length));
+    tw.days.splice(idx, 0, groupClone);
+    restoreProgress(targetName, groupClone.rows, progressMap);
+    rebuildWeekFlat(tw);
+    saveProgram();
+    return true;
+  }
+  // Undo for deleteWeek: re-insert the cloned week at its original index in
+  // the program, rebuild its flat row list, then restore every row's progress.
+  function restoreWeekAt(targetName, weekIndex, weekClone, progressMap) {
+    var p = PROFILES[targetName]; if (!p) return false;
+    var idx = Math.max(0, Math.min(weekIndex, p.weeks.length));
+    p.weeks.splice(idx, 0, weekClone);
+    rebuildWeekFlat(weekClone);
+    restoreProgress(targetName, weekClone.rows, progressMap);
+    saveProgram();
+    return true;
+  }
+
   // Edit an existing row's weight / sets / reps / rpe / notes in place (rid unchanged,
   // so its Done/Skipped/note state stays attached).
   function editRow(targetName, tWeek, tDay, rid, fields) {
@@ -2001,6 +2109,19 @@
     if (idx === -1) return false;
     dropProgress(targetName, rid);
     g.rows.splice(idx, 1);
+    rebuildWeekFlat(tw);
+    saveProgram();
+    return true;
+  }
+  // Undo for deleteRow: re-insert the cloned row at its original index in the
+  // day and restore its Done/Skipped/note state.
+  function restoreRowAt(targetName, tWeek, tDay, rowIndex, rowClone, progressMap) {
+    var p = PROFILES[targetName]; if (!p) return false;
+    var tw = getWeek(p, tWeek); if (!tw) return false;
+    var g = dayGroup(p, tWeek, tDay); if (!g) return false;
+    var idx = Math.max(0, Math.min(rowIndex, g.rows.length));
+    g.rows.splice(idx, 0, rowClone);
+    restoreProgress(targetName, [rowClone], progressMap);
     rebuildWeekFlat(tw);
     saveProgram();
     return true;
@@ -2271,13 +2392,25 @@
       delDayBtn.onclick = function () {
         askConfirm({
           title: "Delete Day " + dmSel.td + "?",
-          body: "Remove all of W" + dmSel.tw + "D" + dmSel.td + " from " + p.name + ", including its progress. This can't be undone.",
+          body: "Remove all of W" + dmSel.tw + "D" + dmSel.td + " from " + p.name + ", including its progress. You'll get a few seconds to undo right after.",
           confirmLabel: "Delete day"
         }).then(function (ok) {
           if (!ok) return;
-          if (deleteDay(p.name, dmSel.tw, dmSel.td)) {
+          var tw0 = getWeek(p, dmSel.tw), g0 = dayGroup(p, dmSel.tw, dmSel.td);
+          if (!tw0 || !g0) return;
+          var dayIndex = tw0.days.indexOf(g0);
+          var groupClone = deepClone(g0);
+          var progressMap = snapshotProgress(p.name, g0.rows);
+          var delWeek = dmSel.tw, delDay = dmSel.td;
+          if (deleteDay(p.name, delWeek, delDay)) {
             dmSel.td = null;
-            toast("Deleted Day from Week " + dmSel.tw + ".");
+            toastUndo("Deleted Day " + delDay + " from Week " + delWeek + ".", function () {
+              if (restoreDayAt(p.name, delWeek, dayIndex, groupClone, progressMap)) {
+                dmSel.tw = delWeek; dmSel.td = delDay;
+                toast("Day " + delDay + " restored.");
+                renderDayMgr(); renderSidebar();
+              }
+            });
             renderDayMgr(); renderSidebar();
           }
         });
@@ -2288,13 +2421,26 @@
         var nDays = twObj ? twObj.days.length : 0;
         askConfirm({
           title: "Delete Week " + dmSel.tw + "?",
-          body: "Remove the entire Week " + dmSel.tw + " (" + nDays + " day" + (nDays === 1 ? "" : "s") + ") from " + p.name + ", including all progress. This can't be undone.",
+          body: "Remove the entire Week " + dmSel.tw + " (" + nDays + " day" + (nDays === 1 ? "" : "s") + ") from " + p.name + ", including all progress. You'll get a few seconds to undo right after.",
           confirmLabel: "Delete week"
         }).then(function (ok) {
           if (!ok) return;
-          if (deleteWeek(p.name, dmSel.tw)) {
+          var weekIndex = -1;
+          for (var i = 0; i < p.weeks.length; i++) { if (String(p.weeks[i].week) === String(dmSel.tw)) { weekIndex = i; break; } }
+          if (weekIndex === -1) return;
+          var weekObj = p.weeks[weekIndex];
+          var weekClone = deepClone(weekObj);
+          var progressMap = snapshotProgress(p.name, weekObj.rows);
+          var delWeek = dmSel.tw;
+          if (deleteWeek(p.name, delWeek)) {
             dmSel.tw = null; dmSel.td = null;
-            toast("Deleted Week.");
+            toastUndo("Deleted Week " + delWeek + ".", function () {
+              if (restoreWeekAt(p.name, weekIndex, weekClone, progressMap)) {
+                dmSel.tw = delWeek; dmSel.td = null;
+                toast("Week " + delWeek + " restored.");
+                renderDayMgr(); renderSidebar();
+              }
+            });
             renderDayMgr(); renderSidebar();
           }
         });
@@ -2306,12 +2452,23 @@
     renderPreviewInto(prevT, p, dmSel.tw, dmSel.td, function (row) {
       askConfirm({
         title: "Delete this exercise?",
-        body: "Remove \u201C" + (row.exercise || "item") + "\u201D from W" + dmSel.tw + "D" + dmSel.td + " of " + p.name + ". This can't be undone.",
+        body: "Remove \u201C" + (row.exercise || "item") + "\u201D from W" + dmSel.tw + "D" + dmSel.td + " of " + p.name + ". You'll get a few seconds to undo right after.",
         confirmLabel: "Delete"
       }).then(function (ok) {
         if (!ok) return;
-        if (deleteRow(p.name, dmSel.tw, dmSel.td, row.rid)) {
-          toast("Deleted \u201C" + (row.exercise || "item") + "\u201D.");
+        var g0 = dayGroup(p, dmSel.tw, dmSel.td);
+        var rowIndex = -1;
+        if (g0) { for (var i = 0; i < g0.rows.length; i++) { if (g0.rows[i].rid === row.rid) { rowIndex = i; break; } } }
+        var rowClone = deepClone(row);
+        var progressMap = snapshotProgress(p.name, [row]);
+        var delWeek = dmSel.tw, delDay = dmSel.td, exName = row.exercise || "item";
+        if (deleteRow(p.name, delWeek, delDay, row.rid)) {
+          toastUndo("Deleted \u201C" + exName + "\u201D.", function () {
+            if (restoreRowAt(p.name, delWeek, delDay, rowIndex, rowClone, progressMap)) {
+              toast("\u201C" + exName + "\u201D restored.");
+              renderDayMgr(); renderSidebar();
+            }
+          });
           renderDayMgr(); renderSidebar();
         }
       });

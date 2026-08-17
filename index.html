@@ -457,6 +457,54 @@
   .note-reset { display: block; margin: 12px auto 0; font-size: 12.5px; color: var(--muted); background: transparent; padding: 6px 10px; }
   .note-reset:hover { color: var(--clay); }
 
+  /* ---------- Compare programs ---------- */
+  .cmp-columns { display: grid; grid-template-columns: 1fr; gap: 16px; margin: 18px 0 26px; }
+  .cmp-col { border: 1px solid var(--border-strong); border-radius: 14px; padding: 18px; background: var(--surface); }
+  .cmp-col.side-a { border-top: 3px solid var(--pine); }
+  .cmp-col.side-b { border-top: 3px solid var(--daily); }
+  .cmp-loader { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 14px 6px; }
+  .cmp-loader-icon { color: var(--faint); }
+  .cmp-loader p { font-size: 13px; color: var(--muted); margin: 0; }
+  .cmp-loaded-hd { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .cmp-badge { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; margin-bottom: 8px; }
+  .side-a .cmp-badge { background: rgba(46,90,78,.12); color: var(--pine); }
+  .side-b .cmp-badge { background: rgba(47,109,143,.12); color: var(--daily); }
+  .cmp-name { font-weight: 700; font-size: 16.5px; line-height: 1.3; }
+  .cmp-meta { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+  .cmp-clear { flex: none; width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); background: transparent; border: 1px solid var(--border-strong); }
+  .cmp-clear:hover { color: var(--clay); border-color: var(--clay); }
+  .cmp-clear svg { width: 15px; height: 15px; }
+  .cmp-need-both { color: var(--muted); font-size: 14px; padding: 8px 2px 0; text-align: center; }
+  #cmpControls { align-items: flex-end; }
+  #cmpControls .seg { margin-bottom: 0; }
+  .cmp-legend { display: flex; gap: 18px; align-items: center; font-size: 12.5px; color: var(--muted); margin: 2px 0 18px; flex-wrap: wrap; }
+  .cmp-legend .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+  .cmp-legend .a .dot { background: var(--pine); }
+  .cmp-legend .b .dot { background: var(--daily); }
+  .cmp-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.cmp-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 480px; }
+  table.cmp-table th, table.cmp-table td { padding: 9px 10px; text-align: center; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.cmp-table th { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); }
+  table.cmp-table td:first-child, table.cmp-table th:first-child { text-align: left; font-weight: 600; color: var(--ink); position: sticky; left: 0; background: var(--surface); }
+  table.cmp-table td.cmp-a { color: var(--pine); }
+  table.cmp-table td.cmp-b { color: var(--daily); }
+  table.cmp-table td.cmp-win { font-weight: 800; }
+  table.cmp-table td.cmp-dash { color: var(--faint); font-weight: 400; }
+  .cmp-lift-cap { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin: 20px 0 8px; }
+  .cmp-lift-cap:first-child { margin-top: 4px; }
+  .cmp-summary { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 8px; }
+  .cmp-sumcard { border: 1px solid var(--border-strong); border-radius: 12px; padding: 16px; }
+  .cmp-sumcard.side-a { border-left: 3px solid var(--pine); }
+  .cmp-sumcard.side-b { border-left: 3px solid var(--daily); }
+  .cmp-sumrow { display: flex; justify-content: space-between; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+  .cmp-sumrow:last-child { border-bottom: none; }
+  .cmp-sumrow .k { color: var(--muted); }
+  .cmp-sumrow .v { font-weight: 700; }
+  @media (min-width: 760px) {
+    .cmp-columns { grid-template-columns: 1fr 1fr; }
+    .cmp-summary { grid-template-columns: 1fr 1fr; }
+  }
+
   @media (min-width: 560px) {
     .modal-scrim { align-items: center; }
     .modal { border-radius: 18px; }
@@ -708,6 +756,9 @@
         </div>
         <div id="dmPaneManage" role="tabpanel" aria-label="Manage program">
           <p class="section-sub">Preview, edit, and reorganise the loaded program — edit, add, delete, or reorder exercises, add or delete days, delete weeks, and replace or merge a day or a whole week from another program you import. The imported program is temporary and is discarded when you go back.</p>
+          <div class="dm-delrow">
+            <button class="chip sm" id="cmpOpenBtn" type="button">Compare two programs</button>
+          </div>
           <div id="dmBody"></div>
           <div id="dmCharts" class="dm-charts"></div>
         </div>
@@ -716,6 +767,23 @@
           <div id="dmAnControls" class="dm-selrow"></div>
           <div id="dmAnBody" class="dm-an-charts"></div>
         </div>
+      </section>
+
+      <section class="view" id="viewCompare">
+        <button class="wk-back" id="cmpBack">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          Back
+        </button>
+        <h1 class="section-head">Compare programs</h1>
+        <p class="section-sub">Load two programs side by side — a CSV training log or a Spotter JSON export from either one — to compare tonnage, number of lifts, intensity, top sets, and estimated 1RM week by week. Nothing here is saved or added to your lifter list.</p>
+        <div class="cmp-columns" id="cmpColumns">
+          <div class="cmp-col side-a" id="cmpColA"></div>
+          <div class="cmp-col side-b" id="cmpColB"></div>
+        </div>
+        <div id="cmpControls" class="dm-selrow hidden"></div>
+        <div id="cmpBody"></div>
+        <input type="file" id="cmpInputA" accept=".csv,.json,text/csv,application/json" style="display:none" />
+        <input type="file" id="cmpInputB" accept=".csv,.json,text/csv,application/json" style="display:none" />
       </section>
     </div>
   </main>
@@ -876,6 +944,14 @@
   var dmSel = { tw: null, td: null, dw: null, dd: null }; // day-mgr selections: target week/day, donor week/day
   var rowUid = 0;           // monotonic counter for unique rids on grafted/merged rows
   var dmUnlocked = false;   // has the Manage-days PIN been entered this session?
+
+  // Compare programs: reached only from inside Manage Program, so it inherits
+  // the PIN gate. Both sides are parsed with parseProgram() exactly like a donor
+  // import — plain in-memory objects, never written to PROFILES/localStorage.
+  var inCompare = false;
+  var cmpProfA = null, cmpProfB = null;
+  var cmpFormula = "epley";        // shared e1RM formula for a fair comparison
+  var cmpTonChart = null, cmpNlChart = null, cmpIntChart = null;
   var analyticsGran = "daily"; // 'daily' (per session) | 'weekly'
   var anTonChart = null, anNlChart = null, anTopChart = null;
 
@@ -1259,8 +1335,8 @@
 
   // ───────────────────────── Rendering ─────────────────────────
   function showView(id) {
-    if (id !== "viewDayMgr") dmUnlocked = false;   // leaving Manage days re-locks it
-    ["viewEmpty", "viewOverview", "viewWeek", "viewAnalytics", "viewDayMgr"].forEach(function (v) {
+    if (id !== "viewDayMgr" && id !== "viewCompare") dmUnlocked = false;   // leaving Manage days (and its Compare sub-view) re-locks it
+    ["viewEmpty", "viewOverview", "viewWeek", "viewAnalytics", "viewDayMgr", "viewCompare"].forEach(function (v) {
       $(v).classList.toggle("active", v === id);
     });
     window.scrollTo({ top: 0, behavior: "auto" });
@@ -2913,6 +2989,31 @@
     return { labels: arr.map(function (x) { return x.label; }), series: series, tng: tng, peak: peak, hasAny: hasAny };
   }
 
+  // Average training intensity (%1RM) per period, weighted by set volume so a
+  // handful of heavy singles don't skew a week the same as a full page of
+  // top-end triples would. Only counts lift-classified rows with a max on file.
+  function anIntensity(rows, maxes, gran) {
+    var map = new Map(), totalW = 0, totalPct = 0;
+    rows.forEach(function (r) {
+      if (REST.test(r.exercise)) return;
+      var sets = parseInt(r.sets, 10), reps = parseInt(r.reps, 10);
+      if (isNaN(sets) || isNaN(reps) || sets < 1 || reps < 1) return;
+      var w = parseFloat(r.weight); if (isNaN(w) || w <= 0) return;
+      var lift = classifyLift(r.exercise); if (!lift) return;
+      var oneRM = maxes[lift]; if (!oneRM || oneRM <= 0) return;
+      var vol = sets * reps, pct = (w / oneRM) * 100;
+      var k = anKey(r, gran);
+      if (!map.has(k)) map.set(k, { label: anLabel(r, gran), week: r.week, day: r.day, wSum: 0, pctSum: 0 });
+      var slot = map.get(k);
+      slot.wSum += vol; slot.pctSum += pct * vol;
+      totalW += vol; totalPct += pct * vol;
+    });
+    var arr = anSort(map);
+    var values = arr.map(function (x) { return x.wSum > 0 ? Math.round((x.pctSum / x.wSum) * 10) / 10 : null; });
+    var overall = totalW > 0 ? Math.round((totalPct / totalW) * 10) / 10 : null;
+    return { labels: arr.map(function (x) { return x.label; }), values: values, overall: overall };
+  }
+
   function cssVar(name, fb) { var v = getComputedStyle(document.documentElement).getPropertyValue(name); return (v && v.trim()) || fb; }
   function hexA(hex, a) {
     var m = String(hex || "").trim().match(/^#?([0-9a-f]{6})$/i);
@@ -3614,6 +3715,265 @@
   }
 
   // Switch between the Manage-program and Analytics tabs.
+  // ──────────────────────── Compare programs ────────────────────────
+  // Reached only from inside the PIN-locked Manage Program view. Both sides are
+  // parsed with parseProgram() exactly like a donor import in Manage Program —
+  // plain in-memory objects that never touch PROFILES/localStorage.
+
+  function weekOfLabel(lbl) { return parseFloat(String(lbl).slice(1)); }
+
+  // Aggregate one loaded program into everything Compare needs, keyed by WEEK
+  // NUMBER (not array index) so two programs with different week counts or
+  // numbering still line up correctly when compared side by side.
+  function cmpBuildData(prof, formula) {
+    var rows = analyticsRows(prof);
+    var maxes = prof.maxes || {};
+    var weeks = prof.weeks.map(function (w) { return parseFloat(w.week) || 0; }).sort(function (a, b) { return a - b; });
+    var ton = anTonnage(rows, "weekly");
+    var nl = anNL(rows, maxes, "weekly");
+    var inten = anIntensity(rows, maxes, "weekly");
+    var top = anTopSet(rows, "weekly");
+    var e1 = dmE1RM(rows, "weekly", formula);
+    function numMap(labels, values) { var m = {}; labels.forEach(function (l, i) { m[weekOfLabel(l)] = values[i]; }); return m; }
+    function liftMap(labels, series) {
+      var m = {};
+      labels.forEach(function (l, i) { m[weekOfLabel(l)] = { Squat: series.Squat[i], Bench: series.Bench[i], Deadlift: series.Deadlift[i] }; });
+      return m;
+    }
+    return {
+      name: prof.name, block: prof.block || "", source: prof.sourceFile || "",
+      weeks: weeks,
+      tonMap: numMap(ton.labels, ton.totals), tonGrand: ton.grand,
+      nlMap: numMap(nl.labels, nl.values), nlGrand: nl.grand,
+      intMap: numMap(inten.labels, inten.values), intOverall: inten.overall,
+      topMap: liftMap(top.labels, top.series), topPeak: top.peak,
+      e1Map: liftMap(e1.labels, e1.series), e1Peak: e1.peak
+    };
+  }
+
+  function destroyCompareCharts() {
+    if (cmpTonChart) { cmpTonChart.destroy(); cmpTonChart = null; }
+    if (cmpNlChart)  { cmpNlChart.destroy();  cmpNlChart = null; }
+    if (cmpIntChart) { cmpIntChart.destroy(); cmpIntChart = null; }
+  }
+
+  function cmpLoaderCard(side) {
+    var wrap = el("div", "cmp-loader");
+    var icon = el("div", "cmp-loader-icon");
+    icon.innerHTML = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+    wrap.appendChild(icon);
+    var lbl = el("div", "cmp-badge", "Program " + side.toUpperCase());
+    wrap.appendChild(lbl);
+    var btn = el("button", "chip primary", "Load CSV / JSON");
+    btn.type = "button";
+    btn.onclick = function () { $("cmpInput" + side.toUpperCase()).click(); };
+    wrap.appendChild(btn);
+    wrap.appendChild(el("p", null, "A training-log CSV (with a #Name header) or a Spotter JSON export."));
+    return wrap;
+  }
+  function cmpLoadedCard(side, prof) {
+    var wrap = el("div");
+    var hd = el("div", "cmp-loaded-hd");
+    var left = el("div");
+    left.appendChild(el("div", "cmp-badge", "Program " + side.toUpperCase()));
+    left.appendChild(el("div", "cmp-name", prof.name));
+    var nWeeks = prof.weeks.length;
+    var metaBits = [(prof.block || "Training block"), nWeeks + " week" + (nWeeks === 1 ? "" : "s")];
+    if (prof.sourceFile) metaBits.push(prof.sourceFile);
+    left.appendChild(el("div", "cmp-meta", metaBits.join(" · ")));
+    hd.appendChild(left);
+    var clr = el("button", "cmp-clear", null);
+    clr.type = "button"; clr.title = "Clear and load a different file"; clr.setAttribute("aria-label", "Clear program " + side.toUpperCase());
+    clr.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+    clr.onclick = function () {
+      if (side === "a") cmpProfA = null; else cmpProfB = null;
+      renderCompareColumn(side);
+      renderCompareBody();
+    };
+    hd.appendChild(clr);
+    wrap.appendChild(hd);
+    return wrap;
+  }
+  function renderCompareColumn(side) {
+    var host = $("cmpCol" + side.toUpperCase()); if (!host) return;
+    clear(host);
+    var prof = side === "a" ? cmpProfA : cmpProfB;
+    host.appendChild(prof ? cmpLoadedCard(side, prof) : cmpLoaderCard(side));
+  }
+
+  function renderCompareBody() {
+    var body = $("cmpBody"), ctrlWrap = $("cmpControls");
+    destroyCompareCharts();
+    clear(body); clear(ctrlWrap);
+    if (!cmpProfA || !cmpProfB) {
+      ctrlWrap.classList.add("hidden");
+      body.appendChild(el("p", "cmp-need-both", "Load a program on both sides to see the comparison."));
+      return;
+    }
+    ctrlWrap.classList.remove("hidden");
+    ctrlWrap.appendChild(labeledSelect("Estimated-1RM formula",
+      [{ label: "Epley", value: "epley" }, { label: "Brzycki", value: "brzycki" }],
+      cmpFormula, function (v) { cmpFormula = v; renderCompareBody(); }));
+
+    var dataA = cmpBuildData(cmpProfA, cmpFormula), dataB = cmpBuildData(cmpProfB, cmpFormula);
+    var weekSet = {}; dataA.weeks.forEach(function (w) { weekSet[w] = true; }); dataB.weeks.forEach(function (w) { weekSet[w] = true; });
+    var weeks = Object.keys(weekSet).map(parseFloat).sort(function (a, b) { return a - b; });
+    var labels = weeks.map(function (w) { return "W" + w; });
+
+    var legend = el("div", "cmp-legend");
+    var la = el("span", "a"); la.innerHTML = '<span class="dot"></span>' + dataA.name; legend.appendChild(la);
+    var lb = el("span", "b"); lb.innerHTML = '<span class="dot"></span>' + dataB.name; legend.appendChild(lb);
+    body.appendChild(legend);
+
+    var ready = (typeof Chart !== "undefined");
+    var pine = cssVar("--pine", "#2e5a4e"), daily = cssVar("--daily", "#2f6d8f"), ink = cssVar("--muted", "#6b736c"), line = cssVar("--border", "#e2e5df");
+    var tipBg = cssVar("--ink", "#1b2420"), tipTx = cssVar("--bg", "#ffffff");
+    var xScale = { grid: { display: false }, ticks: { color: ink, font: { size: 11 } }, border: { color: line } };
+
+    function panel(title, descText) {
+      var pnl = el("div", "panel an-panel");
+      pnl.appendChild(el("div", "an-title", title));
+      if (descText) pnl.appendChild(el("div", "an-desc", descText));
+      var cw = el("div", "an-chart"); var cv = el("canvas"); cw.appendChild(cv); pnl.appendChild(cw);
+      body.appendChild(pnl);
+      return cv;
+    }
+
+    // ---------- Tonnage per week (2-series bar) ----------
+    var tonA = weeks.map(function (w) { return dataA.tonMap[w] != null ? Math.round(dataA.tonMap[w]) : null; });
+    var tonB = weeks.map(function (w) { return dataB.tonMap[w] != null ? Math.round(dataB.tonMap[w]) : null; });
+    if (ready) {
+      var cvTon = panel("Tonnage per week", "Weight \u00d7 sets \u00d7 reps, week by week.");
+      cmpTonChart = new Chart(cvTon, {
+        type: "bar",
+        data: { labels: labels, datasets: [
+          { label: dataA.name, data: tonA, backgroundColor: pine, borderRadius: 4, maxBarThickness: 26 },
+          { label: dataB.name, data: tonB, backgroundColor: daily, borderRadius: 4, maxBarThickness: 26 }
+        ] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false },
+          tooltip: { backgroundColor: tipBg, titleColor: tipTx, bodyColor: tipTx, padding: 10, callbacks: { label: function (c) { return c.parsed.y == null ? " No data" : " " + c.dataset.label + ": " + c.parsed.y.toLocaleString() + " kg"; } } } },
+          scales: { x: xScale, y: { beginAtZero: true, grid: { color: line }, ticks: { color: ink, font: { size: 11 } }, border: { display: false } } } }
+      });
+    }
+
+    // ---------- NL per week (2-series bar) ----------
+    var nlA = weeks.map(function (w) { return dataA.nlMap[w] != null ? dataA.nlMap[w] : null; });
+    var nlB = weeks.map(function (w) { return dataB.nlMap[w] != null ? dataB.nlMap[w] : null; });
+    if (ready) {
+      var cvNl = panel("Number of lifts (NL) per week", "Reps at or above 50% of the lift's max, week by week.");
+      cmpNlChart = new Chart(cvNl, {
+        type: "bar",
+        data: { labels: labels, datasets: [
+          { label: dataA.name, data: nlA, backgroundColor: pine, borderRadius: 4, maxBarThickness: 26 },
+          { label: dataB.name, data: nlB, backgroundColor: daily, borderRadius: 4, maxBarThickness: 26 }
+        ] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false },
+          tooltip: { backgroundColor: tipBg, titleColor: tipTx, bodyColor: tipTx, padding: 10 } },
+          scales: { x: xScale, y: { beginAtZero: true, grid: { color: line }, ticks: { color: ink, font: { size: 11 }, precision: 0 }, border: { display: false } } } }
+      });
+    }
+
+    // ---------- Intensity per week (2-series line) ----------
+    var intA = weeks.map(function (w) { return dataA.intMap[w] != null ? dataA.intMap[w] : null; });
+    var intB = weeks.map(function (w) { return dataB.intMap[w] != null ? dataB.intMap[w] : null; });
+    if (ready) {
+      var cvInt = panel("Average intensity per week", "Volume-weighted average %1RM across classified working sets.");
+      cmpIntChart = new Chart(cvInt, {
+        type: "line",
+        data: { labels: labels, datasets: [
+          { label: dataA.name, data: intA, borderColor: pine, backgroundColor: pine, pointBackgroundColor: pine, borderWidth: 2.5, tension: 0.3, spanGaps: false, fill: false },
+          { label: dataB.name, data: intB, borderColor: daily, backgroundColor: daily, pointBackgroundColor: daily, borderWidth: 2.5, tension: 0.3, spanGaps: false, fill: false }
+        ] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false },
+          tooltip: { backgroundColor: tipBg, titleColor: tipTx, bodyColor: tipTx, padding: 10, callbacks: { label: function (c) { return c.parsed.y == null ? " No data" : " " + c.dataset.label + ": " + c.parsed.y + "%"; } } } },
+          scales: { x: xScale, y: { beginAtZero: false, grid: { color: line }, ticks: { color: ink, font: { size: 11 }, callback: function (v) { return v + "%"; } }, border: { display: false } } } }
+      });
+    } else if (!tonA.length) {
+      body.appendChild(el("p", "dm-empty", "Couldn't load the chart library — check your connection."));
+    }
+
+    // ---------- Per-lift comparison tables (heaviest top set, estimated 1RM) ----------
+    function liftTable(title, descText, mapA, mapB, unit) {
+      body.appendChild(el("div", "cmp-lift-cap", title));
+      if (descText) body.appendChild(el("p", "an-desc", descText));
+      var tw = el("div", "cmp-table-wrap");
+      var table = el("table", "cmp-table");
+      var thead = el("thead"); var htr = el("tr");
+      htr.appendChild(el("th", null, "Week"));
+      ["Squat", "Bench", "Deadlift"].forEach(function (l) {
+        htr.appendChild(el("th", null, l + " (A)")); htr.appendChild(el("th", null, l + " (B)"));
+      });
+      thead.appendChild(htr); table.appendChild(thead);
+      var tbody = el("tbody");
+      weeks.forEach(function (w) {
+        var tr = el("tr");
+        tr.appendChild(el("td", null, "W" + w));
+        ["Squat", "Bench", "Deadlift"].forEach(function (l) {
+          var va = mapA[w] ? mapA[w][l] : null, vb = mapB[w] ? mapB[w][l] : null;
+          var tdA = el("td", "cmp-a" + (va != null && vb != null && va > vb ? " cmp-win" : ""));
+          var tdB = el("td", "cmp-b" + (va != null && vb != null && vb > va ? " cmp-win" : ""));
+          if (va != null) tdA.textContent = va.toLocaleString() + unit; else { tdA.textContent = "\u2013"; tdA.classList.add("cmp-dash"); }
+          if (vb != null) tdB.textContent = vb.toLocaleString() + unit; else { tdB.textContent = "\u2013"; tdB.classList.add("cmp-dash"); }
+          tr.appendChild(tdA); tr.appendChild(tdB);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      tw.appendChild(table);
+      body.appendChild(tw);
+    }
+    liftTable("Heaviest top set per week", "The single heaviest logged weight per lift each week, whichever side is heavier bolded.", dataA.topMap, dataB.topMap, " kg");
+    liftTable("Estimated 1RM per week (" + (cmpFormula === "brzycki" ? "Brzycki" : "Epley") + ")", "Best working-set e1RM per lift each week.", dataA.e1Map, dataB.e1Map, " kg");
+
+    // ---------- Overall summary ----------
+    body.appendChild(el("div", "cmp-lift-cap", "Block summary"));
+    var summary = el("div", "cmp-summary");
+    function sumCard(side, data) {
+      var card = el("div", "cmp-sumcard side-" + side);
+      card.appendChild(el("div", "cmp-badge", "Program " + side.toUpperCase()));
+      card.appendChild(el("div", "cmp-name", data.name));
+      function row(k, v) { var r = el("div", "cmp-sumrow"); r.appendChild(el("span", "k", k)); r.appendChild(el("span", "v", v)); card.appendChild(r); }
+      row("Weeks", String(data.weeks.length));
+      row("Total tonnage", Math.round(data.tonGrand).toLocaleString() + " kg");
+      row("Total NL", data.nlGrand.toLocaleString());
+      row("Average intensity", data.intOverall != null ? data.intOverall + "%" : "\u2013");
+      ["Squat", "Bench", "Deadlift"].forEach(function (l) {
+        row("Peak e1RM \u2014 " + l, data.e1Peak[l] != null ? data.e1Peak[l].toLocaleString() + " kg" : "\u2013");
+      });
+      ["Squat", "Bench", "Deadlift"].forEach(function (l) {
+        row("Heaviest top set \u2014 " + l, data.topPeak[l] != null ? data.topPeak[l].toLocaleString() + " kg" : "\u2013");
+      });
+      return card;
+    }
+    summary.appendChild(sumCard("a", dataA));
+    summary.appendChild(sumCard("b", dataB));
+    body.appendChild(summary);
+  }
+
+  function loadCompareFile(side, file) {
+    readFileText(file).then(function (txt) {
+      var prof = parseProgram(txt, file.name);
+      if (!prof) { toast("Couldn't read that as a program (needs a #Name CSV or a Spotter JSON)."); return; }
+      if (!prof.weeks || !prof.weeks.length) { toast("That program has no weeks to compare."); return; }
+      if (side === "a") cmpProfA = prof; else cmpProfB = prof;
+      renderCompareColumn(side);
+      renderCompareBody();
+      toast("Loaded " + prof.name + " as Program " + side.toUpperCase() + ".");
+    }).catch(function () { toast("Couldn't read that file."); });
+  }
+
+  function openCompare() {
+    if (!dmUnlocked) { requestDayMgr(); return; }   // defense in depth — shouldn't be reachable otherwise
+    inCompare = true;
+    showView("viewCompare");
+    renderCompareColumn("a"); renderCompareColumn("b");
+    renderCompareBody();
+  }
+  function closeCompare() {
+    inCompare = false;
+    openDayMgr();   // back to Manage Program — still unlocked this session
+  }
+
   function setDMTab(tab) {
     dmTab = (tab === "analytics") ? "analytics" : "manage";
     Array.prototype.forEach.call(document.querySelectorAll("#dmTabs .seg-btn"), function (b) {
@@ -3743,54 +4103,82 @@
   }
   function presetLabel(sec) { var m = Math.floor(sec / 60), r = sec % 60; return m + ":" + (r < 10 ? "0" : "") + r; }
 
+  // A fresh AudioContext created from inside a setInterval callback (i.e. not a
+  // real user gesture) starts "suspended" on iOS Safari and most modern mobile
+  // browsers, and silently never makes sound — no error, it just doesn't play.
+  // Fix: create/unlock ONE context the moment the person actually taps something
+  // timer-related (a real gesture), then reuse that same context later when the
+  // countdown finishes, even though that call itself comes from a timer.
+  var audioCtx = null;
+  function unlockAudio() {
+    if (!audioCtx) {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) { try { audioCtx = new Ctx(); } catch (e) {} }
+    }
+    if (audioCtx && audioCtx.state === "suspended") { try { audioCtx.resume(); } catch (e) {} }
+  }
   function timerSetDuration(sec) {
+    unlockAudio();
     sec = Math.max(1, Math.round(sec));
     timerDuration = sec; timerEndAt = null; timerRemainingMs = null;
     saveToolsPrefs();
     renderRestTimer();
   }
   function timerStart() {
+    unlockAudio();
     var rem = timerRemainingMsNow();
     if (rem <= 0) rem = timerDuration * 1000;   // finished or freshly reset -> full length
     timerEndAt = Date.now() + rem; timerRemainingMs = null;
     renderRestTimer();
   }
   function timerPause() {
+    unlockAudio();
     if (timerEndAt != null) { timerRemainingMs = Math.max(0, timerEndAt - Date.now()); timerEndAt = null; }
     renderRestTimer();
   }
   function timerReset() {
+    unlockAudio();
     timerEndAt = null; timerRemainingMs = null;
     renderRestTimer();
   }
   function timerFinish() {
     toast("Rest's up \u2014 back to it.");
     try {
-      var Ctx = window.AudioContext || window.webkitAudioContext;
-      if (Ctx) {
-        var ctx = new Ctx();
-        [880, 1046.5].forEach(function (freq, i) {
-          var o = ctx.createOscillator(), g = ctx.createGain();
-          o.type = "sine"; o.frequency.value = freq;
-          var t0 = ctx.currentTime + i * 0.22;
-          g.gain.setValueAtTime(0.0001, t0);
-          g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02);
-          g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.2);
-          o.connect(g); g.connect(ctx.destination);
-          o.start(t0); o.stop(t0 + 0.22);
-        });
+      unlockAudio();   // last-ditch attempt if nothing unlocked it earlier (may not audibly work without a prior gesture, but doesn't hurt)
+      if (audioCtx) {
+        var reps = 3, gap = 0.5;   // three chimes, half a second apart — easy to notice over gym noise
+        for (var r = 0; r < reps; r++) {
+          [880, 1046.5].forEach(function (freq, i) {
+            var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+            o.type = "sine"; o.frequency.value = freq;
+            var t0 = audioCtx.currentTime + r * gap + i * 0.14;
+            g.gain.setValueAtTime(0.0001, t0);
+            g.gain.exponentialRampToValueAtTime(0.32, t0 + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.13);
+            o.connect(g); g.connect(audioCtx.destination);
+            o.start(t0); o.stop(t0 + 0.14);
+          });
+        }
       }
     } catch (e) {}
-    if (navigator.vibrate) { try { navigator.vibrate([160, 90, 160]); } catch (e) {} }
+    if (navigator.vibrate) { try { navigator.vibrate([160, 90, 160, 90, 160]); } catch (e) {} }
   }
   function timerTick() {
     if (timerEndAt != null && timerEndAt - Date.now() <= 0) {
       timerEndAt = null; timerRemainingMs = 0;
       timerFinish();
     }
-    if (toolsTab === "timer" && $("toolsScrim") && $("toolsScrim").classList.contains("show")) renderRestTimer();
+    // Lightweight only: update the countdown text/button state on every tick.
+    // Do NOT rebuild the preset buttons here — recreating those DOM nodes every
+    // 250ms can cancel an in-progress tap on a touchscreen (if the element under
+    // the finger gets swapped out between touchstart and touchend, the browser
+    // never fires the click). Presets only rebuild in the full render, from an
+    // actual action (tab switch, preset/custom pick, start/pause/reset).
+    if (toolsTab === "timer" && $("toolsScrim") && $("toolsScrim").classList.contains("show")) updateTimerDisplay();
   }
-  function renderRestTimer() {
+  // Cheap per-tick update: just the countdown text and the Start/Pause state.
+  // Never touches the preset buttons, so it's safe to call every 250ms.
+  function updateTimerDisplay() {
     var disp = $("timerDisplay"); if (!disp) return;
     var rem = timerRemainingMsNow(), running = timerEndAt != null;
     disp.textContent = formatMMSS(rem);
@@ -3798,6 +4186,13 @@
     $("timerStartBtn").disabled = running;
     $("timerStartBtn").textContent = (timerRemainingMs != null && timerRemainingMs > 0) ? "Resume" : "Start";
     $("timerPauseBtn").disabled = !running;
+  }
+  // Full render: the cheap update above, plus rebuilding the preset row (its
+  // "current" highlight depends on state that only changes from an actual
+  // action, never from the passage of time alone).
+  function renderRestTimer() {
+    var disp = $("timerDisplay"); if (!disp) return;
+    updateTimerDisplay();
     var pr = $("timerPresets"); clear(pr);
     TIMER_PRESETS.forEach(function (sec) {
       var isCurrent = timerDuration === sec && timerEndAt == null && timerRemainingMs == null;
@@ -3818,7 +4213,7 @@
     if (toolsTab === "timer") { pp.classList.add("hidden"); pt.classList.remove("hidden"); renderRestTimer(); }
     else { pt.classList.add("hidden"); pp.classList.remove("hidden"); renderPlateCalc(); }
   }
-  function openTools() { setToolsTab(toolsTab); $("toolsScrim").classList.add("show"); }
+  function openTools() { unlockAudio(); setToolsTab(toolsTab); $("toolsScrim").classList.add("show"); }
   function closeTools() { $("toolsScrim").classList.remove("show"); }
 
   // Wipe everything from this device and return to the first-load screen.
@@ -3858,6 +4253,7 @@
       PROFILES = {}; DONE = {}; SKIP = {}; NOTES = {}; CUSTOM = {};
       current = null; currentWeek = null; dayFilterSel = "all"; noteCtx = null;
       inDayMgr = false; inAnalytics = false; donor = null; dmSel = { tw: null, td: null, dw: null, dd: null };
+      inCompare = false; cmpProfA = null; cmpProfB = null;
       dmUnlocked = false;
       [STORE_PROFILES, STORE_DONE, STORE_SKIP, STORE_NOTES, STORE_CUSTOM, STORE_LAST].forEach(function (k) {
         try { localStorage.removeItem(k); } catch (e) {}
@@ -4258,6 +4654,7 @@
       localStorage.setItem(STORE_THEME, cur); applyTheme(cur);
       if (inAnalytics) renderAnalytics();   // recolour charts for the new theme
       if (inDayMgr) { if (dmTab === "analytics") renderDMAnalytics(); else renderDMCharts(); }
+      if (inCompare) renderCompareBody();
     };
 
     $("wkBack").onclick = openOverview;
@@ -4265,6 +4662,16 @@
       b.onclick = function () { setDMTab(b.getAttribute("data-tab")); };
     });
     $("dmBack").onclick = closeDayMgr;
+    $("cmpOpenBtn").onclick = openCompare;
+    $("cmpBack").onclick = closeCompare;
+    $("cmpInputA").addEventListener("change", function () {
+      var f = this.files && this.files[0]; this.value = "";
+      if (f) loadCompareFile("a", f);
+    });
+    $("cmpInputB").addEventListener("change", function () {
+      var f = this.files && this.files[0]; this.value = "";
+      if (f) loadCompareFile("b", f);
+    });
     $("anBack").onclick = openOverview;
     $("ovAnalyticsBtn").onclick = openAnalytics;
     Array.prototype.forEach.call(document.querySelectorAll("#anGran .seg-btn"), function (b) {

@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Barload RPE Charts</title>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --ground:#EFF1F3; --surface:#FFFFFF; --surface-2:#E6E9ED; --surface-3:#DCE0E6;
+  --line:#D2D7DE; --line-strong:#B6BDC7;
+  --ink:#14181D; --ink-2:#48505A; --ink-3:#7A8590;
+  --accent:#C8102E; --accent-2:#A50D26; --accent-soft:rgba(200,16,46,.10);
+  --heat:#C8102E;
+  --c-squat:#C8102E; --c-bench:#1F6F72; --c-dead:#8A6320;
+  --shadow:0 1px 2px rgba(20,24,29,.06), 0 10px 28px -18px rgba(20,24,29,.30);
+  --r:4px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E1114; --surface:#161A1F; --surface-2:#1D2228; --surface-3:#252B32;
+    --line:#282F36; --line-strong:#3A434C;
+    --ink:#E8EBEF; --ink-2:#A3ADB8; --ink-3:#6E7883;
+    --accent:#FF4055; --accent-2:#FF6373; --accent-soft:rgba(255,64,85,.12);
+    --heat:#FF4055;
+    --c-squat:#FF4055; --c-bench:#3FB0B4; --c-dead:#D3A24A;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 32px -20px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E1114; --surface:#161A1F; --surface-2:#1D2228; --surface-3:#252B32;
+  --line:#282F36; --line-strong:#3A434C;
+  --ink:#E8EBEF; --ink-2:#A3ADB8; --ink-3:#6E7883;
+  --accent:#FF4055; --accent-2:#FF6373; --accent-soft:rgba(255,64,85,.12);
+  --heat:#FF4055;
+  --c-squat:#FF4055; --c-bench:#3FB0B4; --c-dead:#D3A24A;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 32px -20px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px; margin:0 auto; padding:0 20px 72px}
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3);
+}
+h1,h2,h3{font-family:Archivo,system-ui,sans-serif; margin:0; text-wrap:balance}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums}
+
+/* ---------- masthead ---------- */
+.mast{padding:44px 0 26px; display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; justify-content:space-between}
+.mast h1{
+  font-size:clamp(38px,6vw,62px); font-weight:800; letter-spacing:-.03em; line-height:.94;
+}
+.mast h1 span{color:var(--accent)}
+.mast p{margin:10px 0 0; max-width:52ch; color:var(--ink-2); font-size:15px}
+.themebtn{
+  font:inherit; font-size:12px; background:var(--surface); color:var(--ink-2);
+  border:1px solid var(--line); border-radius:var(--r); padding:7px 12px; cursor:pointer;
+}
+.themebtn:hover{border-color:var(--line-strong); color:var(--ink)}
+
+/* ---------- console ---------- */
+.console{
+  position:sticky; top:0; z-index:30; background:var(--surface);
+  border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow);
+  display:grid; grid-template-columns:minmax(190px,240px) 1fr auto; gap:0;
+}
+.cell-pad{padding:14px 18px; border-right:1px solid var(--line); display:flex; flex-direction:column; gap:8px; justify-content:center}
+.console > :last-child{border-right:0}
+.maxin{display:flex; align-items:baseline; gap:8px}
+.maxin input{
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums;
+  font-size:30px; font-weight:600; width:100%; min-width:0; padding:0; letter-spacing:-.02em;
+  background:transparent; border:0; border-bottom:2px solid var(--accent); color:var(--ink);
+}
+.maxin input:focus{outline:none; border-bottom-color:var(--ink)}
+.maxin input::-webkit-outer-spin-button,.maxin input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.seg{display:inline-flex; background:var(--surface-2); border-radius:var(--r); padding:2px; gap:2px}
+.seg button{
+  font:inherit; font-size:13px; font-weight:600; letter-spacing:.01em;
+  border:0; background:transparent; color:var(--ink-3); padding:6px 12px;
+  border-radius:3px; cursor:pointer; transition:background .14s, color .14s;
+}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--surface); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.14)}
+.seg.lifts button[aria-pressed="true"]{color:var(--ink)}
+.seg.units button{padding:6px 9px; font-family:"IBM Plex Mono",monospace; font-size:12px}
+.row{display:flex; flex-wrap:wrap; gap:14px; align-items:center}
+.lbl{font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.15em; text-transform:uppercase; color:var(--ink-3)}
+
+/* ---------- tiles ---------- */
+.tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line); border:1px solid var(--line); border-top:0; border-radius:0 0 var(--r) var(--r); overflow:hidden}
+.tile{background:var(--surface); padding:13px 18px 15px}
+.tile .lbl{display:block; margin-bottom:4px}
+.tile b{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-size:21px; font-weight:600; letter-spacing:-.01em; display:block}
+.tile small{color:var(--ink-3); font-size:11.5px}
+.stack{margin-top:0}
+
+/* ---------- chart ---------- */
+section{margin-top:40px}
+.shead{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:14px; flex-wrap:wrap}
+.shead h2{font-size:19px; font-weight:700; letter-spacing:-.01em}
+.shead p{margin:3px 0 0; color:var(--ink-2); font-size:13.5px; max-width:66ch}
+.scroll{overflow-x:auto; border:1px solid var(--line); border-radius:var(--r); background:var(--surface); box-shadow:var(--shadow)}
+table.grid{border-collapse:separate; border-spacing:0; width:100%; min-width:940px}
+table.grid th,table.grid td{padding:0; border-bottom:1px solid var(--line); border-right:1px solid var(--line)}
+table.grid th:last-child,table.grid td:last-child{border-right:0}
+table.grid tr:last-child th,table.grid tr:last-child td{border-bottom:0}
+thead th{
+  position:sticky; top:0; z-index:12; background:var(--surface-2);
+  font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600; letter-spacing:.08em;
+  color:var(--ink-2); text-transform:uppercase; padding:9px 6px !important; white-space:nowrap;
+}
+thead th.corner{left:0; z-index:14; text-align:left; padding-left:14px !important}
+th.rpe{
+  position:sticky; left:0; z-index:10; background:var(--surface-2); text-align:left;
+  padding:0 14px !important; white-space:nowrap; min-width:104px;
+}
+th.rpe .n{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-size:15px; font-weight:600; color:var(--ink)}
+th.rpe .rir{display:block; font-family:"IBM Plex Mono",monospace; font-size:9.5px; letter-spacing:.1em; color:var(--ink-3); text-transform:uppercase}
+tr.hi th.rpe, tr.hi thead th{background:var(--surface-3)}
+td.c{background:color-mix(in oklab, var(--surface), var(--heat) calc(var(--t) * 1%))}
+td.c button{
+  font:inherit; width:100%; border:0; background:transparent; cursor:pointer; color:var(--ink);
+  padding:9px 4px 8px; display:block; text-align:center; transition:box-shadow .12s;
+}
+td.c .w{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-size:15.5px; font-weight:600; letter-spacing:-.01em; display:block}
+td.c .p{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-size:10px; color:var(--ink-3); display:block; margin-top:1px}
+td.c button:hover{box-shadow:inset 0 0 0 2px var(--line-strong)}
+td.c button:focus-visible{outline:none; box-shadow:inset 0 0 0 2px var(--accent)}
+td.c.sel button{box-shadow:inset 0 0 0 2px var(--accent)}
+td.c.sel .p{color:var(--ink-2)}
+
+/* ---------- readout ---------- */
+.readout{
+  margin-top:12px; background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent);
+  border-radius:var(--r); padding:13px 16px; display:flex; gap:18px; align-items:center; flex-wrap:wrap;
+  justify-content:space-between;
+}
+.readout[hidden]{display:none}
+.readout .rx{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-size:15px; letter-spacing:-.01em}
+.readout .rx b{font-weight:600; color:var(--accent)}
+.readout .meta{color:var(--ink-3); font-size:12.5px}
+.copy{font:inherit; font-size:12px; padding:6px 12px; background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r); color:var(--ink-2); cursor:pointer}
+.copy:hover{color:var(--ink); border-color:var(--line-strong)}
+
+/* ---------- dropoff panel ---------- */
+.two{display:grid; grid-template-columns:1.12fr .88fr; gap:20px; align-items:start}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); padding:18px 20px 20px}
+.card h3{font-size:14px; font-weight:700; letter-spacing:.01em; margin-bottom:2px}
+.card .sub{color:var(--ink-3); font-size:12.5px; margin:0 0 14px}
+.legend{display:flex; gap:16px; flex-wrap:wrap; margin-bottom:10px}
+.legend span{display:inline-flex; align-items:center; gap:7px; font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-2)}
+.legend i{width:16px; height:0; border-top-width:2.5px; border-top-style:solid; display:inline-block}
+svg.plot{display:block; width:100%; height:auto}
+.calib{display:flex; align-items:center; gap:12px; margin-top:14px; padding-top:14px; border-top:1px solid var(--line); flex-wrap:wrap}
+.calib input[type=range]{flex:1; min-width:150px; accent-color:var(--accent)}
+.calib output{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-size:13px; font-weight:600; min-width:42px; text-align:right}
+.reset{font:inherit; font-size:11.5px; background:transparent; border:0; color:var(--ink-3); text-decoration:underline; cursor:pointer; padding:0}
+.reset:hover{color:var(--accent)}
+
+/* ---------- tools ---------- */
+.f{display:flex; flex-direction:column; gap:5px}
+.f label{font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3)}
+.f input,.f select{
+  font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-size:15px; font-weight:500;
+  padding:8px 10px; background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r); color:var(--ink); width:100%;
+}
+.f input:focus,.f select:focus{outline:none; border-color:var(--accent)}
+.fields{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+.fields.four{grid-template-columns:repeat(4,1fr)}
+.out{margin-top:16px; padding-top:14px; border-top:1px solid var(--line)}
+.big{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-size:34px; font-weight:600; letter-spacing:-.02em; line-height:1.1}
+.big u{text-decoration:none; font-size:16px; color:var(--ink-3); font-weight:500; margin-left:4px}
+.delta{font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--ink-2); margin-top:4px}
+table.mini{width:100%; border-collapse:collapse; margin-top:4px}
+table.mini th{font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3); text-align:left; font-weight:500; padding:0 8px 6px 0; border-bottom:1px solid var(--line)}
+table.mini td{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-size:14px; padding:7px 8px 7px 0; border-bottom:1px solid var(--line)}
+table.mini tr:last-child td{border-bottom:0}
+table.mini td.wt{font-weight:600}
+table.mini td.pc{color:var(--ink-3); font-size:12px}
+.chip{display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase; padding:2px 7px; border-radius:100px; border:1px solid currentColor}
+.chip.steep{color:var(--c-dead)}
+.chip.mid{color:var(--ink-2)}
+.chip.shallow{color:var(--c-bench)}
+
+/* ---------- notes ---------- */
+.notes{margin-top:40px; border-top:1px solid var(--line); padding-top:22px; color:var(--ink-2); font-size:13px; max-width:78ch}
+.notes h3{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); font-family:"IBM Plex Mono",monospace; font-weight:500; margin-bottom:10px}
+.notes p{margin:0 0 10px}
+.notes code{font-family:"IBM Plex Mono",monospace; font-size:12px; background:var(--surface-2); padding:1px 5px; border-radius:3px}
+
+@media (max-width:900px){
+  .mast{padding:28px 0 20px}
+  .wrap{padding:0 14px 56px}
+  .console{grid-template-columns:1fr; position:static}
+  .cell-pad{border-right:0; border-bottom:1px solid var(--line)}
+  .tiles{grid-template-columns:repeat(2,1fr)}
+  .two{grid-template-columns:1fr}
+  .fields,.fields.four{grid-template-columns:repeat(2,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important; animation:none !important}}
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <div>
+      <div class="eyebrow">RPE &rarr; %1RM load charts</div>
+      <h1>Bar<span>load</span></h1>
+      <p>Enter one max, pick a lift, read the whole chart. Ten reps to failure is worth about 76% of 1RM on the bench and 71% on the deadlift &mdash; so each lift gets its own curve here instead of one borrowed table.</p>
+    </div>
+    <button class="themebtn" id="themebtn" type="button">Theme: system</button>
+  </header>
+
+  <div class="console" role="group" aria-label="Chart controls">
+    <div class="cell-pad">
+      <span class="lbl">One-rep max</span>
+      <div class="maxin">
+        <input id="max" type="number" inputmode="decimal" min="1" max="600" step="0.5" value="180" aria-label="One-rep max">
+        <div class="seg units" role="group" aria-label="Units">
+          <button type="button" data-unit="kg" aria-pressed="true">kg</button>
+          <button type="button" data-unit="lb" aria-pressed="false">lb</button>
+        </div>
+      </div>
+    </div>
+    <div class="cell-pad">
+      <span class="lbl">Lift</span>
+      <div class="seg lifts" role="group" aria-label="Lift">
+        <button type="button" data-lift="squat" aria-pressed="true">Squat</button>
+        <button type="button" data-lift="bench" aria-pressed="false">Bench</button>
+        <button type="button" data-lift="dead" aria-pressed="false">Deadlift</button>
+      </div>
+    </div>
+    <div class="cell-pad">
+      <span class="lbl">Percentage model</span>
+      <div class="seg models" role="group" aria-label="Percentage model">
+        <button type="button" data-model="lift" aria-pressed="true">Lift-specific</button>
+        <button type="button" data-model="classic" aria-pressed="false">Classic RTS</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><span class="lbl">Heavy single &middot; RPE 9</span><b id="t1">&mdash;</b><small>1 rep in reserve</small></div>
+    <div class="tile"><span class="lbl">Top set &middot; 3 @ RPE 8</span><b id="t2">&mdash;</b><small id="t2p">&mdash;</small></div>
+    <div class="tile"><span class="lbl">Volume &middot; 5 @ RPE 7</span><b id="t3">&mdash;</b><small id="t3p">&mdash;</small></div>
+    <div class="tile"><span class="lbl">Rep drop-off</span><b id="t4">&mdash;</b><small id="t4n">&mdash;</small></div>
+  </div>
+
+  <section>
+    <div class="shead">
+      <div>
+        <h2 id="chart-title">Squat &mdash; RPE load chart</h2>
+        <p>Rows are RPE, columns are reps. Each cell is the load for that set. Click any cell to pull the full prescription.</p>
+      </div>
+      <div class="eyebrow" id="chart-note">Lift-specific curve</div>
+    </div>
+    <div class="scroll">
+      <table class="grid" id="grid">
+        <thead><tr id="head"></tr></thead>
+        <tbody id="body"></tbody>
+      </table>
+    </div>
+    <div class="readout" id="readout" hidden>
+      <div>
+        <div class="rx" id="rx"></div>
+        <div class="meta" id="rxmeta"></div>
+      </div>
+      <button class="copy" id="copy" type="button">Copy prescription</button>
+    </div>
+  </section>
+
+  <section class="two">
+    <div class="card">
+      <h3>Why the lifts differ</h3>
+      <p class="sub">Load at true failure (RPE 10) as reps climb. Same 1RM, three different curves.</p>
+      <div class="legend" id="legend"></div>
+      <svg class="plot" id="plot" viewBox="0 0 520 250" role="img" aria-labelledby="plotdesc"></svg>
+      <p id="plotdesc" class="sub" style="margin:10px 0 0">At ten reps to failure the deadlift sits roughly five percent of 1RM below the bench &mdash; the gap a single generic chart hides.</p>
+      <div class="calib">
+        <span class="lbl" style="white-space:nowrap">Calibrate <span id="calibname">squat</span></span>
+        <input id="calib" type="range" min="0.80" max="1.30" step="0.01" value="1.00" aria-label="Drop-off coefficient">
+        <output id="calibout">1.00</output>
+        <button class="reset" id="calibreset" type="button">reset</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>Estimate a max</h3>
+        <p class="sub">What you actually lifted, backed out to a 1RM.</p>
+        <div class="fields">
+          <div class="f"><label for="rw">Weight</label><input id="rw" type="number" inputmode="decimal" min="1" step="0.5" value="145"></div>
+          <div class="f"><label for="rr">Reps</label><input id="rr" type="number" inputmode="numeric" min="1" max="12" step="1" value="5"></div>
+          <div class="f"><label for="rpe">RPE</label><select id="rpe"></select></div>
+        </div>
+        <div class="out">
+          <span class="lbl">Estimated 1RM</span>
+          <div class="big" id="e1rm">&mdash;<u id="e1rmu">kg</u></div>
+          <div class="delta" id="e1rmd"></div>
+          <button class="copy" id="usemax" type="button" style="margin-top:12px">Use as my 1RM</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <h3>Top-set finder</h3>
+        <p class="sub">Pick a target RPE and a rep range; every set that fits.</p>
+        <div class="fields">
+          <div class="f"><label for="frpe">Target RPE</label><select id="frpe"></select></div>
+          <div class="f"><label for="fmin">Reps from</label><input id="fmin" type="number" inputmode="numeric" min="1" max="12" step="1" value="3"></div>
+          <div class="f"><label for="fmax">to</label><input id="fmax" type="number" inputmode="numeric" min="1" max="12" step="1" value="8"></div>
+        </div>
+        <div class="out" style="padding-top:10px">
+          <table class="mini">
+            <thead><tr><th>Set</th><th>Load</th><th>%1RM</th><th>Total volume</th></tr></thead>
+            <tbody id="fbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="notes">
+    <h3>How these numbers are built</h3>
+    <p><b>Classic RTS</b> is the Reactive Training Systems chart most lifters know: one table for everything, indexed by reps plus reps-in-reserve. RPE 8 &times; 3 is the same 86.3% whether you&rsquo;re squatting or pulling.</p>
+    <p><b>Lift-specific</b> keeps that curve for the squat and scales each lift&rsquo;s distance from 100% by a drop-off coefficient &mdash; bench <code>&times;0.93</code>, squat <code>&times;1.00</code>, deadlift <code>&times;1.12</code>. The deadlift has no meaningful stretch reflex, a shorter useful range before grip and bracing quit, and the steepest fatigue cost per rep, so rep capacity at a given percentage is lower. The bench is the opposite: a smaller working muscle mass, a bounce off the chest, and comparatively cheap reps.</p>
+    <p>Those coefficients are coaching estimates, not measurements of you. The slider under the curve chart moves them and remembers what you set. Calibrate by pulling one honest AMRAP per lift and dragging until the chart matches what happened.</p>
+    <p>RPE here is reps-in-reserve: RPE 10 is a set you could not have repeated, RPE 8 is two more in the tank. Loads round to the nearest 2.5&nbsp;kg or 5&nbsp;lb, which is what you can actually load. Percentages are of your entered 1RM, not of a training max.</p>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- model ---------- */
+  // RTS base curve: %1RM at N total effective reps (reps + reps in reserve)
+  var BASE = [null,100,95.5,92.2,89.2,86.3,83.7,81.1,78.6,76.2,73.9,70.7,68.0,65.3,62.6,59.9,57.2];
+  var DEFAULT_K = {squat:1.00, bench:0.93, dead:1.12};
+  var LIFT_NAME = {squat:"Squat", bench:"Bench press", dead:"Deadlift"};
+  var LIFT_SHORT = {squat:"Squat", bench:"Bench", dead:"Deadlift"};
+  var REPS = [1,2,3,4,5,6,7,8,9,10,11,12];
+  var RPES = [10,9.5,9,8.5,8,7.5,7,6.5,6];
+  var LB = 2.2046226218;
+
+  var store = {
+    get: function(k,d){ try{ var v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } },
+    set: function(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+  };
+
+  var K = {
+    squat: parseFloat(store.get("bl.k.squat", DEFAULT_K.squat)) || DEFAULT_K.squat,
+    bench: parseFloat(store.get("bl.k.bench", DEFAULT_K.bench)) || DEFAULT_K.bench,
+    dead:  parseFloat(store.get("bl.k.dead",  DEFAULT_K.dead))  || DEFAULT_K.dead
+  };
+
+  var S = {
+    max: 180,
+    unit: store.get("bl.unit","kg") === "lb" ? "lb" : "kg",
+    lift: "squat",
+    model: "lift",
+    sel: null
+  };
+
+  function baseAt(n){
+    if(n < 1) n = 1;
+    if(n > 16) n = 16;
+    var lo = Math.floor(n), hi = Math.ceil(n);
+    if(lo === hi) return BASE[lo];
+    return (BASE[lo] + BASE[hi]) / 2;
+  }
+  function pct(lift, reps, rpe, model){
+    var n = reps + (10 - rpe);
+    var b = baseAt(n);
+    var k = (model === "classic") ? 1 : K[lift];
+    return 100 - (100 - b) * k;
+  }
+  function step(){ return S.unit === "kg" ? 2.5 : 5; }
+  function load(lift, reps, rpe){
+    var raw = S.max * pct(lift, reps, rpe, S.model) / 100;
+    return Math.round(raw / step()) * step();
+  }
+  function fmt(v){
+    if(!isFinite(v)) return "—";
+    return (Math.round(v * 10) / 10).toString().replace(/\.0$/, "");
+  }
+  function fmtPct(p){ return p.toFixed(1) + "%"; }
+  function $(id){ return document.getElementById(id); }
+
+  /* ---------- theme ---------- */
+  var themes = ["system","light","dark"];
+  var tIdx = Math.max(0, themes.indexOf(store.get("bl.theme","system")));
+  function applyTheme(){
+    var t = themes[tIdx];
+    if(t === "system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", t);
+    $("themebtn").textContent = "Theme: " + t;
+    store.set("bl.theme", t);
+    drawPlot();
+  }
+  $("themebtn").addEventListener("click", function(){
+    tIdx = (tIdx + 1) % themes.length; applyTheme();
+  });
+
+  /* ---------- segmented controls ---------- */
+  function segWire(sel, attr, onPick){
+    var group = document.querySelector(sel);
+    group.addEventListener("click", function(e){
+      var b = e.target.closest("button[data-" + attr + "]");
+      if(!b) return;
+      var btns = group.querySelectorAll("button");
+      for(var i=0;i<btns.length;i++) btns[i].setAttribute("aria-pressed", btns[i] === b ? "true" : "false");
+      onPick(b.getAttribute("data-" + attr));
+    });
+  }
+  segWire(".seg.lifts", "lift", function(v){ S.lift = v; renderAll(); });
+  segWire(".seg.models", "model", function(v){ S.model = v; renderAll(); });
+  segWire(".seg.units", "unit", function(v){
+    if(v === S.unit) return;
+    var f = (v === "lb") ? LB : 1 / LB;
+    S.unit = v; store.set("bl.unit", v);
+    $("max").value = fmt(Math.round(S.max * f * 2) / 2);
+    $("rw").value  = fmt(Math.round((parseFloat($("rw").value) || 0) * f * 2) / 2);
+    $("max").step = $("rw").step = (v === "kg" ? "0.5" : "1");
+    readMax(); renderAll();
+  });
+
+  /* ---------- 1RM input ---------- */
+  function readMax(){
+    var v = parseFloat($("max").value);
+    S.max = (isFinite(v) && v > 0) ? v : 0;
+  }
+  $("max").addEventListener("input", function(){ readMax(); renderAll(); });
+
+  /* ---------- chart ---------- */
+  function heat(p){
+    var t = (p - 52) / 48;
+    t = t < 0 ? 0 : (t > 1 ? 1 : t);
+    return (1 + 33 * Math.pow(t, 1.7)).toFixed(1);
+  }
+  function buildChart(){
+    var head = $("head"), body = $("body");
+    head.innerHTML = '<th class="corner">RPE / Reps</th>';
+    for(var i=0;i<REPS.length;i++){
+      var th = document.createElement("th");
+      th.scope = "col";
+      th.textContent = REPS[i];
+      head.appendChild(th);
+    }
+    body.innerHTML = "";
+    for(var r=0;r<RPES.length;r++){
+      var rpe = RPES[r];
+      var tr = document.createElement("tr");
+      var rir = 10 - rpe;
+      var rh = document.createElement("th");
+      rh.className = "rpe"; rh.scope = "row";
+      rh.innerHTML = '<span class="n">' + rpe.toFixed(1).replace(/\.0$/,"") + '</span>' +
+                     '<span class="rir">' + (rir === 0 ? "failure" : rir + " in reserve") + '</span>';
+      tr.appendChild(rh);
+      for(var c=0;c<REPS.length;c++){
+        var reps = REPS[c];
+        var p = pct(S.lift, reps, rpe, S.model);
+        var w = load(S.lift, reps, rpe);
+        var td = document.createElement("td");
+        td.className = "c";
+        td.style.setProperty("--t", heat(p));
+        var b = document.createElement("button");
+        b.type = "button";
+        b.setAttribute("aria-label", reps + " reps at RPE " + rpe + ", " + fmt(w) + " " + S.unit);
+        b.innerHTML = '<span class="w">' + fmt(w) + '</span><span class="p">' + p.toFixed(1) + '</span>';
+        b.dataset.reps = reps; b.dataset.rpe = rpe;
+        td.appendChild(b);
+        if(S.sel && S.sel.reps === reps && S.sel.rpe === rpe) td.classList.add("sel");
+        tr.appendChild(td);
+      }
+      body.appendChild(tr);
+    }
+  }
+  $("body").addEventListener("click", function(e){
+    var b = e.target.closest("button[data-reps]");
+    if(!b) return;
+    S.sel = { reps: parseInt(b.dataset.reps,10), rpe: parseFloat(b.dataset.rpe) };
+    var tds = $("body").querySelectorAll("td.c");
+    for(var i=0;i<tds.length;i++) tds[i].classList.remove("sel");
+    b.parentNode.classList.add("sel");
+    renderReadout();
+  });
+
+  function prescription(){
+    var s = S.sel;
+    var w = load(S.lift, s.reps, s.rpe);
+    var p = pct(S.lift, s.reps, s.rpe, S.model);
+    return {
+      text: LIFT_SHORT[S.lift] + " — " + s.reps + " @ RPE " + s.rpe + " — " + fmt(w) + " " + S.unit,
+      w: w, p: p
+    };
+  }
+  function renderReadout(){
+    var box = $("readout");
+    if(!S.sel || !S.max){ box.hidden = true; return; }
+    box.hidden = false;
+    var s = S.sel, d = prescription();
+    var rir = 10 - s.rpe;
+    $("rx").innerHTML = LIFT_SHORT[S.lift] + " &nbsp;·&nbsp; " + s.reps + " reps @ RPE " + s.rpe +
+                        " &nbsp;·&nbsp; <b>" + fmt(d.w) + " " + S.unit + "</b>";
+    $("rxmeta").textContent = fmtPct(d.p) + " of 1RM · " + (rir === 0 ? "taken to failure" : rir + " rep" + (rir === 1 ? "" : "s") + " in reserve") +
+                              " · " + fmt(d.w * s.reps) + " " + S.unit + " total volume · exact " + fmt(S.max * d.p / 100) + " " + S.unit;
+  }
+  $("copy").addEventListener("click", function(){
+    if(!S.sel) return;
+    var txt = prescription().text, btn = this;
+    var done = function(){ btn.textContent = "Copied"; setTimeout(function(){ btn.textContent = "Copy prescription"; }, 1400); };
+    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, done);
+    else done();
+  });
+
+  /* ---------- tiles ---------- */
+  function renderTiles(){
+    var u = " " + S.unit;
+    $("t1").textContent = fmt(load(S.lift,1,9)) + u;
+    $("t2").textContent = fmt(load(S.lift,3,8)) + u;
+    $("t2p").textContent = fmtPct(pct(S.lift,3,8,S.model)) + " of 1RM";
+    $("t3").textContent = fmt(load(S.lift,5,7)) + u;
+    $("t3p").textContent = fmtPct(pct(S.lift,5,7,S.model)) + " of 1RM";
+    var k = S.model === "classic" ? 1 : K[S.lift];
+    $("t4").textContent = "×" + k.toFixed(2);
+    var cls = k >= 1.06 ? "steep" : (k <= 0.97 ? "shallow" : "mid");
+    var word = k >= 1.06 ? "steepest" : (k <= 0.97 ? "shallowest" : "baseline");
+    $("t4n").innerHTML = S.model === "classic"
+      ? 'one generic curve'
+      : '<span class="chip ' + cls + '">' + word + '</span>';
+  }
+
+  /* ---------- curve plot ---------- */
+  var PLOT_LIFTS = [
+    {k:"squat", dash:"", cvar:"--c-squat"},
+    {k:"bench", dash:"6 4", cvar:"--c-bench"},
+    {k:"dead",  dash:"2 4", cvar:"--c-dead"}
+  ];
+  function cssv(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function drawPlot(){
+    var svg = $("plot");
+    var W = 520, H = 252, L = 42, R = 18, T = 14, B = 46;
+    var yLo = 60, yHi = 101;
+    var x = function(r){ return L + (r - 1) / 11 * (W - L - R); };
+    var y = function(p){ return T + (yHi - p) / (yHi - yLo) * (H - T - B); };
+    var line = cssv("--line"), ink3 = cssv("--ink-3"), ink2 = cssv("--ink-2");
+    var out = "";
+    for(var g = 60; g <= 100; g += 10){
+      out += '<line x1="' + L + '" y1="' + y(g).toFixed(1) + '" x2="' + (W-R) + '" y2="' + y(g).toFixed(1) +
+             '" stroke="' + line + '" stroke-width="1"/>' +
+             '<text x="' + (L-8) + '" y="' + (y(g)+3.5).toFixed(1) + '" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="' + ink3 + '">' + g + '%</text>';
+    }
+    for(var r = 1; r <= 12; r++){
+      if(r === 1 || r % 2 === 1 || r === 12)
+        out += '<text x="' + x(r).toFixed(1) + '" y="' + (H-26) + '" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="' + ink3 + '">' + r + '</text>';
+    }
+    for(var i=0;i<PLOT_LIFTS.length;i++){
+      var Lf = PLOT_LIFTS[i];
+      var col = cssv(Lf.cvar);
+      var active = (Lf.k === S.lift);
+      var d = "";
+      for(var rr = 1; rr <= 12; rr++){
+        var p = 100 - (100 - baseAt(rr)) * K[Lf.k];
+        d += (rr === 1 ? "M" : "L") + x(rr).toFixed(1) + " " + y(p).toFixed(1) + " ";
+      }
+      out += '<path d="' + d.trim() + '" fill="none" stroke="' + col + '" stroke-width="' + (active ? 2.6 : 1.6) +
+             '" stroke-dasharray="' + Lf.dash + '" opacity="' + (active ? 1 : 0.55) + '" stroke-linejoin="round"/>';
+      var pEnd = 100 - (100 - baseAt(12)) * K[Lf.k];
+      out += '<circle cx="' + x(12).toFixed(1) + '" cy="' + y(pEnd).toFixed(1) + '" r="' + (active ? 3.6 : 2.6) +
+             '" fill="' + col + '" opacity="' + (active ? 1 : 0.55) + '"/>';
+    }
+    out += '<text x="' + ((L + W - R)/2) + '" y="' + (H - 6) + '" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9" letter-spacing="1.4" fill="' + ink2 + '">REPS TO FAILURE</text>';
+    svg.innerHTML = out;
+
+    var lg = "";
+    for(var j=0;j<PLOT_LIFTS.length;j++){
+      var Lj = PLOT_LIFTS[j];
+      var end12 = 100 - (100 - baseAt(12)) * K[Lj.k];
+      var on = (Lj.k === S.lift);
+      lg += '<span style="opacity:' + (on ? 1 : .62) + '; font-weight:' + (on ? 600 : 400) + '">' +
+            '<i style="border-top-color:' + cssv(Lj.cvar) + '; border-top-style:' + (Lj.dash ? "dashed" : "solid") + '"></i>' +
+            LIFT_SHORT[Lj.k] + ' &times;' + K[Lj.k].toFixed(2) + ' &middot; ' + end12.toFixed(0) + '% at 12</span>';
+    }
+    $("legend").innerHTML = lg;
+  }
+
+  /* ---------- calibration ---------- */
+  var calib = $("calib");
+  calib.addEventListener("input", function(){
+    K[S.lift] = parseFloat(this.value);
+    store.set("bl.k." + S.lift, this.value);
+    $("calibout").textContent = parseFloat(this.value).toFixed(2);
+    renderAll();
+  });
+  $("calibreset").addEventListener("click", function(){
+    K[S.lift] = DEFAULT_K[S.lift];
+    store.set("bl.k." + S.lift, DEFAULT_K[S.lift]);
+    renderAll();
+  });
+  function renderCalib(){
+    calib.value = K[S.lift];
+    $("calibout").textContent = K[S.lift].toFixed(2);
+    $("calibname").textContent = LIFT_SHORT[S.lift].toLowerCase();
+    calib.disabled = (S.model === "classic");
+    calib.parentNode.style.opacity = (S.model === "classic") ? .45 : 1;
+  }
+
+  /* ---------- reverse calculator ---------- */
+  function fillRpe(sel, def){
+    var html = "";
+    for(var i=0;i<RPES.length;i++){
+      var v = RPES[i];
+      html += '<option value="' + v + '"' + (v === def ? " selected" : "") + '>' + v.toFixed(1).replace(/\.0$/,"") + '</option>';
+    }
+    sel.innerHTML = html;
+  }
+  fillRpe($("rpe"), 8);
+  fillRpe($("frpe"), 8);
+
+  function renderReverse(){
+    var w = parseFloat($("rw").value), r = parseInt($("rr").value,10), rp = parseFloat($("rpe").value);
+    if(!(w > 0) || !(r >= 1 && r <= 12)){ $("e1rm").innerHTML = '&mdash;<u id="e1rmu">' + S.unit + '</u>'; $("e1rmd").textContent = "Enter a weight and a rep count from 1 to 12."; return; }
+    var p = pct(S.lift, r, rp, S.model);
+    var e = w / (p / 100);
+    $("e1rm").innerHTML = fmt(Math.round(e * 2) / 2) + '<u id="e1rmu">' + S.unit + '</u>';
+    var diff = S.max ? (e - S.max) : 0;
+    var sign = diff >= 0 ? "+" : "−";
+    $("e1rmd").textContent = LIFT_SHORT[S.lift] + " · that set is " + fmtPct(p) + " of max" +
+      (S.max ? " · " + sign + fmt(Math.abs(Math.round(diff * 2) / 2)) + " " + S.unit + " vs the " + fmt(S.max) + " " + S.unit + " above" : "");
+  }
+  ["rw","rr","rpe"].forEach(function(id){ $(id).addEventListener("input", renderReverse); });
+  $("usemax").addEventListener("click", function(){
+    var w = parseFloat($("rw").value), r = parseInt($("rr").value,10), rp = parseFloat($("rpe").value);
+    if(!(w > 0) || !(r >= 1 && r <= 12)) return;
+    var e = w / (pct(S.lift, r, rp, S.model) / 100);
+    $("max").value = fmt(Math.round(e * 2) / 2);
+    readMax(); renderAll();
+    var btn = this; btn.textContent = "Updated"; setTimeout(function(){ btn.textContent = "Use as my 1RM"; }, 1400);
+  });
+
+  /* ---------- top-set finder ---------- */
+  function renderFinder(){
+    var rp = parseFloat($("frpe").value);
+    var a = parseInt($("fmin").value,10), b = parseInt($("fmax").value,10);
+    if(!(a >= 1)) a = 1; if(!(b >= 1)) b = 1;
+    a = Math.min(Math.max(a,1),12); b = Math.min(Math.max(b,1),12);
+    var lo = Math.min(a,b), hi = Math.max(a,b), rows = "";
+    for(var r = lo; r <= hi; r++){
+      var p = pct(S.lift, r, rp, S.model), w = load(S.lift, r, rp);
+      rows += '<tr><td>' + r + ' @ ' + rp + '</td><td class="wt">' + fmt(w) + ' ' + S.unit +
+              '</td><td class="pc">' + p.toFixed(1) + '%</td><td class="pc">' + fmt(w * r) + ' ' + S.unit + '</td></tr>';
+    }
+    $("fbody").innerHTML = rows || '<tr><td colspan="4" class="pc">No reps in that range.</td></tr>';
+  }
+  ["frpe","fmin","fmax"].forEach(function(id){ $(id).addEventListener("input", renderFinder); });
+
+  /* ---------- render ---------- */
+  function renderAll(){
+    $("chart-title").innerHTML = LIFT_NAME[S.lift] + " &mdash; RPE load chart";
+    $("chart-note").textContent = S.model === "classic" ? "Classic RTS curve · one table for all lifts" : "Lift-specific curve · ×" + K[S.lift].toFixed(2) + " drop-off";
+    buildChart(); renderTiles(); renderCalib(); renderReverse(); renderFinder(); drawPlot(); renderReadout();
+  }
+
+  readMax();
+  var us = document.querySelectorAll(".seg.units button");
+  for(var i=0;i<us.length;i++) us[i].setAttribute("aria-pressed", us[i].getAttribute("data-unit") === S.unit ? "true" : "false");
+  if(S.unit === "lb"){ $("max").value = "400"; $("rw").value = "320"; readMax(); }
+  applyTheme();
+  renderAll();
+})();
+</script>
+
+<!-- ============================================================
+     Spotter embed shim.
+     Only active when this page is loaded inside the Spotter app
+     (?embed=1). Opened directly, the file behaves exactly as the
+     standalone tool it was written as — nothing below runs.
+     Kept deliberately separate from the tool's own logic above.
+     ============================================================ -->
+<style id="embedStyles"></style>
+<script>
+(function () {
+  "use strict";
+  var params = new URLSearchParams(location.search);
+  if (params.get("embed") !== "1") return;   // standalone: leave everything alone
+
+  document.documentElement.setAttribute("data-embedded", "1");
+
+  // Drop the standalone masthead + its own theme switcher (the host app owns
+  // the theme and already shows a title), and tighten the outer padding so the
+  // tool sits flush inside the app's content column.
+  document.getElementById("embedStyles").textContent =
+    '.mast{display:none !important}' +
+    '.wrap{max-width:none;padding:0 0 32px}' +
+    'body{background:transparent}';
+
+  // Follow the host's theme. The host posts {type:"spotter-theme"} on load and
+  // on every toggle; we mirror it onto <html data-theme> which the tool's own
+  // CSS already keys off, then let it redraw its SVG plot at the new colours.
+  function applyHostTheme(theme) {
+    if (theme !== "dark" && theme !== "light") return;
+    document.documentElement.setAttribute("data-theme", theme);
+    // Nudge the tool to repaint the canvas-drawn plot for the new palette.
+    window.dispatchEvent(new Event("resize"));
+  }
+  window.addEventListener("message", function (e) {
+    var d = e.data;
+    if (d && d.type === "spotter-theme") applyHostTheme(d.theme);
+  });
+  // Honour the theme passed in the initial URL so there's no flash of the
+  // wrong palette before the first postMessage lands.
+  applyHostTheme(params.get("theme"));
+  // Tell the host we're ready, in case it loaded before this listener existed.
+  try { parent.postMessage({ type: "spotter-rpe-ready" }, "*"); } catch (e) {}
+})();
+</script>
+
+</body>
+</html>

@@ -403,6 +403,11 @@
   .timer-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
   .timer-custom { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px; font-size: 13px; color: var(--muted); }
   .timer-custom .tool-input { width: 84px; text-align: center; padding: 8px 10px; }
+  .timer-silent { display: flex; align-items: flex-start; justify-content: center; gap: 9px;
+    margin-top: 16px; font-size: 12.5px; line-height: 1.45; color: var(--muted);
+    max-width: 380px; margin-left: auto; margin-right: auto; cursor: pointer; }
+  .timer-silent input { flex: none; margin-top: 2px; accent-color: var(--pine); }
+  .timer-silent em { font-style: normal; color: var(--faint); }
 
   /* ---------- Day management ---------- */
   .dm-sec { margin-top: 24px; }
@@ -977,7 +982,7 @@
     </div>
 
     <div id="toolsPaneTimer" class="hidden" role="tabpanel" aria-label="Rest timer">
-      <p class="tool-pane-hd">Set a rest period between sets. It keeps running even if you close this — you'll get a toast (and a beep, if your sound's on) when it's done.</p>
+      <p class="tool-pane-hd">Set a rest period between sets. It keeps running even if you close this &mdash; you'll get a toast and a chime when it's done, plus a vibration on Android (iOS has no vibration API). Use <strong>Test alert</strong> to check your phone actually makes a noise.</p>
       <div class="timer-display" id="timerDisplay">01:30</div>
       <div class="timer-presets" id="timerPresets"></div>
       <div class="timer-custom">
@@ -989,7 +994,12 @@
         <button class="btn-solid" id="timerStartBtn" type="button">Start</button>
         <button class="btn-ghost" id="timerPauseBtn" type="button">Pause</button>
         <button class="btn-ghost" id="timerResetBtn" type="button">Reset</button>
+        <button class="btn-ghost" id="timerTestBtn" type="button">Test alert</button>
       </div>
+      <label class="timer-silent">
+        <input type="checkbox" id="timerSilentChk" checked />
+        <span>Try to alert even when the phone is on silent <em>&mdash; may briefly duck your music</em></span>
+      </label>
     </div>
   </div>
 </div>
@@ -1074,6 +1084,9 @@
   var timerRemainingMs = null; // frozen remaining ms while paused/reset (null = full duration, not started)
   var timerTickHandle = null;  // the persistent setInterval id (runs for the whole session)
   var TIMER_PRESETS = [60, 90, 120, 180, 300];
+  // When true, push harder to be heard through an iPhone's Ring/Silent switch, at
+  // the cost of briefly interrupting other audio (see applyAudioSession).
+  var alertOnSilent = true;
 
   var BASELINE_SCORES = { a: 1.5, b: 5.5, c: 3.5 };
   var BASELINE_OPTS = [
@@ -4374,7 +4387,7 @@
 
   function saveToolsPrefs() {
     var bar = parseFloat($("plateBar").value);
-    safeWrite(STORE_TOOLS, { barWeight: isNaN(bar) ? 20 : bar, collar: plateCollarMode, timerDuration: timerDuration });
+    safeWrite(STORE_TOOLS, { barWeight: isNaN(bar) ? 20 : bar, collar: plateCollarMode, timerDuration: timerDuration, alertOnSilent: alertOnSilent });
   }
 
   function renderPlateCalc() {
@@ -4435,7 +4448,8 @@
   // Runs off a target end-timestamp (not a decrementing counter) so it stays
   // correct across background-tab throttling; a persistent tick just re-reads
   // Date.now() and re-renders. Keeps ticking even while the modal is closed —
-  // finishing fires a toast + beep + vibration regardless of what's on screen.
+  // finishing fires a toast + chime regardless of what's on screen, plus a
+  // vibration on platforms that have the Vibration API (Android, not iOS).
   function formatMMSS(ms) {
     var s = Math.max(0, Math.ceil(ms / 1000));
     var m = Math.floor(s / 60), r = s % 60;
@@ -4455,11 +4469,55 @@
   // timer-related (a real gesture), then reuse that same context later when the
   // countdown finishes, even though that call itself comes from a timer.
   var audioCtx = null;
+  var silentEl = null;        // keeps the iOS audio session in "media" mode — see below
+
+  // ── Getting a sound out of an iPhone that's on silent ──
+  // On iOS the Ring/Silent switch mutes Web Audio but NOT <audio> elements. Since
+  // a phone at the gym is usually on silent, the chime would just never be heard.
+  // Two layers, because coverage differs by iOS version:
+  //   1. AudioSession API (Safari-only, which is exactly our target): declaring a
+  //      session type lets audio through the mute switch. "playback" is documented
+  //      to keep playing while muted, but it's an *exclusive* type that pauses
+  //      other playback on the device — i.e. it would stop your gym music. So the
+  //      default here is "transient-solo", which ducks/pauses other audio only for
+  //      the length of the chime and then lets it resume. Set alertOnSilent to use
+  //      the more forceful "playback" if transient-solo turns out not to punch
+  //      through on your iOS version.
+  //   2. The silent-<audio> trick, for iOS versions without AudioSession: playing a
+  //      near-silent looping clip through an <audio> element nudges iOS into
+  //      treating the page as media playback, which unmutes Web Audio as a side
+  //      effect. Harmless where it isn't needed.
+  // Neither is a vibration, and neither is guaranteed forever — Apple has changed
+  // this behaviour repeatedly. Use the "Test alert" button to check on the device.
+  function applyAudioSession() {
+    try {
+      if ("audioSession" in navigator && navigator.audioSession) {
+        navigator.audioSession.type = alertOnSilent ? "playback" : "transient-solo";
+      }
+    } catch (e) {}
+  }
+  function primeSilentLoop() {
+    if (!alertOnSilent || silentEl) return;
+    try {
+      silentEl = document.createElement("audio");
+      silentEl.loop = true;
+      silentEl.preload = "auto";
+      silentEl.setAttribute("playsinline", "");
+      silentEl.setAttribute("x-webkit-airplay", "deny");
+      silentEl.volume = 0.001;   // effectively inaudible, but not "no audio" to iOS
+      // Tiny silent WAV, inline so there's no extra file to deploy or cache.
+      silentEl.src = "data:audio/wav;base64,UklGRmQGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YUAGAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA";
+      var pr = silentEl.play();
+      if (pr && pr.catch) pr.catch(function () {});   // blocked without a gesture; fine
+    } catch (e) { silentEl = null; }
+  }
   function unlockAudio() {
     if (!audioCtx) {
       var Ctx = window.AudioContext || window.webkitAudioContext;
       if (Ctx) { try { audioCtx = new Ctx(); } catch (e) {} }
     }
+    applyAudioSession();
+    primeSilentLoop();
     if (audioCtx && audioCtx.state === "suspended") { try { audioCtx.resume(); } catch (e) {} }
   }
   function timerSetDuration(sec) {
@@ -4486,27 +4544,59 @@
     timerEndAt = null; timerRemainingMs = null;
     renderRestTimer();
   }
-  function timerFinish() {
-    toast("Rest's up \u2014 back to it.");
+  // Three chimes, half a second apart — easy to notice over gym noise.
+  function playChime() {
     try {
-      unlockAudio();   // last-ditch attempt if nothing unlocked it earlier (may not audibly work without a prior gesture, but doesn't hurt)
-      if (audioCtx) {
-        var reps = 3, gap = 0.5;   // three chimes, half a second apart — easy to notice over gym noise
-        for (var r = 0; r < reps; r++) {
-          [880, 1046.5].forEach(function (freq, i) {
-            var o = audioCtx.createOscillator(), g = audioCtx.createGain();
-            o.type = "sine"; o.frequency.value = freq;
-            var t0 = audioCtx.currentTime + r * gap + i * 0.14;
-            g.gain.setValueAtTime(0.0001, t0);
-            g.gain.exponentialRampToValueAtTime(0.32, t0 + 0.02);
-            g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.13);
-            o.connect(g); g.connect(audioCtx.destination);
-            o.start(t0); o.stop(t0 + 0.14);
-          });
-        }
+      unlockAudio();   // last-ditch attempt if nothing unlocked it earlier
+      if (!audioCtx) return;
+      var reps = 3, gap = 0.5;
+      for (var r = 0; r < reps; r++) {
+        [880, 1046.5].forEach(function (freq, i) {
+          var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+          o.type = "sine"; o.frequency.value = freq;
+          var t0 = audioCtx.currentTime + r * gap + i * 0.14;
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(0.32, t0 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.13);
+          o.connect(g); g.connect(audioCtx.destination);
+          o.start(t0); o.stop(t0 + 0.14);
+        });
       }
     } catch (e) {}
-    if (navigator.vibrate) { try { navigator.vibrate([160, 90, 160, 90, 160]); } catch (e) {} }
+  }
+
+  // Vibrate, where the platform allows it.
+  //
+  // Android Chrome: works. iPhone: does nothing, and can't be made to.
+  // Safari on iOS has never implemented the Vibration API, so navigator.vibrate
+  // is undefined and this is a no-op there. The known polyfills fake haptics by
+  // programmatically flipping a hidden <input type="checkbox" switch>, but since
+  // iOS 18.4 that requires a real click and the permission expires about a second
+  // later — and a rest timer fires minutes after the last tap, so there's never a
+  // valid grant. The chime above is the alert that actually works on iPhone.
+  function buzz() {
+    if (!navigator.vibrate) return false;
+    try { return navigator.vibrate([160, 90, 160, 90, 160]) !== false; }
+    catch (e) { return false; }
+  }
+
+  function timerFinish() {
+    toast("Rest's up \u2014 back to it.");
+    playChime();
+    buzz();
+  }
+
+  // Fires the same alert on demand. Worth having as a button: the real behaviour
+  // depends on the device, the iOS version and the position of the mute switch,
+  // none of which can be feature-detected — so the only way to know whether your
+  // phone actually alerts you is to hear it, without waiting out a 90s rest.
+  function timerTestAlert() {
+    unlockAudio();
+    playChime();
+    var buzzed = buzz();
+    toast(buzzed
+      ? "Test alert \u2014 chime + vibration."
+      : "Test alert \u2014 chime only (iOS has no vibration API).");
   }
   function timerTick() {
     if (timerEndAt != null && timerEndAt - Date.now() <= 0) {
@@ -4926,6 +5016,8 @@
     $("plateBar").value = (toolsPrefs && toolsPrefs.barWeight) ? toolsPrefs.barWeight : 20;
     if (toolsPrefs && (toolsPrefs.collar === "calibrated" || toolsPrefs.collar === "clips")) plateCollarMode = toolsPrefs.collar;
     if (toolsPrefs && toolsPrefs.timerDuration) timerDuration = toolsPrefs.timerDuration;
+    if (toolsPrefs && typeof toolsPrefs.alertOnSilent === "boolean") alertOnSilent = toolsPrefs.alertOnSilent;
+    if ($("timerSilentChk")) $("timerSilentChk").checked = alertOnSilent;
     syncCollarSegUI();
     renderPlateCalc();
     renderRestTimer();
@@ -5076,6 +5168,18 @@
     $("timerStartBtn").onclick = timerStart;
     $("timerPauseBtn").onclick = timerPause;
     $("timerResetBtn").onclick = timerReset;
+    $("timerTestBtn").onclick = timerTestAlert;
+    $("timerSilentChk").onchange = function () {
+      alertOnSilent = this.checked;
+      saveToolsPrefs();
+      // Re-declare the session type straight away — this handler is a real user
+      // gesture, which is the only context where iOS reliably accepts the change.
+      unlockAudio();
+      if (!alertOnSilent && silentEl) {
+        try { silentEl.pause(); } catch (e) {}
+        silentEl = null;
+      }
+    };
     $("timerCustomBtn").onclick = function () {
       var v = parseInt($("timerCustomInput").value, 10);
       if (!v || v <= 0) { toast("Enter a number of seconds."); return; }

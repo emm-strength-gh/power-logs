@@ -1,0 +1,33 @@
+{
+  "name": "EmmStrength Spotter",
+  "short_name": "Spotter",
+  "description": "Training log and session tracker: load a program CSV, tick sets off, add notes and custom work, and export progress as JSON or CSV.",
+  "start_url": "./power-logs.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#f1f3ee",
+  "theme_color": "#f1f3ee",
+  "categories": ["fitness", "health", "productivity"],
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

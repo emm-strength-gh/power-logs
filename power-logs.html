@@ -375,6 +375,8 @@
   .pin-input:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(46,90,78,.12); }
   .pin-err { color: var(--clay); font-size: 13px; font-weight: 600; margin: 10px 0 0; display: none; }
   .pin-err.show { display: block; }
+  .dm-efield-err { color: var(--clay); font-size: 12.5px; font-weight: 600; margin: 6px 0 0; display: none; line-height: 1.45; }
+  .dm-efield-err.show { display: block; }
 
   /* ---------- Gym tools (plate calculator + rest timer) ---------- */
   .modal-lg { max-width: 620px; }
@@ -3045,9 +3047,19 @@
 
     var wField = field("Weight (kg)");
     var inW = el("input", "dm-einput"); inW.type = "text"; inW.setAttribute("inputmode", "decimal");
-    inW.autocomplete = "off"; inW.placeholder = "e.g. 147.5 or BW"; inW.value = row.weight || "";
-    inW.addEventListener("input", function () { inW.value = sanitizeWeightValue(inW.value); });
-    wField.appendChild(inW); body.appendChild(wField);
+    inW.autocomplete = "off"; inW.placeholder = "e.g. 147.5 or BW";
+    // Imported programs can carry free-form weights ("BW+20", "100/105", "~100").
+    // Those don't pass normalizeWeight, so if we validated them on every save the
+    // dialog could never be closed via Save — you'd be unable to edit that row's
+    // notes at all. Remember the original and only validate if it's actually edited.
+    var origWeight = row.weight || "";
+    inW.value = origWeight;
+    var wErr = el("p", "dm-efield-err");
+    inW.addEventListener("input", function () {
+      inW.value = sanitizeWeightValue(inW.value);
+      wErr.classList.remove("show");
+    });
+    wField.appendChild(inW); wField.appendChild(wErr); body.appendChild(wField);
 
     var srr = el("div", "dm-selrow");
     function textField(label, val) {
@@ -3068,8 +3080,19 @@
     var downSelf = false;
     function done() { scrim.classList.remove("show"); save.onclick = cancel.onclick = x.onclick = scrim.onclick = scrim.onpointerdown = null; }
     save.onclick = function () {
-      var w = normalizeWeight(inW.value);
-      if (w === null) { inW.focus(); toast("Weight must be a number or BW."); return; }
+      var w;
+      if (inW.value === origWeight) {
+        w = origWeight;                     // untouched — keep whatever the program already had
+      } else {
+        w = normalizeWeight(inW.value);
+        if (w === null) {
+          wErr.textContent = "Use a number like 147.5, or BW. Clear the field to leave it blank.";
+          wErr.classList.add("show");
+          inW.focus();
+          toast("Weight must be a number or BW.");
+          return;
+        }
+      }
       var before = { weight: row.weight || "", sets: row.sets || "", reps: row.reps || "", rpe: row.rpe || "", notes: row.notes || "" };
       var after = { weight: w, sets: inS.value.trim(), reps: inR.value.trim(), rpe: inRpe.value.trim(), notes: inN.value.trim() };
       var changed = before.weight !== after.weight || before.sets !== after.sets || before.reps !== after.reps || before.rpe !== after.rpe || before.notes !== after.notes;

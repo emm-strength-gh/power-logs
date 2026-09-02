@@ -327,6 +327,12 @@
   html[data-theme="dark"] .add-area { background: var(--bg); }
   .add-area::placeholder { color: var(--faint); }
   .add-area:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(46,90,78,.12); }
+  .add-area.one-line { min-height: 0; resize: none; }
+  .lift-presets { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; margin: 9px 0 2px; }
+  .lift-presets .cap { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin-right: 2px; }
+  .lift-chip { font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 999px; color: var(--muted); background: transparent; border: 1px solid var(--border-strong); }
+  .lift-chip:hover { color: var(--pine); border-color: var(--pine); }
+  .lift-chip.on { color: #fff; background: var(--pine); border-color: var(--pine); }
   .add-row { display: flex; align-items: center; gap: 12px; margin-top: 11px; flex-wrap: wrap; }
   .add-field { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
   .add-field label { font-weight: 600; }
@@ -422,10 +428,54 @@
   .dm-export { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 14px; }
   .dm-export-hint { font-size: 12px; color: var(--faint); flex: 1 1 200px; }
   .dm-sec-cap { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); margin: 0 0 12px; }
+  /* Collapsible section header */
+  .dm-collapse { display: flex; align-items: center; gap: 8px; width: 100%; background: transparent; padding: 4px 2px; margin: 0 0 12px; text-align: left; }
+  .dm-collapse .dm-sec-cap { margin: 0; transition: color .15s ease; }
+  .dm-collapse:hover .dm-sec-cap { color: var(--pine); }
+  .dm-collapse-caret { display: grid; place-items: center; flex: none; width: 16px; height: 16px; color: var(--faint); transition: transform .18s ease, color .15s ease; }
+  .dm-collapse-caret svg { width: 14px; height: 14px; }
+  .dm-collapse:hover .dm-collapse-caret { color: var(--pine); }
+  .dm-collapse.open .dm-collapse-caret { transform: rotate(90deg); }
   .dm-cap-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
   .dm-cap-row .dm-sec-cap { margin-bottom: 0; }
   .dm-undo-btn { flex: none; }
   .dm-undo-btn:disabled { opacity: .45; cursor: default; }
+  /* Side-by-side review of the current day vs an imported donor day */
+  .dm-compare { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: stretch; }
+  .dm-compare.two { grid-template-columns: 1fr; }
+  .dm-cmp-col { min-width: 0; display: flex; flex-direction: column; }
+  .dm-cmp-col > .panel { flex: 1; padding: 6px 14px; }
+  .dm-cmp-col .dm-selrow { margin-bottom: 12px; }
+  /* Header: tag + day on one line, program name beneath, so both columns are
+     the same height whatever the name length. */
+  .dm-cmp-hd { margin: 0 0 10px; padding-bottom: 9px; border-bottom: 1px solid var(--border); }
+  .dm-cmp-hd-top { display: flex; align-items: center; gap: 9px; }
+  .dm-cmp-tag { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; flex: none; }
+  .dm-cmp-col.is-current .dm-cmp-tag { background: rgba(46,90,78,.12); color: var(--pine); }
+  .dm-cmp-col.is-donor .dm-cmp-tag { background: rgba(176,124,18,.14); color: var(--gold); }
+  .dm-cmp-where { font-family: "Bricolage Grotesque", sans-serif; font-size: 15px; font-weight: 700; color: var(--ink); }
+  .dm-cmp-who { font-size: 12px; color: var(--faint); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dm-cmp-note { font-size: 12px; color: var(--faint); margin: 12px 0 0; }
+  /* Per-column action row, sitting directly under each preview */
+  .dm-cmp-actions { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .dm-cmp-actions .dm-delrow { margin: 0; }
+  .dm-cmp-actions .dm-actions { gap: 8px; }
+  .btn-solid.sm { padding: 9px 16px; font-size: 13.5px; }
+  /* Match row geometry across the two columns. The editable side carries a drag
+     grip (26px) and two 34px action buttons plus flex gaps; the read-only side
+     reserves exactly that much padding so titles wrap at the same width and the
+     rows line up one-for-one instead of drifting apart. */
+  .dm-compare .dm-row { min-height: 56px; box-sizing: border-box; align-items: center; }
+  .dm-preview.is-readonly .dm-row { padding-left: 38px; padding-right: 92px; }
+  @media (min-width: 900px) {
+    .dm-compare.two { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 899px) {
+    /* Stacked: no second column to align with, so drop the reserved gutters. */
+    .dm-preview.is-readonly .dm-row { padding-left: 2px; padding-right: 2px; }
+  }
+  /* Day-management actions, below the comparison */
+  .dm-day-actions { margin-top: 16px; }
   .dm-selrow { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
   .dm-field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 130px; }
   .dm-field > label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
@@ -742,7 +792,8 @@
         <div class="panel"><div id="wkList"></div></div>
         <div class="panel addbox">
           <div class="addbox-head">Add an item</div>
-          <textarea id="wkAddText" class="add-area" placeholder="e.g. Leg press 3x4" rows="2"></textarea>
+          <input id="wkAddText" class="add-area one-line" type="text" autocomplete="off" list="liftOptions" placeholder="e.g. Leg press 3x4" aria-label="Item name" />
+          <div id="wkAddPresets"></div>
           <div class="add-row">
             <span class="add-field">
               <label for="wkAddDay">Day</label>
@@ -1006,6 +1057,12 @@
   </div>
 </div>
 
+<datalist id="liftOptions">
+  <option value="Squat"></option>
+  <option value="Bench"></option>
+  <option value="Deadlift"></option>
+</datalist>
+
 <div id="toast"><span id="toastMsg"></span><button id="toastUndoBtn" class="toast-undo-btn hidden" type="button">Undo</button></div>
 
 <script>
@@ -1021,6 +1078,7 @@
   var STORE_THEME    = "spotter.theme";
   var STORE_LAST     = "spotter.lastLifter";
   var STORE_TOOLS    = "spotter.tools.v1";
+  var STORE_ADDOPEN  = "spotter.dmAddOpen.v1";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -1039,6 +1097,9 @@
   var dmSel = { tw: null, td: null, dw: null, dd: null }; // day-mgr selections: target week/day, donor week/day
   var rowUid = 0;           // monotonic counter for unique rids on grafted/merged rows
   var dmUnlocked = false;   // has the Manage-days PIN been entered this session?
+  // Whether the "Add an exercise" panel is expanded. Collapsed by default so the
+  // day comparison sits closer to the top; remembered across sessions.
+  var dmAddOpen = false;
 
   // Multi-step undo for the "Current program" section — delete row/day/week and
   // text edits push here (up to 5 deep); drag-to-reorder deliberately never does.
@@ -1804,6 +1865,39 @@
   // ---- Sets / reps: whole numbers only ----
   // Strips anything that isn't a digit as you type, so a decimal point or a
   // stray letter simply never lands in the field.
+  // ---- The three competition lifts, offered as one-tap presets ----
+  // Free text is still the norm (accessories, variations), so these are shortcuts
+  // rather than a fixed list. Spelled to match classifyLift, so picking one always
+  // colours the row and feeds the per-lift analytics correctly.
+  var LIFT_PRESETS = ["Squat", "Bench", "Deadlift"];
+  // Builds a row of preset chips wired to a text field. Tapping a chip fills the
+  // field (or clears it again if that preset is already showing), and the chips
+  // highlight to match whatever's typed, however it was typed.
+  function liftPresetRow(input, onChange) {
+    var row = el("div", "lift-presets");
+    row.appendChild(el("span", "cap", "Quick pick"));
+    var chips = LIFT_PRESETS.map(function (name) {
+      var c = el("button", "lift-chip", name);
+      c.type = "button";
+      c.onclick = function () {
+        var same = input.value.trim().toLowerCase() === name.toLowerCase();
+        input.value = same ? "" : name;     // tap again to undo the pick
+        sync();
+        if (onChange) onChange();
+        input.focus();
+      };
+      row.appendChild(c);
+      return { el: c, name: name };
+    });
+    function sync() {
+      var v = input.value.trim().toLowerCase();
+      chips.forEach(function (c) { c.el.classList.toggle("on", v === c.name.toLowerCase()); });
+    }
+    input.addEventListener("input", sync);
+    sync();
+    return row;
+  }
+
   function sanitizeIntValue(v) { return (v || "").replace(/[^0-9]/g, ""); }
   function normalizeInt(v) {
     v = (v || "").trim();
@@ -1856,6 +1950,9 @@
     var notes = isRest ? "" : $("wkAddNotes").value.trim();
     addCustom(p.name, currentWeek, day, text, weight, sets, reps, rpe, notes);
     $("wkAddText").value = "";
+    // Clearing a value in code doesn't fire 'input', so nudge the listeners that
+    // track this field (rest-day state and the quick-pick chip highlight).
+    $("wkAddText").dispatchEvent(new Event("input"));
     $("wkAddNotes").value = "";
     $("wkAddWeight").value = "";
     $("wkAddSets").value = "";
@@ -2255,6 +2352,11 @@
     var g = dayGroup(p, tWeek, tDay); if (!g) return false;
     var row = null; g.rows.forEach(function (r) { if (r.rid === rid) row = r; });
     if (!row) return false;
+    // Only rename when a name is actually supplied — other callers pass just the
+    // numeric fields and must not blank out the exercise.
+    if (typeof fields.exercise === "string" && fields.exercise.trim() !== "") {
+      row.exercise = fields.exercise.trim();
+    }
     row.weight = fields.weight || "";
     row.sets = fields.sets || "";
     row.reps = fields.reps || "";
@@ -2647,13 +2749,18 @@
     undoBtn.onclick = function () { dmUndoStep(); };
     capRow.appendChild(undoBtn);
     secT.appendChild(capRow);
+    // The Week/Day pickers now live inside the left comparison column (built
+    // below) so both columns share the same header → selects → panel structure
+    // and their previews start at the same height.
     var rowT = el("div", "dm-selrow");
     rowT.appendChild(labeledSelect("Week", weeks.map(function (w) { return { label: "Week " + w, value: w }; }),
       dmSel.tw, function (v) { dmSel.tw = v; dmSel.td = null; renderDayMgr(); }));
     rowT.appendChild(labeledSelect("Day", tdays.map(function (d) { return { label: "Day " + d, value: d }; }),
       dmSel.td, function (v) { dmSel.td = v; renderDayMgr(); }));
-    secT.appendChild(rowT);
 
+    // Day-management actions; appended after the comparison grid so the two
+    // preview columns line up flush at the top.
+    var dayActions = el("div", "dm-day-actions");
     // Add-an-empty-day control (only meaningful when the program has a week)
     if (weeks.length) {
       var addWrap = el("div", "dm-addday");
@@ -2678,7 +2785,7 @@
         }
       };
       addWrap.appendChild(addBtn);
-      secT.appendChild(addWrap);
+      dayActions.appendChild(addWrap);
 
       var delRow = el("div", "dm-delrow");
       var delDayBtn = el("button", "chip danger sm");
@@ -2745,7 +2852,8 @@
         });
       };
       delRow.appendChild(delDayBtn); delRow.appendChild(delWeekBtn);
-      secT.appendChild(delRow);
+      // When a donor is loaded these move into the left comparison column instead.
+      if (!donor) dayActions.appendChild(delRow);
     }
     var panelT = el("div", "panel"); var prevT = el("div", "dm-preview");
     renderPreviewInto(prevT, p, dmSel.tw, dmSel.td, function (row) {
@@ -2775,18 +2883,153 @@
     }, function (row) {
       openRowEditor(p.name, dmSel.tw, dmSel.td, row.rid);
     });
-    panelT.appendChild(prevT); secT.appendChild(panelT);
+    // Day-level replace/merge, built here so the buttons can sit directly under
+    // the imported day they act on (inside the comparison column).
+    function buildDaySwapActions() {
+      var dayReady = dmSel.tw != null && dmSel.td != null && dmSel.dw != null && dmSel.dd != null;
+      var wrap = el("div", "dm-cmp-actions");
+      var acts = el("div", "dm-actions");
+      var repl = el("button", "btn-solid sm");
+      repl.textContent = dayReady ? ("Replace W" + dmSel.tw + "D" + dmSel.td) : "Replace day";
+      repl.disabled = !dayReady;
+      repl.title = dayReady
+        ? ("Overwrite W" + dmSel.tw + "D" + dmSel.td + " with imported W" + dmSel.dw + "D" + dmSel.dd)
+        : "Pick a day on both sides first";
+      repl.onclick = function () {
+        if (!dayReady) return;
+        var tw = dmSel.tw, td = dmSel.td, dw = dmSel.dw, dd = dmSel.dd;
+        askConfirm({
+          title: "Replace W" + tw + "D" + td + "?",
+          body: "This overwrites W" + tw + "D" + td + " in " + p.name + " with the imported W" + dw + "D" + dd +
+                ". The label stays W" + tw + "D" + td + " and that day's progress is reset. This can't be undone.",
+          confirmLabel: "Replace day"
+        }).then(function (ok) {
+          if (!ok) return;
+          if (replaceDay(p.name, tw, td, donor, dw, dd)) {
+            toast("Replaced W" + tw + "D" + td + " with imported W" + dw + "D" + dd + ".");
+            renderDayMgr(); renderSidebar();
+          } else { toast("Couldn't replace that day."); }
+        });
+      };
+      acts.appendChild(repl);
+      var mrg = el("button", "btn-ghost sm");
+      mrg.textContent = dayReady ? ("Merge into W" + dmSel.tw + "D" + dmSel.td) : "Merge day";
+      mrg.disabled = !dayReady;
+      mrg.title = dayReady
+        ? ("Append imported W" + dmSel.dw + "D" + dmSel.dd + " to W" + dmSel.tw + "D" + dmSel.td)
+        : "Pick a day on both sides first";
+      mrg.onclick = function () {
+        if (!dayReady) return;
+        var tw = dmSel.tw, td = dmSel.td, dw = dmSel.dw, dd = dmSel.dd;
+        askConfirm({
+          title: "Merge into W" + tw + "D" + td + "?",
+          body: "This adds the imported W" + dw + "D" + dd + " exercises to the end of W" + tw + "D" + td + " in " + p.name +
+                ", keeping the existing exercises and their progress. The added exercises start unticked.",
+          confirmLabel: "Merge day"
+        }).then(function (ok) {
+          if (!ok) return;
+          if (mergeDay(p.name, tw, td, donor, dw, dd)) {
+            toast("Merged imported W" + dw + "D" + dd + " into W" + tw + "D" + td + ".");
+            renderDayMgr(); renderSidebar();
+          } else { toast("Couldn't merge that day."); }
+        });
+      };
+      acts.appendChild(mrg);
+      wrap.appendChild(acts);
+      return wrap;
+    }
+
+    // ---- Side-by-side review: current day next to the imported donor day ----
+    // Both columns are built to the same shape — header, week/day pickers, preview
+    // panel — so they line up flush no matter which one is taller.
+    var cmp = el("div", "dm-compare" + (donor ? " two" : ""));
+
+    function cmpHeader(tagTxt, whereTxt, whoTxt) {
+      var hd = el("div", "dm-cmp-hd");
+      var top = el("div", "dm-cmp-hd-top");
+      top.appendChild(el("span", "dm-cmp-tag", tagTxt));
+      top.appendChild(el("span", "dm-cmp-where", whereTxt));
+      hd.appendChild(top);
+      hd.appendChild(el("div", "dm-cmp-who", whoTxt));
+      return hd;
+    }
+
+    // Left: the live, editable current day
+    var colT = el("div", "dm-cmp-col is-current");
+    colT.appendChild(cmpHeader("Current",
+      (dmSel.tw != null && dmSel.td != null) ? ("W" + dmSel.tw + "D" + dmSel.td) : "No day selected",
+      p.name + (p.block ? " · " + p.block : "")));
+    colT.appendChild(rowT);
+    panelT.appendChild(prevT); colT.appendChild(panelT);
+    // With a donor loaded, the destructive day/week actions sit under the day they
+    // act on rather than in the shared row below the grid.
+    if (donor && typeof delRow !== "undefined") {
+      var delWrap = el("div", "dm-cmp-actions");
+      delWrap.appendChild(delRow);
+      colT.appendChild(delWrap);
+    }
+    cmp.appendChild(colT);
+
+    // Right: the imported day, read-only, with its own week/day pickers so you can
+    // scan through the donor without leaving the comparison.
+    if (donor) {
+      var dweeks = donor.weeks.map(function (w) { return String(w.week); });
+      if (dweeks.indexOf(String(dmSel.dw)) === -1) dmSel.dw = dweeks[0] || null;
+      var dwObj = getWeek(donor, dmSel.dw);
+      var ddays = dwObj ? dwObj.days.map(function (g) { return String(g.day); }) : [];
+      if (ddays.indexOf(String(dmSel.dd)) === -1) dmSel.dd = ddays[0] || null;
+
+      var colD = el("div", "dm-cmp-col is-donor");
+      colD.appendChild(cmpHeader("Imported",
+        (dmSel.dw != null && dmSel.dd != null) ? ("W" + dmSel.dw + "D" + dmSel.dd) : "No day selected",
+        donor.name + (donor.block ? " · " + donor.block : "")));
+      var rowD2 = el("div", "dm-selrow");
+      rowD2.appendChild(labeledSelect("Week", dweeks.map(function (w) { return { label: "Week " + w, value: w }; }),
+        dmSel.dw, function (v) { dmSel.dw = v; dmSel.dd = null; renderDayMgr(); }));
+      rowD2.appendChild(labeledSelect("Day", ddays.map(function (d) { return { label: "Day " + d, value: d }; }),
+        dmSel.dd, function (v) { dmSel.dd = v; renderDayMgr(); }));
+      colD.appendChild(rowD2);
+      var panelD = el("div", "panel"); var prevD = el("div", "dm-preview is-readonly");
+      renderPreviewInto(prevD, donor, dmSel.dw, dmSel.dd);   // no edit/delete/reorder callbacks — read-only
+      panelD.appendChild(prevD); colD.appendChild(panelD);
+      colD.appendChild(buildDaySwapActions());
+      cmp.appendChild(colD);
+    }
+    secT.appendChild(cmp);
+    if (donor) secT.appendChild(el("p", "dm-cmp-note", "The imported day is read-only \u2014 use \u201CUse the imported program\u201D below to bring it across."));
+    secT.appendChild(dayActions);
     body.appendChild(secT);
 
     // ---- Add an exercise (adds a real program row to the selected day) ----
     if (weeks.length && dmSel.td != null) {
       var secAdd = el("div", "dm-sec");
-      secAdd.appendChild(el("p", "dm-sec-cap", "Add an exercise to W" + dmSel.tw + "D" + dmSel.td));
-      var box = el("div", "panel addbox");
+      // Collapsible: the toggle flips visibility in place rather than re-rendering,
+      // so anything half-typed in the fields survives a collapse and re-open.
+      var addToggle = el("button", "dm-collapse" + (dmAddOpen ? " open" : ""));
+      addToggle.type = "button";
+      addToggle.setAttribute("aria-expanded", dmAddOpen ? "true" : "false");
+      var addCaret = el("span", "dm-collapse-caret");
+      addCaret.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>';
+      addToggle.appendChild(addCaret);
+      addToggle.appendChild(el("span", "dm-sec-cap", "Add an exercise to W" + dmSel.tw + "D" + dmSel.td));
+      secAdd.appendChild(addToggle);
+      var box = el("div", "panel addbox" + (dmAddOpen ? "" : " hidden"));
+      addToggle.setAttribute("aria-controls", "dmAddBox");
+      box.id = "dmAddBox";
+      addToggle.onclick = function () {
+        dmAddOpen = !dmAddOpen;
+        safeWrite(STORE_ADDOPEN, dmAddOpen);
+        box.classList.toggle("hidden", !dmAddOpen);
+        addToggle.classList.toggle("open", dmAddOpen);
+        addToggle.setAttribute("aria-expanded", dmAddOpen ? "true" : "false");
+        if (dmAddOpen) exText.focus();
+      };
 
-      var exText = el("textarea", "add-area"); exText.rows = 2;
+      var exText = el("input", "add-area one-line"); exText.type = "text";
+      exText.autocomplete = "off"; exText.setAttribute("list", "liftOptions");
       exText.placeholder = "Exercise name, e.g. Leg press"; exText.setAttribute("aria-label", "Exercise name");
       box.appendChild(exText);
+      box.appendChild(liftPresetRow(exText));
 
       var fieldsRow = el("div", "add-row");
       // weight
@@ -2855,7 +3098,9 @@
       };
       addBtn.onclick = doAdd;
       exText.addEventListener("keydown", function (e) {
-        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); doAdd(); }
+        // Single-line field now, so plain Enter submits; Cmd/Ctrl+Enter still works
+        // for anyone used to the old multi-line box.
+        if (e.key === "Enter") { e.preventDefault(); doAdd(); }
       });
       addActions.appendChild(addBtn); box.appendChild(addActions);
       secAdd.appendChild(box);
@@ -2871,80 +3116,24 @@
       imp.onclick = function () { $("donorInput").click(); };
       secD.appendChild(imp);
     } else {
-      var dweeks = donor.weeks.map(function (w) { return String(w.week); });
-      if (dweeks.indexOf(String(dmSel.dw)) === -1) dmSel.dw = dweeks[0] || null;
-      var dwObj = getWeek(donor, dmSel.dw);
-      var ddays = dwObj ? dwObj.days.map(function (g) { return String(g.day); }) : [];
-      if (ddays.indexOf(String(dmSel.dd)) === -1) dmSel.dd = ddays[0] || null;
-
       var nameLine = el("p", "dm-import-hint");
       nameLine.appendChild(document.createTextNode("Imported: "));
       nameLine.appendChild(el("span", "dm-donor-name", donor.name + (donor.block ? " · " + donor.block : "")));
+      nameLine.appendChild(document.createTextNode(" \u2014 shown side by side with your current day above."));
       secD.appendChild(nameLine);
-      var rowD = el("div", "dm-selrow");
-      rowD.appendChild(labeledSelect("Week", dweeks.map(function (w) { return { label: "Week " + w, value: w }; }),
-        dmSel.dw, function (v) { dmSel.dw = v; dmSel.dd = null; renderDayMgr(); }));
-      rowD.appendChild(labeledSelect("Day", ddays.map(function (d) { return { label: "Day " + d, value: d }; }),
-        dmSel.dd, function (v) { dmSel.dd = v; renderDayMgr(); }));
-      secD.appendChild(rowD);
-      var panelD = el("div", "panel"); var prevD = el("div", "dm-preview");
-      renderPreviewInto(prevD, donor, dmSel.dw, dmSel.dd); panelD.appendChild(prevD); secD.appendChild(panelD);
+      var reimp = el("button", "chip"); reimp.textContent = "Import a different program";
+      reimp.onclick = function () { $("donorInput").click(); };
+      secD.appendChild(reimp);
     }
     body.appendChild(secD);
 
     // ---- Use the imported program (day-level and week-level) ----
     if (donor) {
       var secS = el("div", "dm-sec");
-      secS.appendChild(el("p", "dm-sec-cap", "Use the imported program"));
-      var dayReady = dmSel.tw != null && dmSel.td != null && dmSel.dw != null && dmSel.dd != null;
+      secS.appendChild(el("p", "dm-sec-cap", "Use the imported program \u2014 whole week"));
+      secS.appendChild(el("p", "dm-swap-label", "Single-day replace and merge live under the imported day above. These act on the entire week."));
       var weekReady = dmSel.tw != null && dmSel.dw != null;
 
-      // Day-level
-      secS.appendChild(el("p", "dm-swap-label",
-        dayReady ? ("Day \u2014 replace or merge W" + dmSel.tw + "D" + dmSel.td + " using imported W" + dmSel.dw + "D" + dmSel.dd + " (replace resets that day's progress).")
-                 : "Day \u2014 pick a day on both sides to replace or merge a single day."));
-      var dayActs = el("div", "dm-actions");
-      var repl = el("button", "btn-solid");
-      repl.textContent = dayReady ? ("Replace W" + dmSel.tw + "D" + dmSel.td) : "Replace day";
-      repl.disabled = !dayReady;
-      repl.onclick = function () {
-        if (!dayReady) return;
-        var tw = dmSel.tw, td = dmSel.td, dw = dmSel.dw, dd = dmSel.dd;
-        askConfirm({
-          title: "Replace W" + tw + "D" + td + "?",
-          body: "This overwrites W" + tw + "D" + td + " in " + p.name + " with the imported W" + dw + "D" + dd +
-                ". The label stays W" + tw + "D" + td + " and that day's progress is reset. This can't be undone.",
-          confirmLabel: "Replace day"
-        }).then(function (ok) {
-          if (!ok) return;
-          if (replaceDay(p.name, tw, td, donor, dw, dd)) {
-            toast("Replaced W" + tw + "D" + td + " with imported W" + dw + "D" + dd + ".");
-            renderDayMgr(); renderSidebar();
-          } else { toast("Couldn't replace that day."); }
-        });
-      };
-      dayActs.appendChild(repl);
-      var mrg = el("button", "btn-ghost");
-      mrg.textContent = dayReady ? ("Merge into W" + dmSel.tw + "D" + dmSel.td) : "Merge day";
-      mrg.disabled = !dayReady;
-      mrg.onclick = function () {
-        if (!dayReady) return;
-        var tw = dmSel.tw, td = dmSel.td, dw = dmSel.dw, dd = dmSel.dd;
-        askConfirm({
-          title: "Merge into W" + tw + "D" + td + "?",
-          body: "This adds the imported W" + dw + "D" + dd + " exercises to the end of W" + tw + "D" + td + " in " + p.name +
-                ", keeping the existing exercises and their progress. The added exercises start unticked.",
-          confirmLabel: "Merge day"
-        }).then(function (ok) {
-          if (!ok) return;
-          if (mergeDay(p.name, tw, td, donor, dw, dd)) {
-            toast("Merged imported W" + dw + "D" + dd + " into W" + tw + "D" + td + ".");
-            renderDayMgr(); renderSidebar();
-          } else { toast("Couldn't merge that day."); }
-        });
-      };
-      dayActs.appendChild(mrg);
-      secS.appendChild(dayActs);
 
       // Week-level
       var weekLab = el("p", "dm-swap-label",
@@ -3045,6 +3234,26 @@
 
     function field(label) { var f = el("div", "dm-field"); f.appendChild(el("label", null, label)); return f; }
 
+    // Exercise name. Renaming keeps the row's rid, so any Done/Skipped mark and
+    // note override on it survive; it does re-run lift classification, so the
+    // row's colour and its place in the analytics follow the new name.
+    var exField = field("Exercise");
+    var inEx = el("input", "dm-einput"); inEx.type = "text"; inEx.autocomplete = "off";
+    inEx.setAttribute("list", "liftOptions");
+    inEx.placeholder = "e.g. Squat"; inEx.value = row.exercise || "";
+    inEx.setAttribute("aria-label", "Exercise name");
+    var exErr = el("p", "dm-efield-err");
+    inEx.addEventListener("input", function () {
+      exErr.classList.remove("show");
+      $("editName").textContent = inEx.value.trim() || "(unnamed)";   // keep the dialog subtitle live
+    });
+    exField.appendChild(inEx);
+    exField.appendChild(liftPresetRow(inEx, function () {
+      exErr.classList.remove("show");
+      $("editName").textContent = inEx.value.trim() || "(unnamed)";
+    }));
+    exField.appendChild(exErr); body.appendChild(exField);
+
     var wField = field("Weight (kg)");
     var inW = el("input", "dm-einput"); inW.type = "text"; inW.setAttribute("inputmode", "decimal");
     inW.autocomplete = "off"; inW.placeholder = "e.g. 147.5 or BW";
@@ -3080,6 +3289,14 @@
     var downSelf = false;
     function done() { scrim.classList.remove("show"); save.onclick = cancel.onclick = x.onclick = scrim.onclick = scrim.onpointerdown = null; }
     save.onclick = function () {
+      var newName = inEx.value.trim();
+      if (!newName) {
+        exErr.textContent = "An exercise needs a name.";
+        exErr.classList.add("show");
+        inEx.focus();
+        toast("Give the exercise a name.");
+        return;
+      }
       var w;
       if (inW.value === origWeight) {
         w = origWeight;                     // untouched — keep whatever the program already had
@@ -3093,20 +3310,25 @@
           return;
         }
       }
-      var before = { weight: row.weight || "", sets: row.sets || "", reps: row.reps || "", rpe: row.rpe || "", notes: row.notes || "" };
-      var after = { weight: w, sets: inS.value.trim(), reps: inR.value.trim(), rpe: inRpe.value.trim(), notes: inN.value.trim() };
-      var changed = before.weight !== after.weight || before.sets !== after.sets || before.reps !== after.reps || before.rpe !== after.rpe || before.notes !== after.notes;
-      var exName = row.exercise || "item";
+      var before = { exercise: row.exercise || "", weight: row.weight || "", sets: row.sets || "", reps: row.reps || "", rpe: row.rpe || "", notes: row.notes || "" };
+      var after = { exercise: newName, weight: w, sets: inS.value.trim(), reps: inR.value.trim(), rpe: inRpe.value.trim(), notes: inN.value.trim() };
+      var changed = before.exercise !== after.exercise || before.weight !== after.weight || before.sets !== after.sets || before.reps !== after.reps || before.rpe !== after.rpe || before.notes !== after.notes;
+      var renamed = before.exercise !== after.exercise;
+      var oldName = row.exercise || "item";
       editRow(targetName, tWeek, tDay, rid, after);
       done();
       if (changed) {
         pushUndoAction({
-          label: "Edited \u201C" + exName + "\u201D.",
-          restoredLabel: "\u201C" + exName + "\u201D\u2019s edit undone.",
+          label: renamed
+            ? ("Renamed \u201C" + oldName + "\u201D to \u201C" + newName + "\u201D.")
+            : ("Edited \u201C" + oldName + "\u201D."),
+          restoredLabel: renamed
+            ? ("Renamed back to \u201C" + oldName + "\u201D.")
+            : ("\u201C" + oldName + "\u201D\u2019s edit undone."),
           restore: function () { return editRow(targetName, tWeek, tDay, rid, before); }
         });
       } else {
-        toast("No changes to \u201C" + exName + "\u201D.");
+        toast("No changes to \u201C" + oldName + "\u201D.");
       }
       renderDayMgr(); renderSidebar();
     };
@@ -5033,6 +5255,7 @@
     SKIP = safeRead(STORE_SKIP, {}) || {};
     NOTES = safeRead(STORE_NOTES, {}) || {};
     CUSTOM = safeRead(STORE_CUSTOM, {}) || {};
+    dmAddOpen = safeRead(STORE_ADDOPEN, false) === true;
 
     // gym tools: plate calculator + rest timer preferences
     var toolsPrefs = safeRead(STORE_TOOLS, null);
@@ -5233,10 +5456,14 @@
     $("wkAddBtn").onclick = addItemFromComposer;
     $("wkAddDay").addEventListener("change", syncNewDay);
     $("wkAddText").addEventListener("input", syncComposerRest);
+    // Quick-pick chips for the three main lifts. Chip taps set the value directly
+    // (no input event), so syncComposerRest is passed in to keep the rest-day
+    // enable/disable state correct.
+    $("wkAddPresets").appendChild(liftPresetRow($("wkAddText"), syncComposerRest));
     $("wkAddWeight").addEventListener("input", sanitizeWeightField);
     $("wkAddText").addEventListener("keydown", function (e) {
-      // Cmd/Ctrl+Enter adds the item
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); addItemFromComposer(); }
+      // Single-line field, so plain Enter adds the item; Cmd/Ctrl+Enter still works.
+      if (e.key === "Enter") { e.preventDefault(); addItemFromComposer(); }
     });
 
     document.addEventListener("keydown", function (e) {

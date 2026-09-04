@@ -535,6 +535,13 @@
   /* ---------- RPE Estimator (embedded standalone tool) ---------- */
   .rpe-frame-wrap { margin-top: 18px; border: 1px solid var(--border-strong); border-radius: 14px; overflow: hidden; background: var(--surface); }
   .rpe-frame { display: block; width: 100%; height: 1400px; border: 0; }
+  /* Program Hub: height is set from the frame's own reported content height, so
+     there's one page scroll rather than a scrollbar inside a scrollbar. */
+  .hub-frame-wrap { margin-top: 18px; border: 1px solid var(--border-strong); border-radius: 14px; overflow: hidden; background: var(--surface); }
+  .hub-frame { display: block; width: 100%; height: 1200px; border: 0; }
+  .hub-stale { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--clay); border-radius: 10px;
+               background: var(--clay-soft, rgba(179,71,50,.08)); color: var(--ink); font-size: 13px; line-height: 1.55; }
+  .hub-stale code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
   .rpe-fallback { font-size: 12.5px; color: var(--faint); margin: 12px 2px 0; line-height: 1.6; }
   .rpe-fallback code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: var(--surface-2, var(--bg)); padding: 1px 5px; border-radius: 4px; }
   .rpe-fallback a { color: var(--pine); font-weight: 600; }
@@ -791,8 +798,8 @@
         <div class="dayfilter" id="dayFilter"></div>
         <div class="panel"><div id="wkList"></div></div>
         <div class="panel addbox">
-          <div class="addbox-head">Add an item</div>
-          <input id="wkAddText" class="add-area one-line" type="text" autocomplete="off" list="liftOptions" placeholder="e.g. Leg press 3x4" aria-label="Item name" />
+          <div class="addbox-head">Add an Exercise</div>
+          <input id="wkAddText" class="add-area one-line" type="text" autocomplete="off" list="liftOptions" placeholder="e.g. Leg press 3x4" aria-label="Exercise name" />
           <div id="wkAddPresets"></div>
           <div class="add-row">
             <span class="add-field">
@@ -809,37 +816,20 @@
             </span>
             <span class="add-field">
               <label for="wkAddSets">Sets</label>
-              <span class="picker sm">
-                <select id="wkAddSets" aria-label="Sets"></select>
-                <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-              </span>
+              <input id="wkAddSets" class="add-weight add-num" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 3" aria-label="Sets" />
             </span>
             <span class="add-field">
               <label for="wkAddReps">Reps</label>
-              <span class="picker sm">
-                <select id="wkAddReps" aria-label="Reps"></select>
-                <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-              </span>
+              <input id="wkAddReps" class="add-weight add-num" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 5" aria-label="Reps" />
             </span>
             <span class="add-field">
               <label for="wkAddRpe">RPE</label>
-              <span class="picker sm">
-                <select id="wkAddRpe" aria-label="RPE">
-                  <option value="">—</option>
-                  <option value="5">5</option>
-                  <option value="6">6</option>
-                  <option value="7">7</option>
-                  <option value="8">8</option>
-                  <option value="9">9</option>
-                  <option value="10">10</option>
-                </select>
-                <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-              </span>
+              <input id="wkAddRpe" class="add-weight add-num" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 7.5" aria-label="RPE, 1 to 10 in steps of 0.5" />
             </span>
           </div>
           <textarea id="wkAddNotes" class="add-area add-notes" placeholder="Notes (optional)" rows="2"></textarea>
           <div class="add-row add-actions">
-            <button class="btn-solid" id="wkAddBtn">Add item</button>
+            <button class="btn-solid" id="wkAddBtn">Add exercise</button>
           </div>
         </div>
       </section>
@@ -855,6 +845,7 @@
           <button type="button" class="seg-btn active" data-tab="manage" role="tab" aria-selected="true">Manage program</button>
           <button type="button" class="seg-btn" data-tab="analytics" role="tab" aria-selected="false">Analytics</button>
           <button type="button" class="seg-btn" data-tab="warmup" role="tab" aria-selected="false">Warm up Calculator</button>
+          <button type="button" class="seg-btn" data-tab="hub" role="tab" aria-selected="false">Program Hub</button>
         </div>
         <div id="dmPaneManage" role="tabpanel" aria-label="Manage program">
           <p class="section-sub">Preview, edit, and reorganise the loaded program — edit, add, delete, or reorder exercises, add or delete days, delete weeks, and replace or merge a day or a whole week from another program you import. The imported program is temporary and is discarded when you go back.</p>
@@ -890,6 +881,23 @@
             <button class="chip sm" id="wuCopyBtn" type="button">Copy</button>
           </div>
           <textarea id="wuOutput" class="wu-output" readonly rows="8" placeholder="Enter at least one 1RM above and tap “Show me”. Tap the box any time to select it all for copying."></textarea>
+        </div>
+        <div id="dmPaneHub" class="hidden" role="tabpanel" aria-label="Program Hub">
+          <p class="dm-an-intro">The program builders — pick a methodology, enter the lifter's competition maxes, and generate a dashboard-ready CSV. Build one, then use <b>Send to Manage Program</b> under the Weeks field to push it straight into the import slot. Runs as its own self-contained tool and doesn't touch your loaded programs.</p>
+          <p class="hub-stale hidden" id="hubStale">
+            <b>The <code>program-hub.html</code> on this deploy looks out of date.</b>
+            It loaded, but it isn't reporting the &ldquo;Send to Manage Program&rdquo; feature — so you'll see the builders
+            but no send button. Re-upload <code>program-hub.html</code> alongside this file. If you've installed this to
+            your home screen, also remove the site's data (Settings → Safari → Advanced → Website Data) so the old cached
+            copy is dropped.
+          </p>
+          <div class="hub-frame-wrap">
+            <iframe id="hubFrame" class="hub-frame" title="Program Hub" loading="lazy" src="about:blank"></iframe>
+          </div>
+          <p class="rpe-fallback">
+            Can't see the builders? They live in <code>program-hub.html</code> next to this file — make sure both are uploaded together.
+            <a id="hubOpenNew" href="program-hub.html" target="_blank" rel="noopener">Open in a new tab</a>.
+          </p>
         </div>
       </section>
 
@@ -1078,7 +1086,7 @@
   var STORE_THEME    = "spotter.theme";
   var STORE_LAST     = "spotter.lastLifter";
   var STORE_TOOLS    = "spotter.tools.v1";
-  var STORE_ADDOPEN  = "spotter.dmAddOpen.v1";
+  var STORE_ADDOPEN  = "spotter.dmAddOpen.v2";   // v2: default flipped to open, so the panel is findable
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -1099,7 +1107,7 @@
   var dmUnlocked = false;   // has the Manage-days PIN been entered this session?
   // Whether the "Add an exercise" panel is expanded. Collapsed by default so the
   // day comparison sits closer to the top; remembered across sessions.
-  var dmAddOpen = false;
+  var dmAddOpen = true;
 
   // Multi-step undo for the "Current program" section — delete row/day/week and
   // text edits push here (up to 5 deep); drag-to-reorder deliberately never does.
@@ -1931,7 +1939,7 @@
   function addItemFromComposer() {
     var p = PROFILES[current]; if (!p || currentWeek === null) return;
     var text = $("wkAddText").value.trim();
-    if (!text) { $("wkAddText").focus(); toast("Type the item first, e.g. Leg press 3x4."); return; }
+    if (!text) { $("wkAddText").focus(); toast("Type the exercise name first, e.g. Leg press 3x4."); return; }
     var sel = $("wkAddDay").value;
     var day;
     if (sel === "__new") {
@@ -1944,9 +1952,16 @@
       weight = normalizeWeight($("wkAddWeight").value);
       if (weight === null) { $("wkAddWeight").focus(); toast("Weight must be a whole number or BW."); return; }
     }
-    var sets = isRest ? "" : $("wkAddSets").value;
-    var reps = isRest ? "" : $("wkAddReps").value;
-    var rpe = isRest ? "" : $("wkAddRpe").value;
+    var sets = "", reps = "", rpe = "";
+    if (!isRest) {
+      sets = normalizeInt($("wkAddSets").value);
+      if (sets === null) { $("wkAddSets").focus(); toast("Sets must be a whole number, 1 or more."); return; }
+      reps = normalizeInt($("wkAddReps").value);
+      if (reps === null) { $("wkAddReps").focus(); toast("Reps must be a whole number, 1 or more."); return; }
+      rpe = normalizeRpe($("wkAddRpe").value);
+      if (rpe === null) { $("wkAddRpe").focus(); toast("RPE must be between 1 and 10, in steps of 0.5."); return; }
+      $("wkAddRpe").value = rpe;
+    }
     var notes = isRest ? "" : $("wkAddNotes").value.trim();
     addCustom(p.name, currentWeek, day, text, weight, sets, reps, rpe, notes);
     $("wkAddText").value = "";
@@ -3011,7 +3026,7 @@
       var addCaret = el("span", "dm-collapse-caret");
       addCaret.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>';
       addToggle.appendChild(addCaret);
-      addToggle.appendChild(el("span", "dm-sec-cap", "Add an exercise to W" + dmSel.tw + "D" + dmSel.td));
+      addToggle.appendChild(el("span", "dm-sec-cap", "Add an Exercise to W" + dmSel.tw + "D" + dmSel.td));
       secAdd.appendChild(addToggle);
       var box = el("div", "panel addbox" + (dmAddOpen ? "" : " hidden"));
       addToggle.setAttribute("aria-controls", "dmAddBox");
@@ -3111,19 +3126,29 @@
     var secD = el("div", "dm-sec");
     secD.appendChild(el("p", "dm-sec-cap", "Import a program to pull a day from"));
     if (!donor) {
-      secD.appendChild(el("p", "dm-import-hint", "Load a CSV or JSON program (same formats as usual). It stays separate from your lifters and is discarded when you go back."));
+      secD.appendChild(el("p", "dm-import-hint", "Load a CSV or JSON program (same formats as usual), or build one in the Program Hub tab and send it straight here. It stays separate from your lifters and is discarded when you go back."));
+      var impRow = el("div", "dm-actions");
       var imp = el("button", "chip primary"); imp.textContent = "Import CSV / JSON";
       imp.onclick = function () { $("donorInput").click(); };
-      secD.appendChild(imp);
+      impRow.appendChild(imp);
+      var toHub = el("button", "chip sm"); toHub.textContent = "Build one in Program Hub";
+      toHub.onclick = function () { setDMTab("hub"); };
+      impRow.appendChild(toHub);
+      secD.appendChild(impRow);
     } else {
       var nameLine = el("p", "dm-import-hint");
       nameLine.appendChild(document.createTextNode("Imported: "));
       nameLine.appendChild(el("span", "dm-donor-name", donor.name + (donor.block ? " · " + donor.block : "")));
       nameLine.appendChild(document.createTextNode(" \u2014 shown side by side with your current day above."));
       secD.appendChild(nameLine);
+      var reimpRow = el("div", "dm-actions");
       var reimp = el("button", "chip"); reimp.textContent = "Import a different program";
       reimp.onclick = function () { $("donorInput").click(); };
-      secD.appendChild(reimp);
+      reimpRow.appendChild(reimp);
+      var toHub2 = el("button", "chip sm"); toHub2.textContent = "Build one in Program Hub";
+      toHub2.onclick = function () { setDMTab("hub"); };
+      reimpRow.appendChild(toHub2);
+      secD.appendChild(reimpRow);
     }
     body.appendChild(secD);
 
@@ -3207,6 +3232,7 @@
     destroyDMAnalyticsCharts();
     $("dmPaneAnalytics").classList.add("hidden");
     $("dmPaneWarmup").classList.add("hidden");
+    $("dmPaneHub").classList.add("hidden");
     $("dmPaneManage").classList.remove("hidden");
     Array.prototype.forEach.call(document.querySelectorAll("#dmTabs .seg-btn"), function (b) {
       var on = b.getAttribute("data-tab") === "manage";
@@ -4475,10 +4501,62 @@
     return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
   }
   function pushThemeToRpe() {
-    var f = $("rpeFrame");
+    pushThemeToFrame("rpeFrame");
+  }
+  // Both embedded tools (RPE Estimator, Program Hub) listen for the same message.
+  function pushThemeToFrame(id) {
+    var f = $(id);
     if (!f || !f.contentWindow) return;
     try { f.contentWindow.postMessage({ type: "spotter-theme", theme: currentThemeName() }, "*"); } catch (e) {}
   }
+  function pushThemeToEmbeds() {
+    pushThemeToFrame("rpeFrame");
+    pushThemeToFrame("hubFrame");
+  }
+  // Load the Program Hub on first open (and reload if the theme changed while it
+  // was closed) with the theme in the URL so there's no wrong-palette flash.
+  // HUB_BUILD is bumped whenever program-hub.html changes; it rides along in the
+  // query string purely to defeat the browser's HTTP cache, which will otherwise
+  // happily serve a previously deployed copy of the file.
+  var HUB_BUILD = "2";
+  var hubReadyFeatures = null;
+  function loadHubFrame() {
+    var f = $("hubFrame"); if (!f) return;
+    var want = "program-hub.html?embed=1&theme=" + currentThemeName() + "&v=" + HUB_BUILD;
+    if (f.getAttribute("data-src") !== want) {
+      f.setAttribute("data-src", want);
+      hubReadyFeatures = null;
+      f.src = want;
+      // If the file that answers doesn't advertise the send capability, it's an
+      // older program-hub.html left over on the deploy. Say so plainly rather
+      // than leaving a missing button to be puzzled over.
+      setTimeout(checkHubBuild, 4000);
+    }
+  }
+  function checkHubBuild() {
+    var warn = $("hubStale"); if (!warn) return;
+    var ok = hubReadyFeatures && hubReadyFeatures.indexOf("send") !== -1;
+    warn.classList.toggle("hidden", !!ok);
+  }
+  // Take a program generated in the Program Hub tab and drop it into the donor
+  // slot, exactly as if it had been imported from a file — so Clear import,
+  // Replace and Merge all behave the same. The Hub does the week filtering with
+  // its own "Weeks" field before sending, so what arrives is already scoped.
+  function loadDonorFromHub(msg) {
+    var csv = msg && msg.csv;
+    if (!csv) { toast("Nothing came through from the Program Hub."); return; }
+    var prof = parseProgram(csv, msg.filename || "program-hub.csv");
+    if (!prof) { toast("Couldn't read that generated program."); return; }
+    if (!prof.weeks || !prof.weeks.length) { toast("That selection has no weeks in it."); return; }
+    donor = prof;
+    dmSel.dw = null; dmSel.dd = null;      // let renderDayMgr pick the first available
+    setDMTab("manage");                    // jump back so the comparison is visible
+    renderDayMgr(); renderSidebar();
+    var nW = prof.weeks.length;
+    toast("Imported " + prof.name + " \u2014 " + nW + " week" + (nW === 1 ? "" : "s") +
+          " from the Program Hub.");
+  }
+
   function openRpe() {
     inRpe = true; inAnalytics = false; inDayMgr = false; inCompare = false; currentWeek = null;
     var f = $("rpeFrame");
@@ -4575,19 +4653,22 @@
   }
 
   function setDMTab(tab) {
-    dmTab = (tab === "analytics" || tab === "warmup") ? tab : "manage";
+    dmTab = (tab === "analytics" || tab === "warmup" || tab === "hub") ? tab : "manage";
     Array.prototype.forEach.call(document.querySelectorAll("#dmTabs .seg-btn"), function (b) {
       var on = b.getAttribute("data-tab") === dmTab;
       b.classList.toggle("active", on);
       b.setAttribute("aria-selected", on ? "true" : "false");
     });
-    var mp = $("dmPaneManage"), ap = $("dmPaneAnalytics"), wp = $("dmPaneWarmup");
-    mp.classList.add("hidden"); ap.classList.add("hidden"); wp.classList.add("hidden");
+    var mp = $("dmPaneManage"), ap = $("dmPaneAnalytics"), wp = $("dmPaneWarmup"), hp = $("dmPaneHub");
+    mp.classList.add("hidden"); ap.classList.add("hidden"); wp.classList.add("hidden"); hp.classList.add("hidden");
     if (dmTab === "analytics") {
       ap.classList.remove("hidden");
       renderDMAnalytics();                 // build while visible so Chart.js sizes correctly
     } else if (dmTab === "warmup") {
       wp.classList.remove("hidden");
+    } else if (dmTab === "hub") {
+      hp.classList.remove("hidden");
+      loadHubFrame();                      // lazy — only fetched the first time it's opened
     } else {
       mp.classList.remove("hidden");
       renderDMCharts();                    // refresh (e.g. after a theme change) without rebuilding dmBody
@@ -5255,7 +5336,7 @@
     SKIP = safeRead(STORE_SKIP, {}) || {};
     NOTES = safeRead(STORE_NOTES, {}) || {};
     CUSTOM = safeRead(STORE_CUSTOM, {}) || {};
-    dmAddOpen = safeRead(STORE_ADDOPEN, false) === true;
+    dmAddOpen = safeRead(STORE_ADDOPEN, true) !== false;   // open unless deliberately collapsed
 
     // gym tools: plate calculator + rest timer preferences
     var toolsPrefs = safeRead(STORE_TOOLS, null);
@@ -5342,7 +5423,7 @@
       if (inAnalytics) renderAnalytics();   // recolour charts for the new theme
       if (inDayMgr) { if (dmTab === "analytics") renderDMAnalytics(); else renderDMCharts(); }
       if (inCompare) renderCompareBody();
-      pushThemeToRpe();   // keep the embedded RPE tool's palette in step
+      pushThemeToEmbeds();   // keep the embedded tools' palettes in step
     };
 
     $("wkBack").onclick = openOverview;
@@ -5356,7 +5437,21 @@
     // The embedded RPE tool announces itself once its listener is live; reply
     // with the current theme so it can't miss the initial sync.
     window.addEventListener("message", function (e) {
-      if (e.data && e.data.type === "spotter-rpe-ready") pushThemeToRpe();
+      var m = e.data; if (!m) return;
+      if (m.type === "spotter-rpe-ready") pushThemeToFrame("rpeFrame");
+      else if (m.type === "spotter-hub-ready") {
+        hubReadyFeatures = (m.features && m.features.length) ? m.features : [];
+        pushThemeToFrame("hubFrame");
+        checkHubBuild();
+      }
+      else if (m.type === "spotter-hub-height") {
+        // Size the frame to its content so the page scrolls as one document.
+        var f = $("hubFrame");
+        var hgt = parseInt(m.height, 10);
+        if (f && hgt > 200) f.style.height = Math.min(hgt + 24, 20000) + "px";
+      }
+      else if (m.type === "spotter-hub-program") loadDonorFromHub(m);
+      else if (m.type === "spotter-hub-toast" && m.text) toast(String(m.text));
     });
     $("cmpInputA").addEventListener("change", function () {
       var f = this.files && this.files[0]; this.value = "";
@@ -5443,15 +5538,16 @@
     timerTickHandle = setInterval(timerTick, 250);
     document.addEventListener("visibilitychange", function () { if (!document.hidden) timerTick(); });
 
-    // populate Sets / Reps dropdowns (blank + 1..20)
-    (function fillRange(sel, from, to) {
-      var b = el("option", null, "—"); b.value = ""; sel.appendChild(b);
-      for (var i = from; i <= to; i++) { var o = el("option", null, String(i)); o.value = String(i); sel.appendChild(o); }
-    })($("wkAddSets"), 1, 20);
-    (function fillRange(sel, from, to) {
-      var b = el("option", null, "—"); b.value = ""; sel.appendChild(b);
-      for (var i = from; i <= to; i++) { var o = el("option", null, String(i)); o.value = String(i); sel.appendChild(o); }
-    })($("wkAddReps"), 1, 20);
+    // Sets / Reps / RPE are typed here, same rules as the Manage Program panel:
+    // whole numbers only for sets and reps, RPE 1-10 snapped to the nearest 0.5.
+    ["wkAddSets", "wkAddReps"].forEach(function (id) {
+      $(id).addEventListener("input", function () { this.value = sanitizeIntValue(this.value); });
+    });
+    $("wkAddRpe").addEventListener("input", function () { this.value = sanitizeRpeValue(this.value); });
+    $("wkAddRpe").addEventListener("blur", function () {
+      var n = normalizeRpe(this.value);            // show what will actually be saved
+      if (n !== null) this.value = n;
+    });
 
     $("wkAddBtn").onclick = addItemFromComposer;
     $("wkAddDay").addEventListener("change", syncNewDay);

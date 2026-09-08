@@ -10,12 +10,15 @@ Separate repo from the Program Hub. Same deploy pattern.
 | File | Purpose |
 |---|---|
 | `power-logs.html` | The app. Same code plus a PWA `<head>`, touch field sizing, share-sheet exports, persistent-storage request, and service worker registration. |
+| `rpe-estimator.html` | The RPE → %1RM load-chart tool. Opens inside the app (RPE Estimator in the sidebar) via an iframe, and also works standalone. Precached for offline use. |
+| `program-hub.html` | The program builders (Gustav, Wendler, and the rest). Opens inside the app as the **Program Hub** tab in Manage Program, and also works standalone. Precached for offline use. |
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js. |
 | `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
 | `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the original logo). |
 | `.nojekyll` | Stops GitHub Pages running the files through Jekyll. |
 | `test-boot.js` | Smoke test — `npm install jsdom && node test-boot.js`. |
+| `test-weekrange.js` | Program Hub week-range export tests across all builders — `node test-weekrange.js`. |
 | `make_icons.py` | Regenerates the icons from `icons/_source.png`. |
 
 Everything uses **relative paths**, so it works from `username.github.io/repo-name/`
@@ -83,6 +86,34 @@ Six edits, all additive except the icon swap:
    rather than the OS setting.
 6. **Service worker registration** with auto-activation of new builds.
 
+## Generating a program straight into Manage Program
+
+The **Program Hub** tab inside Manage Program has a **Send to Manage Program** button
+next to Export CSV. Build a block, set the **Weeks** field, and it drops straight into
+*Import a program to pull a day from* — no CSV file in between. There's a
+**Build one in Program Hub** shortcut in the import section that jumps you to the tab.
+
+The Weeks field scopes the send exactly as it scopes an export, using the same parser
+and quick-pick chips:
+
+| You type | You send |
+|---|---|
+| *(blank)* or `all` | the whole program |
+| `7` | week 7 only |
+| `1-4` | weeks 1 to 4 |
+| `1-4, 7, 9-12` | any mix |
+| `13-` | week 13 to the end |
+
+A range that can't be read blocks the send rather than pushing the wrong weeks, and
+inline Sets/Reps edits come along. Once it lands it's an ordinary donor program:
+side-by-side preview against your current day, per-day **Replace** / **Merge into**,
+whole-week Replace/Merge, and **Clear import**. It stays temporary in exactly the same
+way — nothing touches your lifters until you replace or merge, and it's discarded when
+you leave Manage Program.
+
+Sending again replaces whatever donor is loaded, so you can iterate on maxes or switch
+builders and re-send without clearing first.
+
 ## Offline
 
 Chart.js is pinned at `4.4.1` on cdnjs and is **precached on install**, not just on
@@ -96,6 +127,13 @@ so offline works regardless. It's now redundant — the worker controls freshnes
 but harmless, so I left it.
 
 ## Updating the app later
+
+If you change `program-hub.html`, bump **both** `CACHE_VERSION` in `sw.js` and
+`HUB_BUILD` in `power-logs.html`. The first drops the old precached copy; the second
+adds `?v=N` to the iframe URL so the browser's own HTTP cache can't serve a stale
+build. If the deployed hub file is out of date, the Program Hub tab now says so
+outright instead of just missing its Send button.
+
 
 Push a new `power-logs.html` and reopen. HTML is fetched network-first, so you get
 the new build whenever you're online, with the old one as offline fallback. Bump

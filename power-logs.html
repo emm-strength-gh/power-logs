@@ -542,6 +542,7 @@
   .hub-stale { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--clay); border-radius: 10px;
                background: var(--clay-soft, rgba(179,71,50,.08)); color: var(--ink); font-size: 13px; line-height: 1.55; }
   .hub-stale code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .dm-build { margin: 28px 0 0; font-size: 11px; color: var(--faint); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .04em; }
   .rpe-fallback { font-size: 12.5px; color: var(--faint); margin: 12px 2px 0; line-height: 1.6; }
   .rpe-fallback code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: var(--surface-2, var(--bg)); padding: 1px 5px; border-radius: 4px; }
   .rpe-fallback a { color: var(--pine); font-weight: 600; }
@@ -1087,6 +1088,9 @@
   var STORE_LAST     = "spotter.lastLifter";
   var STORE_TOOLS    = "spotter.tools.v1";
   var STORE_ADDOPEN  = "spotter.dmAddOpen.v2";   // v2: default flipped to open, so the panel is findable
+  // Shown at the bottom of Manage program. Bump when power-logs.html changes, so
+  // "is my deploy current?" is answerable at a glance instead of by guesswork.
+  var APP_BUILD = "5";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -3220,6 +3224,11 @@
       body.appendChild(secS);
     }
 
+    // Build stamp — lets a stale deploy be spotted immediately.
+    var stamp = el("p", "dm-build");
+    stamp.textContent = "Power Logs build " + APP_BUILD + " \u00b7 Program Hub build " + HUB_BUILD;
+    body.appendChild(stamp);
+
     renderDMCharts();   // program charts live below the manage-program controls
   }
 
@@ -3341,22 +3350,31 @@
       var changed = before.exercise !== after.exercise || before.weight !== after.weight || before.sets !== after.sets || before.reps !== after.reps || before.rpe !== after.rpe || before.notes !== after.notes;
       var renamed = before.exercise !== after.exercise;
       var oldName = row.exercise || "item";
-      editRow(targetName, tWeek, tDay, rid, after);
-      done();
-      if (changed) {
-        pushUndoAction({
-          label: renamed
-            ? ("Renamed \u201C" + oldName + "\u201D to \u201C" + newName + "\u201D.")
-            : ("Edited \u201C" + oldName + "\u201D."),
-          restoredLabel: renamed
-            ? ("Renamed back to \u201C" + oldName + "\u201D.")
-            : ("\u201C" + oldName + "\u201D\u2019s edit undone."),
-          restore: function () { return editRow(targetName, tWeek, tDay, rid, before); }
-        });
-      } else {
-        toast("No changes to \u201C" + oldName + "\u201D.");
-      }
-      renderDayMgr(); renderSidebar();
+
+      // Everything past validation is wrapped so the dialog can never be left
+      // open by an unexpected throw. Anything that fails here should still let
+      // go of the modal — being trapped in it is worse than a failed edit.
+      var saved = false;
+      try { saved = editRow(targetName, tWeek, tDay, rid, after) !== false; } catch (err) { saved = false; }
+      done();                                  // close first, whatever happened next
+      if (!saved) { toast("Couldn't save that change."); return; }
+      try {
+        if (changed) {
+          pushUndoAction({
+            label: renamed
+              ? ("Renamed \u201C" + oldName + "\u201D to \u201C" + newName + "\u201D.")
+              : ("Edited \u201C" + oldName + "\u201D."),
+            restoredLabel: renamed
+              ? ("Renamed back to \u201C" + oldName + "\u201D.")
+              : ("\u201C" + oldName + "\u201D\u2019s edit undone."),
+            restore: function () { return editRow(targetName, tWeek, tDay, rid, before); }
+          });
+        } else {
+          toast("No changes to \u201C" + oldName + "\u201D.");
+        }
+      } catch (err) {}
+      try { renderDayMgr(); renderSidebar(); }
+      catch (err) { toast("Saved, but the view couldn't redraw \u2014 reopen Manage program."); }
     };
     cancel.onclick = function () { done(); };
     x.onclick = function () { done(); };

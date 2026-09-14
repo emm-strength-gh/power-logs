@@ -539,10 +539,27 @@
      there's one page scroll rather than a scrollbar inside a scrollbar. */
   .hub-frame-wrap { margin-top: 18px; border: 1px solid var(--border-strong); border-radius: 14px; overflow: hidden; background: var(--surface); }
   .hub-frame { display: block; width: 100%; height: 1200px; border: 0; }
+  /* Velocity Tracker: fixed height with its own scroll — the tool has a sticky
+     step trail and a pinned video stage, both of which need a real viewport. */
+  .vbt-frame-wrap { margin-top: 18px; border: 1px solid var(--border-strong); border-radius: 14px; overflow: hidden; background: var(--surface); }
+  .vbt-frame { display: block; width: 100%; height: clamp(560px, calc(100vh - 210px), 1000px); border: 0; }
   .hub-stale { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--clay); border-radius: 10px;
                background: var(--clay-soft, rgba(179,71,50,.08)); color: var(--ink); font-size: 13px; line-height: 1.55; }
   .hub-stale code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .mx-field { position: relative; }
+  .mx-field .add-weight { width: 120px; }
+  .mx-rm { position: absolute; right: -4px; top: 20px; width: 22px; height: 22px; border-radius: 50%;
+           display: grid; place-items: center; font-size: 15px; line-height: 1; color: var(--faint);
+           background: var(--surface); border: 1px solid var(--border-strong); }
+  .mx-rm:hover { color: var(--clay); border-color: var(--clay); }
+  .mx-newname { width: 150px; }
   .dm-build { margin: 28px 0 0; font-size: 11px; color: var(--faint); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .04em; }
+  .view-maxes { margin: 0 0 18px; }
+  .dm-maxes { margin: 2px 0 16px; }
+  .dm-maxes .dm-selrow { margin-bottom: 10px; }
+  .dm-maxes .dm-blockhint { margin-top: 0; }
+  .view-maxes:empty { display: none; }
+  .mx-edithint { margin: 10px 0 0; font-size: 12px; color: var(--faint); }
   .rpe-fallback { font-size: 12.5px; color: var(--faint); margin: 12px 2px 0; line-height: 1.6; }
   .rpe-fallback code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: var(--surface-2, var(--bg)); padding: 1px 5px; border-radius: 4px; }
   .rpe-fallback a { color: var(--pine); font-weight: 600; }
@@ -761,6 +778,7 @@
         </button>
         <h1 class="section-head">Analytics</h1>
         <p class="section-sub" id="anSub"></p>
+        <div id="anMaxes" class="view-maxes"></div>
         <div class="seg" id="anGran" role="tablist" aria-label="Granularity">
           <button type="button" class="seg-btn active" data-g="daily">Per session</button>
           <button type="button" class="seg-btn" data-g="weekly">Per week</button>
@@ -842,6 +860,7 @@
           Back
         </button>
         <h1 class="section-head">Manage program</h1>
+        <div id="dmMaxes" class="view-maxes dm-maxes"></div>
         <div class="seg dm-tabs" id="dmTabs" role="tablist" aria-label="Manage program sections">
           <button type="button" class="seg-btn active" data-tab="manage" role="tab" aria-selected="true">Manage program</button>
           <button type="button" class="seg-btn" data-tab="analytics" role="tab" aria-selected="false">Analytics</button>
@@ -915,6 +934,23 @@
         <p class="rpe-fallback" id="rpeFallback">
           Can't see the tool? It lives in <code>rpe-estimator.html</code> next to this file — make sure both are uploaded together.
           <a id="rpeOpenNew" href="rpe-estimator.html" target="_blank" rel="noopener">Open it in a new tab</a>.
+        </p>
+      </section>
+
+      <section class="view" id="viewVbt">
+        <button class="wk-back" id="vbtBack">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          Back
+        </button>
+        <h1 class="section-head">Velocity Tracker</h1>
+        <p class="section-sub">Measure barbell velocity from a video clip and get mean concentric velocity, estimated RPE, ROM and velocity loss per rep. Set a personal velocity anchor per lift for the RPE estimates to tighten up. Runs as its own self-contained tool and doesn't touch your loaded programs.</p>
+        <div class="vbt-frame-wrap">
+          <iframe id="vbtFrame" class="vbt-frame" title="Velocity Tracker" loading="lazy"
+                  allow="camera; fullscreen" src="about:blank"></iframe>
+        </div>
+        <p class="rpe-fallback">
+          Can't see the tracker? It lives in <code>VBT.html</code> next to this file — make sure both are uploaded together.
+          <a id="vbtOpenNew" href="VBT.html" target="_blank" rel="noopener">Open it in a new tab</a>.
         </p>
       </section>
 
@@ -1090,7 +1126,7 @@
   var STORE_ADDOPEN  = "spotter.dmAddOpen.v2";   // v2: default flipped to open, so the panel is findable
   // Shown at the bottom of Manage program. Bump when power-logs.html changes, so
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
-  var APP_BUILD = "5";
+  var APP_BUILD = "9";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -1105,6 +1141,7 @@
   var inAnalytics = false;  // whether the Analytics view is showing
   var inDayMgr = false;     // whether the Day-management view is showing
   var inRpe = false;        // whether the embedded RPE Estimator view is showing
+  var inVbt = false;        // whether the embedded Velocity Tracker view is showing
   var donor = null;         // a program imported ONLY inside Day management (never committed to PROFILES)
   var dmSel = { tw: null, td: null, dw: null, dd: null }; // day-mgr selections: target week/day, donor week/day
   var rowUid = 0;           // monotonic counter for unique rids on grafted/merged rows
@@ -1552,7 +1589,7 @@
   // ───────────────────────── Rendering ─────────────────────────
   function showView(id) {
     if (id !== "viewDayMgr" && id !== "viewCompare") dmUnlocked = false;   // leaving Manage days (and its Compare sub-view) re-locks it
-    ["viewEmpty", "viewOverview", "viewWeek", "viewAnalytics", "viewDayMgr", "viewCompare", "viewRpe"].forEach(function (v) {
+    ["viewEmpty", "viewOverview", "viewWeek", "viewAnalytics", "viewDayMgr", "viewCompare", "viewRpe", "viewVbt"].forEach(function (v) {
       $(v).classList.toggle("active", v === id);
     });
     window.scrollTo({ top: 0, behavior: "auto" });
@@ -1581,7 +1618,7 @@
     if (p.classWt) tags.appendChild(el("span", "pill cls", p.classWt + "kg"));
 
     // Overview link
-    var ov = el("button", "nav-item" + (currentWeek === null && !inAnalytics && !inDayMgr && !inRpe ? " active" : ""));
+    var ov = el("button", "nav-item" + (currentWeek === null && !inAnalytics && !inDayMgr && !inRpe && !inVbt ? " active" : ""));
     ov.appendChild(iconSpan('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>'));
     ov.appendChild(el("span", "nav-label", "Overview"));
     ov.onclick = function () { openOverview(); closeNav(); };
@@ -1608,6 +1645,13 @@
     rpe.onclick = function () { openRpe(); closeNav(); };
     nav.appendChild(rpe);
 
+    // Velocity Tracker — self-contained tool, no lifter data involved, no PIN
+    var vbt = el("button", "nav-item" + (inVbt ? " active" : ""));
+    vbt.appendChild(iconSpan('<path d="M3 12h3l2-6 4 12 3-8 2 2h4"/>'));
+    vbt.appendChild(el("span", "nav-label", "Velocity Tracker"));
+    vbt.onclick = function () { openVbt(); closeNav(); };
+    nav.appendChild(vbt);
+
     nav.appendChild(el("div", "nav-cap", "Weeks"));
     p.weeks.forEach(function (w) {
       var prog = weekProgress(p, w);
@@ -1627,6 +1671,60 @@
     return s;
   }
 
+  // The 1-rep maxes card. Shared by Overview, Analytics and Manage program so all
+  // three show the same thing; the collapsed state is one setting across the lot.
+  // Read-only here — editing lives in Manage program, which links straight to it.
+  function renderMaxesCard(host, p, opts) {
+    if (!host) return;
+    clear(host);
+    if (!p || !p.maxes) { host.style.display = "none"; return; }
+    opts = opts || {};
+    var order = ["Squat", "Bench", "Deadlift"];
+    var keys = Object.keys(p.maxes);
+    // canonical order first, then any extras
+    var ordered = order.filter(function (k) { return p.maxes[k] != null; })
+      .concat(keys.filter(function (k) { return order.indexOf(k) === -1; }));
+    if (!ordered.length) { host.style.display = "none"; return; }
+    host.style.display = "";
+
+    var collapsed = false;
+    try { collapsed = localStorage.getItem("spotter.maxesCollapsed") === "1"; } catch (e) {}
+
+    var card = el("div", "pn-card mx-card" + (collapsed ? "" : " open"));
+    var toggle = el("button", "pn-toggle");
+    var lab = el("span", "pn-labels");
+    lab.appendChild(el("span", "pn-title", "1-rep maxes"));
+    toggle.appendChild(lab);
+    var chev = el("span", "pn-chev");
+    chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+    toggle.appendChild(chev);
+
+    var body = el("div", "pn-body");
+    var grid = el("div", "maxes");
+    ordered.forEach(function (k) {
+      var mcard = el("div", "max-card");
+      mcard.style.setProperty("--accent", liftColor(k));
+      mcard.appendChild(el("div", "k", k));
+      var nv = el("div", "n", p.maxes[k]);
+      nv.appendChild(el("span", "u", "kg"));
+      mcard.appendChild(nv);
+      grid.appendChild(mcard);
+    });
+    body.appendChild(grid);
+    if (opts.editHint) {
+      var hint = el("p", "mx-edithint", "Edit these in Manage program \u2192 1-rep maxes.");
+      body.appendChild(hint);
+    }
+
+    toggle.onclick = function () {
+      card.classList.toggle("open");
+      try { localStorage.setItem("spotter.maxesCollapsed", card.classList.contains("open") ? "0" : "1"); } catch (e) {}
+    };
+    card.appendChild(toggle);
+    card.appendChild(body);
+    host.appendChild(card);
+  }
+
   function renderOverview() {
     var p = PROFILES[current]; if (!p) return;
     $("ovEyebrow").textContent = p.block ? p.block : "Training block";
@@ -1636,48 +1734,7 @@
     $("ovSub").textContent = p.weeks.length + (p.weeks.length === 1 ? " week" : " weeks")
       + " · " + totalDone + " of " + totalAll + " working sets logged";
 
-    var mx = $("ovMaxes"); clear(mx);
-    var order = ["Squat", "Bench", "Deadlift"];
-    var keys = Object.keys(p.maxes);
-    // keep canonical order first, then any extras
-    var ordered = order.filter(function (k) { return p.maxes[k] != null; })
-      .concat(keys.filter(function (k) { return order.indexOf(k) === -1; }));
-    if (!ordered.length) { mx.style.display = "none"; }
-    else {
-      mx.style.display = "";
-      var collapsed = false;
-      try { collapsed = localStorage.getItem("spotter.maxesCollapsed") === "1"; } catch (e) {}
-
-      var card = el("div", "pn-card mx-card" + (collapsed ? "" : " open"));
-      var toggle = el("button", "pn-toggle");
-      var lab = el("span", "pn-labels");
-      lab.appendChild(el("span", "pn-title", "1-rep maxes"));
-      toggle.appendChild(lab);
-      var chev = el("span", "pn-chev");
-      chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
-      toggle.appendChild(chev);
-
-      var body = el("div", "pn-body");
-      var grid = el("div", "maxes");
-      ordered.forEach(function (k) {
-        var mcard = el("div", "max-card");
-        mcard.style.setProperty("--accent", liftColor(k));
-        mcard.appendChild(el("div", "k", k));
-        var nv = el("div", "n", p.maxes[k]);
-        nv.appendChild(el("span", "u", "kg"));
-        mcard.appendChild(nv);
-        grid.appendChild(mcard);
-      });
-      body.appendChild(grid);
-
-      toggle.onclick = function () {
-        card.classList.toggle("open");
-        try { localStorage.setItem("spotter.maxesCollapsed", card.classList.contains("open") ? "0" : "1"); } catch (e) {}
-      };
-      card.appendChild(toggle);
-      card.appendChild(body);
-      mx.appendChild(card);
-    }
+    renderMaxesCard($("ovMaxes"), p);
 
     renderProgramNotes(p);
 
@@ -2126,6 +2183,7 @@
     inAnalytics = false;
     inDayMgr = false;
     inRpe = false;
+    inVbt = false;
     currentWeek = null;
     showView("viewOverview");
     renderOverview();
@@ -2135,6 +2193,7 @@
     inAnalytics = false;
     inDayMgr = false;
     inRpe = false;
+    inVbt = false;
     currentWeek = week;
     dayFilterSel = "all";
     showView("viewWeek");
@@ -2146,6 +2205,7 @@
     inAnalytics = true;
     inDayMgr = false;
     inRpe = false;
+    inVbt = false;
     currentWeek = null;
     showView("viewAnalytics");
     renderAnalytics();
@@ -2281,6 +2341,39 @@
     p.block = String(newBlock == null ? "" : newBlock).trim();
     safeWrite(STORE_PROFILES, PROFILES);
     return true;
+  }
+
+  // ---- 1-rep maxes ----
+  // Stored as strings keyed by lift name, the same shape the CSV "#Max" header
+  // parses into, so editing here round-trips through export/import untouched.
+  // A blank value removes the entry rather than storing an empty one, which is
+  // what the NL and intensity analytics check for.
+  function setMax(targetName, lift, value) {
+    var p = PROFILES[targetName]; if (!p) return false;
+    if (!p.maxes) p.maxes = {};
+    lift = String(lift || "").trim();
+    if (!lift) return false;
+    var v = String(value == null ? "" : value).trim();
+    if (v === "") delete p.maxes[lift];
+    else p.maxes[lift] = v;
+    safeWrite(STORE_PROFILES, PROFILES);
+    return true;
+  }
+  // Swap the whole maxes object — used by undo so one step restores every field.
+  function setAllMaxes(targetName, maxesClone) {
+    var p = PROFILES[targetName]; if (!p) return false;
+    p.maxes = deepClone(maxesClone || {});
+    safeWrite(STORE_PROFILES, PROFILES);
+    return true;
+  }
+  // Accepts a plain positive number. Blank is allowed and means "no max on file".
+  function normalizeMax(v) {
+    v = String(v == null ? "" : v).trim();
+    if (v === "") return "";
+    if (!/^\d*\.?\d*$/.test(v) || !/\d/.test(v)) return null;
+    var n = parseFloat(v);
+    if (!isFinite(n) || n <= 0) return null;
+    return String(n);
   }
 
   // Reorder the rows of a day to match a given list of rids.
@@ -2684,8 +2777,151 @@
     });
   }
 
+  // The 1-rep maxes editor, rendered above the Manage-program tab bar so it's on
+  // hand from every tab — Analytics reads these for NL and intensity, and the
+  // Warm-up Calculator and Program Hub both want the same numbers. Uses the same
+  // collapsible shell and shared collapsed-state key as the Overview card.
+  // Maxes feed the NL and average-intensity charts, so a change has to redraw
+  // whichever Manage-program tab is open, not just the section list.
+  function refreshAfterMaxChange() {
+    renderDayMgr(); renderSidebar(); renderOverview();
+    if (dmTab === "analytics") renderDMAnalytics();
+  }
+
+  function renderDMMaxes() {
+    var host = $("dmMaxes"); if (!host) return;
+    clear(host);
+    var p = PROFILES[current]; if (!p) { host.style.display = "none"; return; }
+    host.style.display = "";
+    if (!p.maxes) p.maxes = {};
+
+    var collapsed = false;
+    try { collapsed = localStorage.getItem("spotter.maxesCollapsed") === "1"; } catch (e) {}
+    var card = el("div", "pn-card mx-card" + (collapsed ? "" : " open"));
+    var toggle = el("button", "pn-toggle");
+    var lab = el("span", "pn-labels");
+    lab.appendChild(el("span", "pn-title", "1-rep maxes"));
+    var summary = ["Squat", "Bench", "Deadlift"]
+      .filter(function (k) { return p.maxes[k] != null && p.maxes[k] !== ""; })
+      .map(function (k) { return k.charAt(0) + " " + p.maxes[k]; });
+    if (summary.length) lab.appendChild(el("span", "pn-sub", summary.join("  \u00b7  ")));
+    toggle.appendChild(lab);
+    var chev = el("span", "pn-chev");
+    chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+    toggle.appendChild(chev);
+    toggle.onclick = function () {
+      card.classList.toggle("open");
+      try { localStorage.setItem("spotter.maxesCollapsed", card.classList.contains("open") ? "0" : "1"); } catch (e) {}
+    };
+    card.appendChild(toggle);
+
+    var cbody = el("div", "pn-body");
+      // ---- 1-rep maxes (editable) ----
+      // These drive the Number-of-lifts and average-intensity analytics, so being
+      // able to correct them here saves a round-trip through export/re-import.
+      var secMx = cbody;
+      
+      secMx.appendChild(el("p", "dm-blockhint", "Used to work out Number of lifts (reps at \u226550% of 1RM) and average intensity. Leave one blank if you don\u2019t have it \u2014 those lifts are simply left out of those two charts."));
+      var mxRow = el("div", "dm-selrow");
+      var MX_CORE = ["Squat", "Bench", "Deadlift"];
+      var mxExtra = Object.keys(p.maxes || {}).filter(function (k) { return MX_CORE.indexOf(k) === -1; });
+
+      function maxField(lift, removable) {
+        var f = el("span", "add-field mx-field");
+        f.appendChild(el("label", null, lift));
+        var inp = el("input", "add-weight");
+        inp.type = "text"; inp.setAttribute("inputmode", "decimal"); inp.autocomplete = "off";
+        inp.placeholder = "e.g. 180";
+        inp.value = (p.maxes && p.maxes[lift] != null) ? String(p.maxes[lift]) : "";
+        inp.setAttribute("aria-label", lift + " one-rep max in kg");
+        var orig = inp.value;
+        inp.addEventListener("input", function () {
+          // digits and a single dot only
+          var v = inp.value.replace(/[^0-9.]/g, "");
+          var i = v.indexOf(".");
+          if (i !== -1) v = v.slice(0, i + 1) + v.slice(i + 1).replace(/\./g, "");
+          inp.value = v;
+        });
+        var commitMax = function () {
+          var v = normalizeMax(inp.value);
+          if (v === null) {
+            inp.value = orig;                      // put back what was there
+            toast(lift + " max must be a number above 0, or blank.");
+            return;
+          }
+          if (v === orig) { inp.value = v; return; }
+          var beforeMaxes = deepClone(p.maxes || {});
+          setMax(p.name, lift, v);
+          orig = v; inp.value = v;
+          pushUndoAction({
+            label: v ? (lift + " max set to " + v + " kg.") : (lift + " max cleared."),
+            restoredLabel: lift + " max restored.",
+            restore: function () { return setAllMaxes(p.name, beforeMaxes); }
+          });
+          refreshAfterMaxChange();
+        };
+        inp.addEventListener("blur", commitMax);
+        inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
+        f.appendChild(inp);
+        if (removable) {
+          var rm = el("button", "mx-rm", "\u00d7");
+          rm.type = "button"; rm.title = "Remove " + lift; rm.setAttribute("aria-label", "Remove " + lift + " max");
+          rm.onclick = function () {
+            var beforeMaxes = deepClone(p.maxes || {});
+            setMax(p.name, lift, "");
+            pushUndoAction({
+              label: "Removed the " + lift + " max.",
+              restoredLabel: lift + " max restored.",
+              restore: function () { return setAllMaxes(p.name, beforeMaxes); }
+            });
+            refreshAfterMaxChange();
+          };
+          f.appendChild(rm);
+        }
+        mxRow.appendChild(f);
+        return inp;
+      }
+      MX_CORE.forEach(function (l) { maxField(l, false); });
+      mxExtra.forEach(function (l) { maxField(l, true); });
+      secMx.appendChild(mxRow);
+
+      // Add a max for a lift outside the big three (e.g. "Squat equipped").
+      var mxAdd = el("div", "dm-addday");
+      mxAdd.appendChild(el("label", null, "Add another lift:"));
+      var mxName = el("input", "add-weight mx-newname");
+      mxName.type = "text"; mxName.placeholder = "Lift name"; mxName.autocomplete = "off";
+      mxName.setAttribute("aria-label", "Name of the lift to add a max for");
+      mxAdd.appendChild(mxName);
+      var mxVal = el("input", "add-weight add-num mx-newval");
+      mxVal.type = "text"; mxVal.setAttribute("inputmode", "decimal"); mxVal.placeholder = "kg"; mxVal.autocomplete = "off";
+      mxVal.setAttribute("aria-label", "One-rep max in kg");
+      mxAdd.appendChild(mxVal);
+      var mxBtn = el("button", "chip sm", "Add max");
+      mxBtn.type = "button";
+      mxBtn.onclick = function () {
+        var lift = mxName.value.trim();
+        if (!lift) { mxName.focus(); toast("Name the lift first."); return; }
+        if (p.maxes && p.maxes[lift] != null) { mxName.focus(); toast("There's already a max for \u201C" + lift + "\u201D."); return; }
+        var v = normalizeMax(mxVal.value);
+        if (v === null || v === "") { mxVal.focus(); toast("Enter a max above 0."); return; }
+        var beforeMaxes = deepClone(p.maxes || {});
+        setMax(p.name, lift, v);
+        pushUndoAction({
+          label: "Added a " + lift + " max of " + v + " kg.",
+          restoredLabel: lift + " max removed again.",
+          restore: function () { return setAllMaxes(p.name, beforeMaxes); }
+        });
+        refreshAfterMaxChange();
+      };
+      mxAdd.appendChild(mxBtn);
+      secMx.appendChild(mxAdd);
+    card.appendChild(cbody);
+    host.appendChild(card);
+  }
+
   function renderDayMgr() {
     var p = PROFILES[current];
+    renderDMMaxes();                 // lives above the tab bar, so it redraws separately
     var body = $("dmBody"); clear(body);
     if (!p) { body.appendChild(el("div", "dm-empty", "Load a lifter first.")); renderDMCharts(); return; }
 
@@ -2712,6 +2948,7 @@
     editWrap.appendChild(binp);
     editWrap.appendChild(el("p", "dm-blockhint", "Used for the export filename: Name_Block.json / Name_Block.csv"));
     secB.appendChild(editWrap);
+
 
     // ---- Export the current program as a standard-format CSV ----
     var expRow = el("div", "dm-export");
@@ -3234,7 +3471,7 @@
 
   function openDayMgr() {
     var p = PROFILES[current]; if (!p) { toast("Load a lifter first."); return; }
-    inAnalytics = false; inDayMgr = true; inRpe = false; currentWeek = null;
+    inAnalytics = false; inDayMgr = true; inRpe = false; inVbt = false; currentWeek = null;
     if (dmUndoOwner !== current) { dmUndoStack = []; dmUndoOwner = current; }   // fresh lifter, fresh undo history
     showView("viewDayMgr");
     dmTab = "manage";                                  // always land on the Manage tab
@@ -3565,6 +3802,7 @@
 
   function renderAnalytics() {
     var p = PROFILES[current]; if (!p) return;
+    renderMaxesCard($("anMaxes"), p, { editHint: true });   // these maxes drive NL and intensity below
     var rows = analyticsRows(p);
     // Pick a reference 1RM per lift: the largest max whose label starts with that lift
     // (handles "Squat", "Squat raw", "Squat equipped", etc.)
@@ -4530,6 +4768,7 @@
   function pushThemeToEmbeds() {
     pushThemeToFrame("rpeFrame");
     pushThemeToFrame("hubFrame");
+    pushThemeToFrame("vbtFrame");
   }
   // Load the Program Hub on first open (and reload if the theme changed while it
   // was closed) with the theme in the URL so there's no wrong-palette flash.
@@ -4575,8 +4814,31 @@
           " from the Program Hub.");
   }
 
+  // ──────────────── Velocity Tracker (embedded tool) ────────────────
+  // Its own file (VBT.html), shown in an iframe; we only talk to it over
+  // postMessage to keep its palette matched to the app's.
+  var VBT_BUILD = "1";
+  function loadVbtFrame() {
+    var f = $("vbtFrame"); if (!f) return;
+    var want = "VBT.html?embed=1&theme=" + currentThemeName() + "&v=" + VBT_BUILD;
+    if (f.getAttribute("data-src") !== want) {
+      f.setAttribute("data-src", want);
+      f.src = want;
+    }
+  }
+  function openVbt() {
+    inVbt = true; inRpe = false; inAnalytics = false; inDayMgr = false; inCompare = false; currentWeek = null;
+    loadVbtFrame();
+    showView("viewVbt");
+    renderSidebar();
+  }
+  function closeVbt() {
+    inVbt = false;
+    openOverview();
+  }
+
   function openRpe() {
-    inRpe = true; inAnalytics = false; inDayMgr = false; inCompare = false; currentWeek = null;
+    inRpe = true; inVbt = false; inAnalytics = false; inDayMgr = false; inCompare = false; currentWeek = null;
     var f = $("rpeFrame");
     // Load on first open (and reload if the theme changed while it was closed)
     // with the theme in the URL so there's no flash of the wrong palette.
@@ -5033,7 +5295,7 @@
       current = null; currentWeek = null; dayFilterSel = "all"; noteCtx = null;
       inDayMgr = false; inAnalytics = false; donor = null; dmSel = { tw: null, td: null, dw: null, dd: null };
       inCompare = false; cmpProfA = null; cmpProfB = null;
-      inRpe = false;
+      inRpe = false; inVbt = false;
       dmUndoStack = []; dmUndoOwner = null;
       dmUnlocked = false;
       [STORE_PROFILES, STORE_DONE, STORE_SKIP, STORE_NOTES, STORE_CUSTOM, STORE_LAST].forEach(function (k) {
@@ -5452,11 +5714,13 @@
     $("cmpOpenBtn").onclick = openCompare;
     $("cmpBack").onclick = closeCompare;
     $("rpeBack").onclick = closeRpe;
+    $("vbtBack").onclick = closeVbt;
     // The embedded RPE tool announces itself once its listener is live; reply
     // with the current theme so it can't miss the initial sync.
     window.addEventListener("message", function (e) {
       var m = e.data; if (!m) return;
       if (m.type === "spotter-rpe-ready") pushThemeToFrame("rpeFrame");
+      else if (m.type === "spotter-vbt-ready") pushThemeToFrame("vbtFrame");
       else if (m.type === "spotter-hub-ready") {
         hubReadyFeatures = (m.features && m.features.length) ? m.features : [];
         pushThemeToFrame("hubFrame");

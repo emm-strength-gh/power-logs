@@ -1,0 +1,2068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Bar Speed — Spotter</title>
+<!-- Shares Spotter's manifest and icons on purpose: this is a page inside the
+     Spotter app, not a separate installable app. Installing from here and from
+     power-logs.html gives the same home-screen app. -->
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#f1f3ee">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="icon" href="./icons/icon-192.png">
+<style>
+:root{
+  --ground:#E7E9E5; --paper:#F2F3F0; --ink:#15191A;
+  --ink-60:rgba(21,25,26,.60); --ink-38:rgba(21,25,26,.38);
+  --ink-14:rgba(21,25,26,.14); --ink-07:rgba(21,25,26,.07);
+  --signal:#2340D8; --rust:#9E3B23;
+  --pad:18px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--ground);color:var(--ink)}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  overscroll-behavior-y:contain;
+}
+.hid{display:none !important}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+/* ---------- sticky hood: trail + video + scrub ---------- */
+.hood{
+  position:sticky;top:0;z-index:20;background:var(--ground);
+  padding-top:env(safe-area-inset-top);
+  border-bottom:1px solid var(--ink-14);
+}
+.hoodin{max-width:560px;margin:0 auto;padding:0 var(--pad)}
+
+.trailrow{display:flex;align-items:center;gap:12px;padding:9px 0 10px}
+.mark{font-size:12.5px;color:var(--ink-38);letter-spacing:-.005em;white-space:nowrap}
+.trail{display:flex;align-items:center;gap:0;margin:0 0 0 auto;padding:0;list-style:none;flex:0 0 auto}
+.mark.back{text-decoration:none;color:var(--ink-60);flex:0 0 auto}
+.mark.back:active{color:var(--ink)}
+.eject{
+  display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;
+  min-height:30px;padding:0 12px;border-radius:999px;
+  border:1px solid var(--ink-14);background:transparent;color:var(--ink-60);
+  font-size:12.5px;font-weight:550;letter-spacing:-.005em;white-space:nowrap;
+}
+.eject:active{background:var(--ink-07);color:var(--ink)}
+.eject.armed{border-color:var(--rust);color:var(--rust);background:rgba(158,59,35,.07)}
+.eject span{font-size:11px}
+@media (max-width:359px){ .mark{display:none} }
+.trail li{display:flex;align-items:center}
+.trail li+li::before{content:"";width:14px;height:1px;background:var(--ink-14)}
+.trail button{
+  width:27px;height:27px;border-radius:999px;border:1px solid var(--ink-14);
+  background:transparent;color:var(--ink-38);font-size:12.5px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;padding:0;
+  font-variant-numeric:tabular-nums;
+}
+.trail button[data-state="done"]{border-color:var(--ink);color:var(--ink)}
+.trail button[data-state="now"]{background:var(--ink);border-color:var(--ink);color:var(--ground)}
+.trail button[disabled]{cursor:default}
+
+.stage{
+  position:relative;background:#0E1112;overflow:hidden;border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+}
+.vwrap{position:relative;display:inline-block;line-height:0;max-width:100%}
+.vwrap video{display:block;max-height:44vh;max-width:100%;width:auto;height:auto;background:#0E1112}
+.vwrap canvas.ov{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.stage.empty{
+  display:flex;align-items:center;justify-content:center;min-height:132px;
+  background:var(--paper);border:1px dashed var(--ink-14);
+}
+.stage.empty p{margin:0;padding:22px;color:var(--ink-38);font-size:13.5px;text-align:center;max-width:28ch}
+.loupebox{
+  display:flex;gap:12px;align-items:center;margin:8px 0 0;padding:10px;
+  background:var(--paper);border:1px solid var(--ink-14);border-radius:4px;
+}
+.loupebox canvas{
+  width:124px;height:124px;flex:0 0 auto;border-radius:3px;
+  background:#0E1112;border:1px solid var(--ink-14);
+}
+.lmeta{font-size:12.5px;color:var(--ink-60);line-height:1.4;min-width:0}
+.lmeta b{display:block;color:var(--ink);font-size:13.5px;font-weight:600;margin-bottom:3px}
+.lmeta .mono{font-variant-numeric:tabular-nums}
+.swatch{
+  display:inline-block;width:13px;height:13px;border-radius:3px;
+  border:1px solid var(--ink-14);vertical-align:-2px;margin-right:5px;
+}
+.cue{
+  margin:8px 0 0;padding:9px 12px;font-size:13px;line-height:1.35;
+  color:var(--ink);background:rgba(35,64,216,.07);
+  border:1px solid rgba(35,64,216,.26);border-radius:4px;
+}
+.scrub{display:flex;align-items:center;gap:10px;padding:8px 0 9px}
+.scrub input[type=range]{flex:1;accent-color:var(--ink);min-height:32px;margin:0}
+.fold{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  width:100%;min-height:34px;padding:0;margin:0;
+  border:0;border-top:1px solid var(--ink-14);background:transparent;
+  color:var(--ink-60);font-size:12.5px;font-weight:550;letter-spacing:-.005em;
+}
+.fold:active{background:var(--ink-07)}
+.fold .fchev{
+  font-size:13px;line-height:1;display:inline-block;
+  transform:translateY(1px);transition:transform .16s ease;
+}
+.fold[aria-expanded="false"] .fchev{transform:rotate(180deg) translateY(1px)}
+@media (prefers-reduced-motion:reduce){ .fold .fchev{transition:none} }
+.scrub .tc{font-size:12.5px;color:var(--ink-60);min-width:5.4em;text-align:right;font-variant-numeric:tabular-nums}
+
+/* ---------- flow body ---------- */
+main{max-width:560px;margin:0 auto;padding:0 var(--pad) calc(env(safe-area-inset-bottom) + 40px)}
+
+.crumb{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  padding:11px 0;border:0;border-bottom:1px solid var(--ink-14);background:transparent;
+}
+.crumb .ck{
+  width:18px;height:18px;border-radius:999px;background:var(--ink);color:var(--ground);
+  font-size:10.5px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+}
+.crumb .lb{font-size:14px;font-weight:550}
+.crumb .vl{font-size:12.5px;color:var(--ink-60);margin-left:auto;text-align:right;font-variant-numeric:tabular-nums}
+.crumb .ed{font-size:12.5px;color:var(--signal);flex:0 0 auto}
+.crumb:active{background:var(--ink-07)}
+
+.step{padding:22px 0 4px}
+.step h1{margin:0 0 5px;font-size:22px;font-weight:600;letter-spacing:-.025em;line-height:1.2}
+.step .sub{margin:0 0 16px;font-size:14px;color:var(--ink-60);max-width:46ch}
+.act{
+  position:sticky;bottom:0;padding:14px 0 calc(env(safe-area-inset-bottom) + 14px);
+  background:linear-gradient(to top,var(--ground) 62%,rgba(231,233,229,0));
+}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-height:48px;padding:0 22px;border-radius:999px;border:1px solid var(--ink);
+  background:var(--ink);color:var(--ground);font-size:15.5px;font-weight:550;letter-spacing:-.005em;
+}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--ink-14)}
+.btn.ghost:active{background:var(--ink-07)}
+.btn.wide{width:100%}
+.btn.sm{min-height:40px;padding:0 15px;font-size:14px}
+.btn:disabled{opacity:.3}
+.btn.stop{background:var(--rust);border-color:var(--rust);color:#fff}
+.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+
+.seg{display:flex;border:1px solid var(--ink-14);border-radius:999px;overflow:hidden;background:var(--paper)}
+.seg button{flex:1;border:0;background:transparent;min-height:44px;padding:0 12px;font-size:14.5px;font-weight:500;color:var(--ink-60)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--ground);font-weight:600}
+
+label.f{display:block;font-size:12.5px;color:var(--ink-60);margin:0 0 5px}
+@media (pointer: coarse) and (max-width: 900px){
+  input[type=number],input[type=text],select,textarea{font-size:16px}
+}
+input[type=number],input[type=text],select{
+  font:inherit;font-size:15.5px;width:100%;padding:11px 12px;background:var(--paper);
+  color:var(--ink);border:1px solid var(--ink-14);border-radius:6px;appearance:none;
+  font-variant-numeric:tabular-nums;
+}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.stat{
+  margin:14px 0 0;padding:12px 13px;background:var(--paper);border:1px solid var(--ink-14);
+  border-radius:4px;font-size:13.5px;color:var(--ink-60);
+}
+.stat b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.stat.ok{border-color:rgba(35,64,216,.35)}
+.stat.bad{border-color:rgba(158,59,35,.4);color:var(--rust)}
+.note{font-size:13px;color:var(--ink-60);margin:11px 0 0}
+
+/* ---------- readout + results ---------- */
+.face{padding:2px 0 18px}
+.readout{display:flex;align-items:flex-end;gap:8px;line-height:.82}
+.readout .num{font-size:clamp(60px,21vw,96px);font-weight:600;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+.readout .unit{font-size:15px;font-weight:500;color:var(--ink-60);padding-bottom:.55em}
+.face .cap{margin:12px 0 0;font-size:13.5px;color:var(--ink-60)}
+.face.live .num{color:var(--signal)}
+
+.chart{width:100%;height:184px;display:block;border:1px solid var(--ink-14);border-radius:4px;background:var(--paper)}
+.reps{margin:16px 0 0;padding:0;list-style:none;border-top:1px solid var(--ink-14)}
+.rep{display:flex;align-items:center;gap:11px;padding:13px 0;border-bottom:1px solid var(--ink-14)}
+.rep .n{font-size:12.5px;color:var(--ink-38);width:1.5em;font-variant-numeric:tabular-nums}
+.rep .v{font-size:25px;font-weight:600;letter-spacing:-.035em;font-variant-numeric:tabular-nums;min-width:2.9em}
+.rep .v small{font-size:11px;font-weight:500;color:var(--ink-38);letter-spacing:0;margin-left:3px}
+.rep .meta{flex:1;font-size:11.5px;color:var(--ink-60);line-height:1.35;font-variant-numeric:tabular-nums}
+.rep .rpe{text-align:right;min-width:3.3em;font-variant-numeric:tabular-nums}
+.rep .rpe b{display:block;font-size:20px;font-weight:600;letter-spacing:-.03em}
+.rep .rpe span{display:block;font-size:10.5px;color:var(--ink-38)}
+.rep .rpe.hard b{color:var(--rust)}
+.rep .rpe.easy b{color:var(--signal)}
+.rep .x{border:0;background:transparent;color:var(--ink-38);font-size:19px;padding:4px 0 4px 6px;line-height:1}
+
+.summary{margin-top:16px;padding:15px;background:var(--paper);border:1px solid var(--ink-14);border-radius:4px}
+.summary dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:13.5px}
+.summary dt{color:var(--ink-60)}
+.summary dd{margin:0;font-variant-numeric:tabular-nums;font-weight:550}
+.summary p{margin:12px 0 0;font-size:12.5px;color:var(--ink-60)}
+
+details.help{margin-top:24px;font-size:13.5px;color:var(--ink-60)}
+details.help summary{cursor:pointer;color:var(--ink);font-weight:550;font-size:14px}
+details.help ul{padding-left:1.15em;margin:10px 0}
+details.help li{margin-bottom:6px}
+.foot{padding:22px 0 8px;font-size:12px;color:var(--ink-38);border-top:1px solid var(--ink-14);margin-top:22px}
+</style>
+</head>
+<body>
+
+<div class="hood">
+  <div class="hoodin">
+    <div class="trailrow">
+      <a class="mark back" id="brand" href="./power-logs.html">‹ Spotter</a>
+      <button type="button" class="eject hid" id="ejectBtn" aria-label="Eject video">
+        <span aria-hidden="true">⏏</span><span id="ejectLabel">Eject</span>
+      </button>
+      <ol class="trail" id="trail">
+        <li><button type="button" data-go="1" data-state="now">1</button></li>
+        <li><button type="button" data-go="2" disabled>2</button></li>
+        <li><button type="button" data-go="3" disabled>3</button></li>
+        <li><button type="button" data-go="4" disabled>4</button></li>
+      </ol>
+    </div>
+    <div id="preview">
+    <div class="stage empty" id="stage">
+      <p id="stageEmpty">Your clip stays here while you work through the steps</p>
+      <div class="vwrap hid" id="vwrap">
+        <video id="vid" playsinline muted preload="auto"></video>
+        <canvas class="ov" id="ov"></canvas>
+      </div>
+    </div>
+    <div class="loupebox hid" id="loupeBox">
+      <canvas id="loupeCv" width="124" height="124" aria-hidden="true"></canvas>
+      <div class="lmeta" id="loupeMeta"></div>
+    </div>
+    <div class="cue hid" id="hint"></div>
+    <div class="scrub hid" id="scrubRow">
+      <input type="range" id="scrub" min="0" max="1000" value="0" step="1" aria-label="Scrub clip">
+      <span class="tc" id="tc">0.00 s</span>
+    </div>
+    </div>
+    <button type="button" class="fold hid" id="foldBtn" aria-expanded="true" aria-controls="preview">
+      <span class="fchev" aria-hidden="true">⌃</span><span id="foldLabel">Hide preview</span>
+    </button>
+  </div>
+</div>
+
+<main>
+  <div id="crumbs"></div>
+
+  <!-- ---------------- 1 ---------------- -->
+  <section class="step" id="s1">
+    <h1>Load the clip</h1>
+    <p class="sub">Film square-on to the bar with the phone fixed, lens level with the middle of the rep. 60&nbsp;fps or faster is best.</p>
+    <div class="row">
+      <button class="btn" id="pickBtn">Choose video</button>
+      <button class="btn ghost hid" id="replaceBtn">Replace</button>
+    </div>
+    <input type="file" id="file" accept="video/*" class="hid">
+    <div class="stat hid" id="vidStat"></div>
+
+    <div class="hid" id="trimBox" style="margin-top:18px">
+      <label class="f">Trim to the working set — optional, and it speeds tracking up</label>
+      <div class="row">
+        <button class="btn ghost sm" id="setT0">Start here</button>
+        <button class="btn ghost sm" id="setT1">End here</button>
+        <button class="btn ghost sm" id="wholeClip">Whole clip</button>
+      </div>
+      <div class="stat" id="trimStat">Using the whole clip.</div>
+    </div>
+
+    <div class="act"><button class="btn wide" id="done1" disabled>Done</button></div>
+  </section>
+
+  <!-- ---------------- 2 ---------------- -->
+  <section class="step hid" id="s2">
+    <h1>Set the scale</h1>
+    <p class="sub">Drag a line across the plate face, through its centre. Pick a plate in the same plane as the bar end you will track.</p>
+    <div class="grid2">
+      <div>
+        <label class="f" for="refSel">Reference</label>
+        <select id="refSel">
+          <option value="450">Competition plate — 450 mm</option>
+          <option value="50">Bar sleeve — 50 mm</option>
+          <option value="2200">Bar, end to end — 2200 mm</option>
+          <option value="400">Training plate — 400 mm</option>
+          <option value="0">Something else</option>
+        </select>
+      </div>
+      <div>
+        <label class="f" for="refMm">Real length (mm)</label>
+        <input type="number" id="refMm" value="450" min="10" step="1" inputmode="decimal">
+      </div>
+    </div>
+    <div class="stat" id="calNote">Drag across the plate on the video above.</div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn ghost sm" id="calClear">Clear line</button>
+    </div>
+    <div class="act"><button class="btn wide" id="done2" disabled>Done</button></div>
+  </section>
+
+  <!-- ---------------- 3 ---------------- -->
+  <section class="step hid" id="s3">
+    <h1>Pick what to follow</h1>
+    <p class="sub" id="s3sub">Tap the coloured tape on the bar end. The zoom bubble shows exactly which pixels you are picking.</p>
+    <div class="seg" id="modeSeg">
+      <button id="mMark" aria-pressed="true">Tape marker</button>
+      <button id="mPoint" aria-pressed="false">Tap a point</button>
+    </div>
+    <div class="stat" id="seedNote" style="margin-top:12px">Tap the bar on the video above.</div>
+    <div id="markOpts" style="margin-top:14px">
+      <label class="f" for="tol">Colour tolerance <span id="tolv" style="font-variant-numeric:tabular-nums">28°</span></label>
+      <input type="range" id="tol" min="8" max="60" value="28" step="1" style="width:100%;accent-color:var(--ink);min-height:34px">
+    </div>
+    <div class="grid2" style="margin-top:14px">
+      <div>
+        <label class="f" for="lift">Lift</label>
+        <select id="lift">
+          <option value="squat">Squat</option>
+          <option value="bench">Bench press</option>
+          <option value="deadlift">Deadlift</option>
+        </select>
+      </div>
+      <div>
+        <label class="f" for="minRom">Min rep height (m)</label>
+        <input type="number" id="minRom" value="0.25" min="0.03" max="1.2" step="0.01" inputmode="decimal">
+      </div>
+    </div>
+    <div id="stanceBox" class="hid" style="margin-top:14px">
+      <label class="f">Stance</label>
+      <div class="seg" id="stanceSeg">
+        <button id="stConv" aria-pressed="true">Conventional</button>
+        <button id="stSumo" aria-pressed="false">Sumo</button>
+      </div>
+      <p class="note" id="stanceNote"></p>
+    </div>
+    <div class="act"><button class="btn wide" id="done3" disabled>Done</button></div>
+  </section>
+
+  <!-- ---------------- 4 ---------------- -->
+  <section class="step hid" id="s4">
+    <h1>Read the set</h1>
+    <p class="sub">Mean concentric velocity per rep, with an RPE estimate from your own velocity anchors.</p>
+
+    <div class="face" id="face">
+      <div class="readout">
+        <span class="num" id="bigNum">—.——</span>
+        <span class="unit">m/s<span id="bigTag"></span></span>
+      </div>
+      <p class="cap" id="bigCap">Track the bar to get numbers.</p>
+    </div>
+
+    <button class="btn wide" id="runBtn" disabled>Track the bar</button>
+    <p class="note" id="runNote"></p>
+
+    <div id="resultsBox" class="hid" style="margin-top:20px">
+      <canvas class="chart" id="chart"></canvas>
+      <ul class="reps" id="repList"></ul>
+      <div class="summary hid" id="sum">
+        <dl id="sumDl"></dl>
+        <p id="sumNote"></p>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn ghost sm" id="replayBtn" disabled>Replay</button>
+        <select id="replaySpeed" aria-label="Replay speed"
+          style="width:auto;padding:9px 10px;font-size:13.5px">
+          <option value="1">1×</option>
+          <option value="0.5">½×</option>
+          <option value="0.25">¼×</option>
+        </select>
+        <button class="btn ghost sm" id="reviewBtn" disabled>Show bar path</button>
+        <button class="btn ghost sm" id="csvBtn" disabled>Export CSV</button>
+      </div>
+      <div class="row" style="margin-top:9px">
+        <button class="btn ghost sm" id="vidBtn" disabled>Export video</button>
+        <button class="btn sm hid" id="saveVidBtn">Save video</button>
+      </div>
+      <p class="note" id="vidExpNote"></p>
+
+      <div style="margin-top:24px;padding-top:18px;border-top:1px solid var(--ink-14)">
+        <h1 style="font-size:16px">Velocity anchors</h1>
+        <p class="sub">The speed of a true grinding single is personal but stable. Set it per lift and every RPE below shifts with it.</p>
+        <div class="grid2">
+          <div>
+            <label class="f" for="mvt">RPE 10 speed, this lift (m/s)</label>
+            <input type="number" id="mvt" step="0.005" min="0.03" max="0.90" inputmode="decimal">
+          </div>
+          <div>
+            <label class="f">&nbsp;</label>
+            <button class="btn ghost wide" id="mvtReset" style="min-height:45px">Use default</button>
+          </div>
+        </div>
+        <p class="note" id="mvtNote"></p>
+      </div>
+    </div>
+
+    <details class="help">
+      <summary>Getting numbers you can trust</summary>
+      <ul>
+        <li>Phone on a tripod or propped against something solid. Handheld camera motion goes straight into the velocity trace.</li>
+        <li>Stand perpendicular to the bar, lens roughly level with the middle of the range of motion. Shooting from an angle or from the floor foreshortens the bar path and reads low.</li>
+        <li>Film the same bar end throughout, and scale against a plate in that same plane.</li>
+        <li>For tape mode use strongly coloured tape — fluoro pink, orange or green. White, black, silver and grey have no hue to lock onto.</li>
+        <li>30 fps gives a usable mean velocity but a noisy peak. 60 fps is comfortable, 120 or 240 better.</li>
+        <li>Expect mean concentric velocity within roughly 0.03&nbsp;m/s of a linear transducer with a good setup, and tighter at slow grinding speeds. RPE carries about ±1 until you set your own anchor.</li>
+        <li>Sumo and conventional hit the same bar speed at a genuine max, but sumo is slower at every effort below it and travels 20–25% less distance, so each stance gets its own table. A lifter's anchor for one stance does not transfer to the other — set both separately.</li>
+        <li>Deadlift velocity is less reliable than squat or bench, and load–velocity profiles tend to under-predict a real deadlift max. Trust velocity loss across a set more than the absolute number here.</li>
+      </ul>
+    </details>
+    <div class="foot">Works offline once installed. Nothing leaves the phone — video is decoded locally and discarded.</div>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+/* ============================ constants ============================ */
+
+/* Velocity anchors per RPE, in m/s.
+   Sumo shares conventional's RPE 10 anchor but runs roughly 10-14% slower at every
+   effort below maximal: Kasovic et al. 2019 (JSCR 33:12) found no difference in mean
+   concentric velocity at 1RM (0.25 vs 0.25 m/s) yet sumo significantly slower at
+   80-89%, 70-79% and 40-49% 1RM. The sumo curve is flatter, not shifted, so the
+   whole table changes while the top anchor holds. */
+var ANCHORS = {
+  "squat":    {4:0.70,5:0.62,6:0.54,7:0.46,8:0.39,9:0.33,10:0.28},
+  "bench":    {4:0.55,5:0.47,6:0.39,7:0.32,8:0.26,9:0.21,10:0.16},
+  "dl-conv":  {4:0.59,5:0.51,6:0.43,7:0.36,8:0.30,9:0.24,10:0.19},
+  "dl-sumo":  {4:0.51,5:0.44,6:0.38,7:0.32,8:0.27,9:0.23,10:0.19}
+};
+var LIFTNAME = {"squat":"Squat","bench":"Bench","dl-conv":"Deadlift, conventional","dl-sumo":"Deadlift, sumo"};
+var SHORTNAME = {"squat":"squat","bench":"bench","dl-conv":"conventional","dl-sumo":"sumo"};
+/* Sumo bar travel is 20-25% shorter than conventional, so the rep-height filter
+   has to come down with it or real sumo reps get discarded. */
+var DEFAULT_ROM = {"squat":0.25,"bench":0.12,"dl-conv":0.30,"dl-sumo":0.22};
+var WORKW = 640;
+var VTH = 0.06;
+var MIN_DUR = 0.15;
+var SEARCH_MARK = 78;
+var SEARCH_TPL  = 56;
+var TPL = 21;
+
+/* ============================ state ============================ */
+
+var S = {
+  url:null, vw:0, vh:0, k:1, W:0, H:0, dur:0, fpsGuess:0,
+  cal:{a:null,b:null,mm:450},
+  seed:null, mode:"marker", marker:null, tpl:null,
+  path:[], A:null, drop:{},
+  t0:null, t1:null,
+  touchMode:null, drag:null, tracking:false,
+  step:1, reached:1,
+  stance:"conv", folded:false,
+  mvt:{}
+};
+
+var $ = function(id){ return document.getElementById(id); };
+var vid=$("vid"), ov=$("ov"), ovx=ov.getContext("2d");
+var work=document.createElement("canvas"), wx=work.getContext("2d",{willReadFrequently:true});
+var hi=document.createElement("canvas"), hx=hi.getContext("2d",{willReadFrequently:true});
+
+/* ============================ helpers ============================ */
+
+function once(el, ev){
+  return new Promise(function(res){
+    var h=function(){ el.removeEventListener(ev,h); res(); };
+    el.addEventListener(ev,h);
+  });
+}
+function fmt(n,d){ return (n===null||n===undefined||!isFinite(n)) ? "\u2014" : n.toFixed(d===undefined?2:d); }
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function hint(txt){
+  var h=$("hint");
+  if(!txt){ h.classList.add("hid"); h.textContent=""; }
+  else{ h.classList.remove("hid"); h.textContent=txt; }
+}
+function setStat(id, text, kind){
+  var e=$(id);
+  e.innerHTML = text;
+  e.className = "stat" + (kind ? " "+kind : "");
+}
+function setBig(val, cap, tag){
+  $("bigNum").textContent = (val===null) ? "\u2014.\u2014\u2014" : fmt(val,2);
+  $("face").className = (val===null) ? "face" : "face live";
+  $("bigCap").textContent = cap || "";
+  $("bigTag").textContent = tag || "";
+}
+
+/* ============================ storage ============================ */
+
+function loadPrefs(){
+  try{
+    var raw=localStorage.getItem("barspeed.prefs");
+    if(!raw) return;
+    var p=JSON.parse(raw);
+    if(p.mvt){
+      S.mvt=p.mvt;
+      // anchors saved before the stance split were shared; seed both styles from it
+      if(typeof S.mvt.deadlift==="number"){
+        if(S.mvt["dl-conv"]===undefined) S.mvt["dl-conv"]=S.mvt.deadlift;
+        if(S.mvt["dl-sumo"]===undefined) S.mvt["dl-sumo"]=S.mvt.deadlift;
+        delete S.mvt.deadlift;
+      }
+    }
+    if(p.stance==="sumo"||p.stance==="conv") S.stance=p.stance;
+    if(p.lift) $("lift").value=p.lift;
+    if(p.mode) setMode(p.mode, true);
+    if(p.refMm){ $("refMm").value=p.refMm; S.cal.mm=+p.refMm; syncRefSel(); }
+    if(p.tol){ $("tol").value=p.tol; }
+  }catch(e){}
+}
+function savePrefs(){
+  try{
+    localStorage.setItem("barspeed.prefs", JSON.stringify({
+      mvt:S.mvt, lift:$("lift").value, stance:S.stance, mode:S.mode, refMm:$("refMm").value, tol:$("tol").value
+    }));
+  }catch(e){}
+}
+function profileKey(){
+  var l=$("lift").value;
+  if(l!=="deadlift") return l;
+  return (S.stance==="sumo") ? "dl-sumo" : "dl-conv";
+}
+/* Trims trailing zeros so 0.08 stays 0.08 and 0.115 survives, instead of
+   being flattened to two decimals. */
+function anchorStr(v){ return String(Math.round(v*1000)/1000); }
+function setAnchorField(lift){
+  var el=$("mvt");
+  if(document.activeElement===el) return;   // never fight the keyboard mid-entry
+  el.value=anchorStr(mvtFor(lift));
+}
+function mvtFor(lift){
+  var v=S.mvt[lift];
+  return (typeof v==="number" && isFinite(v) && v>0) ? v : ANCHORS[lift][10];
+}
+
+/* ============================ flow ============================ */
+
+function setFold(folded){
+  S.folded=!!folded;
+  $("preview").classList.toggle("hid", S.folded);
+  $("foldBtn").setAttribute("aria-expanded", S.folded ? "false" : "true");
+  $("foldLabel").textContent = S.folded ? "Show preview" : "Hide preview";
+  if(!S.folded){
+    // the video box had no layout while hidden, so the overlay needs re-measuring
+    sizeOverlay();
+    setTimeout(sizeOverlay,60);
+  }
+}
+$("foldBtn").addEventListener("click", function(){ setFold(!S.folded); });
+
+function stepReady(n){
+  if(n===1) return !!S.vw;
+  if(n===2) return mPerPx()>0;
+  if(n===3) return !!(S.seed && (S.mode==="marker" ? S.marker : S.tpl));
+  return true;
+}
+function crumbValue(n){
+  if(n===1){
+    if(S.t0===null && S.t1===null) return "whole clip";
+    var a=(S.t0===null?0:S.t0), b=(S.t1===null?S.dur:S.t1);
+    return fmt(a,2)+"\u2013"+fmt(b,2)+" s";
+  }
+  if(n===2) return fmt(mPerPx()*1000,2)+" mm/px";
+  if(n===3) return (S.mode==="marker" ? "tape" : "point") + " \u00b7 " + SHORTNAME[profileKey()];
+  return "";
+}
+var CRUMBLB = {1:"Clip", 2:"Scale", 3:"Target"};
+
+function renderCrumbs(){
+  var box=$("crumbs");
+  box.innerHTML="";
+  for(var n=1;n<=3;n++){
+    if(n>=S.step) continue;
+    if(!stepReady(n)) continue;
+    var b=document.createElement("button");
+    b.type="button"; b.className="crumb";
+    b.innerHTML='<span class="ck">\u2713</span><span class="lb">'+CRUMBLB[n]+'</span>'
+      + '<span class="vl">'+crumbValue(n)+'</span><span class="ed">Edit</span>';
+    (function(k){ b.addEventListener("click", function(){ goStep(k); }); })(n);
+    box.appendChild(b);
+  }
+}
+function renderTrail(){
+  var btns=$("trail").querySelectorAll("button");
+  for(var i=0;i<btns.length;i++){
+    var n=+btns[i].getAttribute("data-go");
+    btns[i].disabled = n>S.reached;
+    btns[i].setAttribute("data-state",
+      n===S.step ? "now" : ((n<S.step && stepReady(n)) ? "done" : "next"));
+  }
+}
+function goStep(n){
+  S.step=n;
+  if(n>S.reached) S.reached=n;
+  // only force the preview open when the step still needs a point placed;
+  // once it is set, the fold is the user's call
+  if(n<4 && S.folded && !stepReady(n)) setFold(false);
+  for(var i=1;i<=4;i++) $("s"+i).classList.toggle("hid", i!==n);
+
+  S.touchMode = (n===2) ? "cal" : (n===3 ? "seed" : null);
+  S.drag=null;
+
+  if(n===1) hint(S.vw ? "Scrub to a frame where the plate is clearly visible" : null);
+  else if(n===2) hint("Drag a line across the plate, through its centre \u2014 then nudge the end dots");
+  else if(n===3) hint(S.mode==="marker" ? "Tap the coloured tape on the bar end" : "Tap a small high-contrast spot on the bar end");
+  else hint(null);
+
+  loupe=null;
+  showLoupe(!!S.vw && (n===2 || n===3));
+  refreshStep();
+  renderCrumbs();
+  renderTrail();
+  paintOverlay();
+  window.scrollTo(0,0);
+}
+function refreshStep(){
+  $("done1").disabled = !stepReady(1);
+  $("done2").disabled = !stepReady(2);
+  $("done3").disabled = !stepReady(3);
+  $("runBtn").disabled = !(stepReady(2) && stepReady(3));
+}
+function advance(n){
+  if(!stepReady(n)) return;
+  goStep(Math.max(n+1, S.reached));
+}
+$("done1").addEventListener("click", function(){ advance(1); });
+$("done2").addEventListener("click", function(){ advance(2); });
+$("done3").addEventListener("click", function(){ advance(3); });
+Array.prototype.forEach.call($("trail").querySelectorAll("button"), function(b){
+  b.addEventListener("click", function(){
+    var n=+b.getAttribute("data-go");
+    if(n<=S.reached) goStep(n);
+  });
+});
+
+/* ============================ video load ============================ */
+
+/* Deliberately does not use window.confirm(): third-party iOS browsers suppress
+   JS dialogs, which made the whole button appear dead. Two taps on the button
+   itself works everywhere. */
+var ejectArmed=false, ejectTimer=null;
+function disarmEject(){
+  ejectArmed=false;
+  if(ejectTimer){ clearTimeout(ejectTimer); ejectTimer=null; }
+  $("ejectBtn").classList.remove("armed");
+  $("ejectLabel").textContent="Eject";
+}
+$("ejectBtn").addEventListener("click", function(){
+  if(S.tracking) S.tracking=false;
+  if(replaying) stopReplay(false);
+  if(S.A && S.A.reps.length && !ejectArmed){
+    ejectArmed=true;
+    $("ejectBtn").classList.add("armed");
+    $("ejectLabel").textContent="Tap again";
+    $("runNote").textContent="Ejecting clears the "+activeReps().length+" measured reps. Export the CSV first if you need them.";
+    ejectTimer=setTimeout(disarmEject,4000);
+    return;
+  }
+  disarmEject();
+  resetAll();
+  goStep(1);
+});
+$("pickBtn").addEventListener("click", function(){ $("file").click(); });
+$("replaceBtn").addEventListener("click", function(){ $("file").click(); });
+$("file").addEventListener("change", function(e){
+  var f=e.target.files && e.target.files[0];
+  if(f) loadVideo(f);
+  e.target.value="";
+});
+
+function resetAll(){
+  S.tracking=false;
+  replaying=false;
+  if(replayRaf){ cancelAnimationFrame(replayRaf); replayRaf=null; }
+  try{ vid.playbackRate=1; }catch(e){}
+  $("replayBtn").disabled=true;
+  $("replayBtn").textContent="Replay"; $("replayBtn").classList.remove("stop");
+  exporting=false; expBlob=null; expChunks=[];
+  if(expRec && expRec.state!=="inactive"){ try{ expRec.stop(); }catch(e){} }
+  $("vidBtn").disabled=true; $("vidBtn").textContent="Export video"; $("vidBtn").classList.remove("stop");
+  $("saveVidBtn").classList.add("hid"); $("vidExpNote").textContent="";
+  if(S.url){ URL.revokeObjectURL(S.url); S.url=null; }
+  vid.removeAttribute("src"); vid.load();
+  S.vw=0; S.vh=0; S.dur=0;
+  S.cal={a:null,b:null,mm:+$("refMm").value||450};
+  S.seed=null; S.marker=null; S.tpl=null; S.path=[]; S.A=null; S.drop={};
+  S.t0=null; S.t1=null; S.touchMode=null; S.drag=null;
+  S.step=1; S.reached=1;
+  $("vwrap").classList.add("hid");
+  $("stage").classList.add("empty"); $("stageEmpty").classList.remove("hid");
+  $("scrubRow").classList.add("hid");
+  $("trimBox").classList.add("hid"); $("vidStat").classList.add("hid");
+  $("replaceBtn").classList.add("hid");
+  $("pickBtn").classList.remove("hid");
+  $("ejectBtn").classList.add("hid");
+  disarmEject();
+  $("foldBtn").classList.add("hid");
+  loupe=null; showLoupe(false);
+  S.folded=false; $("preview").classList.remove("hid");
+  $("foldBtn").setAttribute("aria-expanded","true");
+  $("foldLabel").textContent="Hide preview";
+  $("resultsBox").classList.add("hid");
+  $("repList").innerHTML=""; $("sum").classList.add("hid");
+  $("csvBtn").disabled=true; $("reviewBtn").disabled=true;
+  $("runNote").textContent="";
+  setStat("calNote","Drag across the plate on the video above.");
+  setStat("seedNote","Tap the bar on the video above.");
+  setStat("trimStat","Using the whole clip.");
+  showPath=false; $("reviewBtn").textContent="Show bar path";
+  setBig(null,"Track the bar to get numbers.");
+  hint(null); drawChart();
+}
+
+async function loadVideo(file){
+  resetAll();
+  S.url=URL.createObjectURL(file);
+  vid.src=S.url;
+  $("vidStat").classList.remove("hid");
+  setStat("vidStat","Decoding\u2026");
+  try{
+    await Promise.race([
+      once(vid,"loadedmetadata"),
+      new Promise(function(_,rej){ setTimeout(function(){ rej(new Error("timeout")); },15000); })
+    ]);
+  }catch(err){
+    setStat("vidStat","That file will not decode here. iPhone clips in HEVC play in Safari but not every browser \u2014 open this in Safari, or re-export as H.264.","bad");
+    return;
+  }
+  S.vw=vid.videoWidth; S.vh=vid.videoHeight; S.dur=vid.duration||0;
+  if(!S.vw){ setStat("vidStat","No video track in that file.","bad"); return; }
+
+  S.W=Math.min(WORKW,S.vw); S.H=Math.round(S.W*S.vh/S.vw); S.k=S.W/S.vw;
+  work.width=S.W; work.height=S.H; hi.width=S.vw; hi.height=S.vh;
+
+  $("vwrap").classList.remove("hid");
+  $("stage").classList.remove("empty"); $("stageEmpty").classList.add("hid");
+  $("scrubRow").classList.remove("hid");
+  $("trimBox").classList.remove("hid");
+  $("replaceBtn").classList.remove("hid");
+  $("pickBtn").classList.add("hid");
+  $("ejectBtn").classList.remove("hid");
+  $("foldBtn").classList.remove("hid");
+
+  var fps=null;
+  if(typeof vid.requestVideoFrameCallback==="function") fps=await measureFps();
+  S.fpsGuess=fps||0;
+  setStat("vidStat",
+    "<b>"+S.vw+"\u00d7"+S.vh+"</b> \u00b7 <b>"+fmt(S.dur,2)+" s</b> \u00b7 "
+    + (fps ? ("<b>~"+Math.round(fps)+" fps</b>") : "frame rate unknown")
+    + (fps && fps<45 ? "<br>Low frame rate \u2014 mean velocity is fine, peak will be rough." : ""),
+    fps && fps<45 ? "" : "ok");
+
+  await seek(0);
+  sizeOverlay();
+  setTimeout(sizeOverlay,260);
+  setTimeout(sizeOverlay,700);
+  goStep(1);
+}
+
+async function measureFps(){
+  return new Promise(function(res){
+    var ts=[], n=0, done=false;
+    var fin=function(v){ if(done) return; done=true; res(v); };
+    var step=function(now,meta){
+      ts.push(meta.mediaTime); n++;
+      if(n<9 && !vid.ended) vid.requestVideoFrameCallback(step);
+      else{
+        vid.pause();
+        var ds=[];
+        for(var i=1;i<ts.length;i++){ var d=ts[i]-ts[i-1]; if(d>0.0005) ds.push(d); }
+        if(!ds.length) return fin(null);
+        ds.sort(function(a,b){return a-b;});
+        var med=ds[Math.floor(ds.length/2)];
+        fin(med>0 ? 1/med : null);
+      }
+    };
+    vid.currentTime=0;
+    vid.requestVideoFrameCallback(step);
+    vid.play().catch(function(){ fin(null); });
+    setTimeout(function(){ if(n<2){ vid.pause(); fin(null); } },3000);
+  });
+}
+function seek(t){
+  return new Promise(function(res){
+    var done=false;
+    var h=function(){ if(done) return; done=true; vid.removeEventListener("seeked",h); drawFrames(); res(); };
+    vid.addEventListener("seeked",h);
+    vid.currentTime=clamp(t,0,Math.max(0,S.dur-0.001));
+    setTimeout(function(){ if(!done){ done=true; vid.removeEventListener("seeked",h); drawFrames(); res(); } },1200);
+  });
+}
+function drawFrames(){
+  try{ wx.drawImage(vid,0,0,S.W,S.H); hx.drawImage(vid,0,0,S.vw,S.vh); }catch(e){}
+}
+
+/* ============================ scrub / trim ============================ */
+
+var scrubbing=false;
+$("scrub").addEventListener("input", function(e){
+  if(replaying) stopReplay(true);
+  scrubbing=true;
+  var t=(+e.target.value/1000)*S.dur;
+  $("tc").textContent=fmt(t,2)+" s";
+  vid.currentTime=clamp(t,0,Math.max(0,S.dur-0.001));
+});
+$("scrub").addEventListener("change", async function(){
+  scrubbing=false; await seek(vid.currentTime); paintOverlay();
+});
+vid.addEventListener("seeked", function(){
+  if(S.tracking) return;
+  $("tc").textContent=fmt(vid.currentTime,2)+" s";
+  if(!scrubbing){
+    paintOverlay();
+    if(S.step===4 && S.A && S.path.length) gauge(vid.currentTime);
+  }
+});
+function trimText(){
+  if(S.t0===null && S.t1===null) return "Using the whole clip.";
+  var a=(S.t0===null?0:S.t0), b=(S.t1===null?S.dur:S.t1);
+  if(b<=a) return "End is before the start \u2014 tap Whole clip to reset.";
+  return "Analysing <b>"+fmt(a,2)+"</b> to <b>"+fmt(b,2)+"</b> s \u00b7 <b>"+fmt(b-a,2)+" s</b> window.";
+}
+$("setT0").addEventListener("click", function(){ S.t0=vid.currentTime; setStat("trimStat",trimText()); renderCrumbs(); });
+$("setT1").addEventListener("click", function(){ S.t1=vid.currentTime; setStat("trimStat",trimText()); renderCrumbs(); });
+$("wholeClip").addEventListener("click", function(){ S.t0=null; S.t1=null; setStat("trimStat",trimText()); renderCrumbs(); });
+
+/* ============================ overlay ============================ */
+
+function sizeOverlay(){
+  var r=vid.getBoundingClientRect();
+  if(!r.width) return;
+  var dpr=Math.min(window.devicePixelRatio||1,2.5);
+  ov.style.width=r.width+"px"; ov.style.height=r.height+"px";
+  ov.width=Math.round(r.width*dpr); ov.height=Math.round(r.height*dpr);
+  ovx.setTransform(dpr,0,0,dpr,0,0);
+  paintOverlay();
+}
+window.addEventListener("resize", function(){ sizeOverlay(); if(!$("loupeBox").classList.contains("hid")) drawLoupePanel(); });
+window.addEventListener("orientationchange", function(){ setTimeout(sizeOverlay,320); });
+
+function ovDisp(){ var r=ov.getBoundingClientRect(); return {w:r.width,h:r.height}; }
+function toDisp(p){ var d=ovDisp(); return {x:p.x/S.W*d.w, y:p.y/S.H*d.h}; }
+function fromEvent(ev){
+  var r=ov.getBoundingClientRect();
+  var t=(ev.touches && ev.touches.length) ? ev.touches[0] : ev;
+  return { x:clamp((t.clientX-r.left)/r.width*S.W,0,S.W-1),
+           y:clamp((t.clientY-r.top)/r.height*S.H,0,S.H-1) };
+}
+
+var loupe=null, showPath=false, replaying=false, replayRaf=null;
+
+function paintOverlay(){
+  var d=ovDisp();
+  ovx.clearRect(0,0,d.w,d.h);
+  if(S.cal.a && S.cal.b) drawCal();
+  if(S.seed) drawSeed();
+  if(S.A && showPath) drawPathTrail();
+  if(S.path.length && !S.tracking && S.step===4) drawMarkerAt(vid.currentTime);
+}
+function drawCal(){
+  var a=toDisp(S.cal.a), b=toDisp(S.cal.b);
+  ovx.save();
+  ovx.strokeStyle="#F2F3F0"; ovx.lineWidth=3.4; ovx.lineCap="round";
+  ovx.beginPath(); ovx.moveTo(a.x,a.y); ovx.lineTo(b.x,b.y); ovx.stroke();
+  ovx.strokeStyle="#2340D8"; ovx.lineWidth=1.5;
+  ovx.beginPath(); ovx.moveTo(a.x,a.y); ovx.lineTo(b.x,b.y); ovx.stroke();
+  [a,b].forEach(function(p){
+    ovx.beginPath(); ovx.arc(p.x,p.y,8,0,6.2832);
+    ovx.fillStyle="rgba(35,64,216,.92)"; ovx.fill();
+    ovx.strokeStyle="#F2F3F0"; ovx.lineWidth=2.2; ovx.stroke();
+  });
+  ovx.restore();
+}
+function drawSeed(){
+  var p=toDisp(S.seed);
+  ovx.save();
+  ovx.strokeStyle="#F2F3F0"; ovx.lineWidth=3.4;
+  ovx.beginPath(); ovx.arc(p.x,p.y,12,0,6.2832); ovx.stroke();
+  ovx.strokeStyle="#9E3B23"; ovx.lineWidth=1.8;
+  ovx.beginPath(); ovx.arc(p.x,p.y,12,0,6.2832); ovx.stroke();
+  ovx.beginPath();
+  ovx.moveTo(p.x-17,p.y); ovx.lineTo(p.x-5,p.y);
+  ovx.moveTo(p.x+5,p.y);  ovx.lineTo(p.x+17,p.y);
+  ovx.moveTo(p.x,p.y-17); ovx.lineTo(p.x,p.y-5);
+  ovx.moveTo(p.x,p.y+5);  ovx.lineTo(p.x,p.y+17);
+  ovx.stroke();
+  ovx.restore();
+}
+/* The magnifier lives in a fixed panel below the video rather than a bubble that
+   follows the finger: a bubble sits in the hand's shadow and flips side near the
+   frame edges, so you never know where to look. LSPAN is the width of the
+   magnified region in tracking pixels. */
+var LSPAN=44, LCSS=124;
+function loupeCtx(){
+  var c=$("loupeCv"), g=c.getContext("2d");
+  var dpr=Math.min(window.devicePixelRatio||1,2.5);
+  if(c.width!==Math.round(LCSS*dpr)){
+    c.width=Math.round(LCSS*dpr); c.height=Math.round(LCSS*dpr);
+  }
+  g.setTransform(dpr,0,0,dpr,0,0);
+  return g;
+}
+function drawLoupePanel(){
+  var g=loupeCtx();
+  g.clearRect(0,0,LCSS,LCSS);
+  g.fillStyle="#0E1112"; g.fillRect(0,0,LCSS,LCSS);
+  if(!loupe || !S.vw){
+    g.fillStyle="rgba(237,239,235,.40)";
+    g.font="11px -apple-system,sans-serif"; g.textAlign="center";
+    g.fillText("touch the video", LCSS/2, LCSS/2-4);
+    g.fillText("to magnify", LCSS/2, LCSS/2+10);
+    return;
+  }
+  var k=S.vw/S.W, half=(LSPAN/2)*k;
+  g.imageSmoothingEnabled=false;   // crisp blocks, so you can see the actual pixels
+  try{ g.drawImage(hi, loupe.x*k-half, loupe.y*k-half, half*2, half*2, 0,0, LCSS,LCSS); }catch(e){}
+  var col = (S.touchMode==="cal") ? "#6E8AF2" : "#DE7B58";
+  g.strokeStyle="rgba(242,243,240,.9)"; g.lineWidth=1;
+  g.beginPath();
+  g.moveTo(0,LCSS/2); g.lineTo(LCSS/2-9,LCSS/2);
+  g.moveTo(LCSS/2+9,LCSS/2); g.lineTo(LCSS,LCSS/2);
+  g.moveTo(LCSS/2,0); g.lineTo(LCSS/2,LCSS/2-9);
+  g.moveTo(LCSS/2,LCSS/2+9); g.lineTo(LCSS/2,LCSS);
+  g.stroke();
+  g.strokeStyle=col; g.lineWidth=1.7;
+  g.beginPath(); g.arc(LCSS/2,LCSS/2,9,0,6.2832); g.stroke();
+}
+function loupeMeta(){
+  var e=$("loupeMeta");
+  if(!loupe){
+    e.innerHTML="The crosshair marks the exact pixel you are placing. It keeps showing your last point after you lift your finger.";
+    return;
+  }
+  var lbl = (S.touchMode==="cal") ? ("Scale point "+(S.drag==="b"?"B":"A")) : "Target";
+  var body='<span class="mono">x '+Math.round(loupe.x)+", y "+Math.round(loupe.y)+"</span>";
+  if(S.touchMode==="seed" && S.mode==="marker"){
+    try{
+      var d=wx.getImageData(clamp(Math.round(loupe.x)-3,0,S.W-7), clamp(Math.round(loupe.y)-3,0,S.H-7),7,7).data;
+      var r=0,gg=0,b=0,n=0;
+      for(var i=0;i<d.length;i+=4){ r+=d[i]; gg+=d[i+1]; b+=d[i+2]; n++; }
+      r=Math.round(r/n); gg=Math.round(gg/n); b=Math.round(b/n);
+      var hsv=rgb2hsv(r,gg,b);
+      body='<span class="swatch" style="background:rgb('+r+','+gg+','+b+')"></span>'
+        + '<span class="mono">hue '+Math.round(hsv[0])+"\u00b0 \u00b7 sat "+Math.round(hsv[1]*100)+"%</span>"
+        + (hsv[1]<0.30 ? '<br><span style="color:var(--rust)">too washed out to follow</span>' : "");
+    }catch(e2){}
+  }
+  e.innerHTML="<b>"+lbl+"</b>"+body;
+}
+function showLoupe(on){
+  $("loupeBox").classList.toggle("hid", !on);
+  if(on){ drawLoupePanel(); loupeMeta(); }
+}
+/* Sample the tracked path and the analysed velocity at an arbitrary time, so the
+   marker can follow both a replay and a manual scrub. */
+function pathAt(t){
+  var P=S.path;
+  if(!P.length) return null;
+  if(t<=P[0].t) return {x:P[0].x,y:P[0].y};
+  if(t>=P[P.length-1].t) return {x:P[P.length-1].x,y:P[P.length-1].y};
+  var lo=0, hi=P.length-1;
+  while(hi-lo>1){ var mid=(lo+hi)>>1; if(P[mid].t<=t) lo=mid; else hi=mid; }
+  var a=P[lo], b=P[hi];
+  var f=(b.t>a.t)?(t-a.t)/(b.t-a.t):0;
+  return {x:a.x+(b.x-a.x)*f, y:a.y+(b.y-a.y)*f};
+}
+function velAt(t){
+  if(!S.A) return null;
+  var T=S.A.T, V=S.A.vel;
+  if(t<=T[0]) return V[0];
+  if(t>=T[T.length-1]) return V[V.length-1];
+  var lo=0, hi=T.length-1;
+  while(hi-lo>1){ var mid=(lo+hi)>>1; if(T[mid]<=t) lo=mid; else hi=mid; }
+  var f=(T[hi]>T[lo])?(t-T[lo])/(T[hi]-T[lo]):0;
+  return V[lo]+(V[hi]-V[lo])*f;
+}
+function repAt(t){
+  if(!S.A) return -1;
+  for(var i=0;i<S.A.reps.length;i++){
+    if(S.drop[i]) continue;
+    if(t>=S.A.reps[i].t0 && t<=S.A.reps[i].t1) return i;
+  }
+  return -1;
+}
+function drawMarkerAt(t){
+  var p=pathAt(t);
+  if(!p) return;
+  var d=toDisp(p), inRep=repAt(t)>=0;
+  ovx.save();
+  ovx.beginPath(); ovx.arc(d.x,d.y,10,0,6.2832);
+  ovx.fillStyle=inRep?"rgba(35,64,216,.32)":"rgba(14,17,18,.28)";
+  ovx.fill();
+  ovx.strokeStyle="#F2F3F0"; ovx.lineWidth=3.2; ovx.stroke();
+  ovx.strokeStyle=inRep?"#2340D8":"rgba(242,243,240,.95)"; ovx.lineWidth=1.9; ovx.stroke();
+  ovx.restore();
+}
+/* Live speed goes in the big readout rather than an overlay, to keep the frame clear. */
+function gauge(t){
+  var v=velAt(t);
+  if(v===null) return;
+  var ri=repAt(t);
+  setBig(v, (v < -0.05)
+    ? "Descending \u00b7 live bar speed"
+    : (ri>=0 ? ("Rep "+(ri+1)+" concentric \u00b7 live bar speed")
+             : "Between reps \u00b7 live bar speed"));
+}
+function drawPathTrail(){
+  if(!S.path.length) return;
+  ovx.save(); ovx.beginPath();
+  for(var i=0;i<S.path.length;i++){
+    var q=toDisp(S.path[i]);
+    if(i===0) ovx.moveTo(q.x,q.y); else ovx.lineTo(q.x,q.y);
+  }
+  ovx.strokeStyle="rgba(242,243,240,.9)"; ovx.lineWidth=3.2; ovx.stroke();
+  ovx.strokeStyle="#2340D8"; ovx.lineWidth=1.6; ovx.stroke();
+  ovx.restore();
+}
+
+/* ============================ touch ============================ */
+
+ov.addEventListener("touchstart", onDown, {passive:false});
+ov.addEventListener("touchmove", onMove, {passive:false});
+ov.addEventListener("touchend", onUp, {passive:false});
+ov.addEventListener("mousedown", onDown);
+ov.addEventListener("mousemove", function(e){ if(S.drag) onMove(e); });
+ov.addEventListener("mouseup", onUp);
+
+function near(p,q,r){ if(!q) return false; var dx=p.x-q.x, dy=p.y-q.y; return dx*dx+dy*dy < r*r; }
+
+function onDown(ev){
+  if(!S.touchMode || S.tracking) return;
+  ev.preventDefault();
+  var p=fromEvent(ev);
+  var grab=24*(S.W/(ovDisp().w||S.W));
+  if(S.touchMode==="cal"){
+    if(near(p,S.cal.a,grab)) S.drag="a";
+    else if(near(p,S.cal.b,grab)) S.drag="b";
+    else if(!S.cal.a){ S.cal.a=p; S.drag="a"; }
+    else if(!S.cal.b){ S.cal.b=p; S.drag="b"; }
+    else { S.cal.a=p; S.cal.b=null; S.drag="a"; }
+  } else if(S.touchMode==="seed"){
+    S.seed=p; S.drag="s";
+  }
+  loupe=p; drawLoupePanel(); loupeMeta(); paintOverlay();
+}
+function onMove(ev){
+  if(!S.drag) return;
+  ev.preventDefault();
+  var p=fromEvent(ev);
+  if(S.drag==="a") S.cal.a=p;
+  else if(S.drag==="b") S.cal.b=p;
+  else if(S.drag==="s") S.seed=p;
+  loupe=p; drawLoupePanel(); loupeMeta(); paintOverlay();
+}
+function onUp(ev){
+  if(!S.drag) return;
+  if(ev && ev.preventDefault) ev.preventDefault();
+  S.drag=null;
+  if(S.touchMode==="cal") finishCal();
+  if(S.touchMode==="seed") finishSeed();
+  // the magnified view stays on the last point so it can be checked after lifting
+  drawLoupePanel(); loupeMeta();
+  paintOverlay();
+}
+
+/* ============================ scale ============================ */
+
+$("calClear").addEventListener("click", function(){
+  S.cal.a=null; S.cal.b=null; loupe=null;
+  finishCal(); drawLoupePanel(); loupeMeta(); paintOverlay();
+});
+$("refSel").addEventListener("change", function(){
+  var v=+this.value;
+  if(v>0){ $("refMm").value=v; S.cal.mm=v; }
+  finishCal(); savePrefs();
+});
+$("refMm").addEventListener("input", function(){
+  S.cal.mm=+this.value||0; syncRefSel(); finishCal(); savePrefs();
+});
+function syncRefSel(){
+  var v=String(S.cal.mm), sel=$("refSel"), found=false;
+  for(var i=0;i<sel.options.length;i++){ if(sel.options[i].value===v){ sel.value=v; found=true; break; } }
+  if(!found) sel.value="0";
+}
+function calPxLen(){
+  if(!S.cal.a||!S.cal.b) return 0;
+  var dx=S.cal.a.x-S.cal.b.x, dy=S.cal.a.y-S.cal.b.y;
+  return Math.sqrt(dx*dx+dy*dy);
+}
+function mPerPx(){
+  var L=calPxLen();
+  if(!L || !S.cal.mm) return 0;
+  return (S.cal.mm/1000)/L;
+}
+function finishCal(){
+  var mpp=mPerPx();
+  if(!mpp) setStat("calNote","Drag across the plate on the video above.");
+  else{
+    var L=calPxLen();
+    var short_ = L<40;
+    setStat("calNote",
+      "<b>"+fmt(L,0)+" px</b> = <b>"+S.cal.mm+" mm</b> \u00b7 <b>"+fmt(mpp*1000,2)+" mm</b> per pixel"
+      + (short_ ? "<br>Short reference line \u2014 drag it longer for a tighter scale." : ""),
+      short_ ? "" : "ok");
+  }
+  refreshStep(); renderCrumbs();
+  if(S.A) runAnalysis();
+}
+
+/* ============================ mode + target ============================ */
+
+$("mMark").addEventListener("click", function(){ setMode("marker"); savePrefs(); });
+$("mPoint").addEventListener("click", function(){ setMode("point"); savePrefs(); });
+function setMode(m, quiet){
+  S.mode=m;
+  $("mMark").setAttribute("aria-pressed", m==="marker"?"true":"false");
+  $("mPoint").setAttribute("aria-pressed", m==="point"?"true":"false");
+  $("markOpts").classList.toggle("hid", m!=="marker");
+  $("s3sub").textContent = (m==="marker")
+    ? "Tap the coloured tape on the bar end. The zoom bubble shows exactly which pixels you are picking."
+    : "Tap a small, high-contrast spot on the bar end \u2014 a collar edge or a letter on the sleeve.";
+  S.marker=null; S.tpl=null;
+  if(quiet) return;
+  if(S.step===3) hint(m==="marker" ? "Tap the coloured tape on the bar end" : "Tap a small high-contrast spot on the bar end");
+  if(S.seed) finishSeed(); else { setStat("seedNote","Tap the bar on the video above."); refreshStep(); }
+  if(S.step===3) loupeMeta();
+}
+$("tol").addEventListener("input", function(){ $("tolv").textContent=this.value+"\u00b0"; savePrefs(); });
+
+function syncLift(){
+  var isDl = $("lift").value==="deadlift";
+  $("stanceBox").classList.toggle("hid", !isDl);
+  $("stConv").setAttribute("aria-pressed", S.stance==="conv"?"true":"false");
+  $("stSumo").setAttribute("aria-pressed", S.stance==="sumo"?"true":"false");
+  $("stanceNote").textContent = !isDl ? "" : (S.stance==="sumo"
+    ? "Sumo and conventional reach the same speed at a true max but sumo is slower at every effort below it, so it gets its own table and its own anchor."
+    : "Deadlift velocity is the least reliable of the three lifts. Lean on velocity loss across the set more than the absolute number.");
+  var k=profileKey();
+  $("minRom").value=DEFAULT_ROM[k];
+  setAnchorField(k);
+  renderCrumbs();
+  if(S.A) renderReps();
+}
+$("lift").addEventListener("change", function(){
+  syncLift(); savePrefs();
+  if(S.A) runAnalysis();
+});
+function setStance(v){
+  S.stance=v; syncLift(); savePrefs();
+  if(S.A) runAnalysis();
+}
+$("stConv").addEventListener("click", function(){ setStance("conv"); });
+$("stSumo").addEventListener("click", function(){ setStance("sumo"); });
+$("minRom").addEventListener("input", function(){ if(S.A) runAnalysis(); });
+
+function rgb2hsv(r,g,b){
+  r/=255;g/=255;b/=255;
+  var mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn, h=0;
+  if(d>0){
+    if(mx===r) h=60*(((g-b)/d)%6);
+    else if(mx===g) h=60*((b-r)/d+2);
+    else h=60*((r-g)/d+4);
+  }
+  if(h<0) h+=360;
+  return [h, mx>0?d/mx:0, mx];
+}
+function hueDiff(a,b){ var d=Math.abs(a-b)%360; return d>180?360-d:d; }
+
+function finishSeed(){
+  if(!S.seed){ setStat("seedNote","Tap the bar on the video above."); refreshStep(); return; }
+  drawFrames();
+  if(S.mode==="marker"){
+    var r=0,g=0,b=0,n=0;
+    try{
+      var d=wx.getImageData(Math.max(0,Math.round(S.seed.x)-3), Math.max(0,Math.round(S.seed.y)-3),7,7).data;
+      for(var i=0;i<d.length;i+=4){ r+=d[i]; g+=d[i+1]; b+=d[i+2]; n++; }
+    }catch(e){}
+    if(!n){ setStat("seedNote","Could not read those pixels \u2014 tap again.","bad"); refreshStep(); return; }
+    var hsv=rgb2hsv(r/n,g/n,b/n);
+    S.marker={h:hsv[0], s:hsv[1], v:hsv[2]};
+    if(hsv[1]<0.30){
+      setStat("seedNote","That colour is too washed out to follow reliably. Use brighter tape, or switch to Tap a point.","bad");
+    } else {
+      setStat("seedNote","Locked onto hue <b>"+Math.round(hsv[0])+"\u00b0</b>. Widen the tolerance below if it loses the tape.","ok");
+    }
+  } else {
+    S.tpl=buildTemplate(S.seed);
+    if(S.tpl) setStat("seedNote","Target patch captured.","ok");
+    else setStat("seedNote","Too close to the frame edge \u2014 tap further in.","bad");
+  }
+  if(S.path.length){
+    $("runNote").textContent="Target moved — track again to refresh the numbers.";
+    $("runBtn").textContent="Track the bar";
+  }
+  refreshStep(); renderCrumbs();
+}
+
+/* ============================ pixels ============================ */
+
+function grayRect(x0,y0,w,h){
+  x0=clamp(Math.round(x0),0,S.W-1); y0=clamp(Math.round(y0),0,S.H-1);
+  w=Math.min(w,S.W-x0); h=Math.min(h,S.H-y0);
+  if(w<2||h<2) return null;
+  var im;
+  try{ im=wx.getImageData(x0,y0,w,h); }catch(e){ return null; }
+  var d=im.data, g=new Uint8Array(w*h);
+  for(var i=0,j=0;j<g.length;j++,i+=4) g[j]=(d[i]*77+d[i+1]*151+d[i+2]*28)>>8;
+  return {g:g,w:w,h:h,x0:x0,y0:y0,rgba:d};
+}
+function halve(src){
+  var w2=src.w>>1, h2=src.h>>1;
+  if(w2<2||h2<2) return null;
+  var o=new Uint8Array(w2*h2);
+  for(var y=0;y<h2;y++) for(var x=0;x<w2;x++){
+    var i=(y*2)*src.w + x*2;
+    o[y*w2+x]=(src.g[i]+src.g[i+1]+src.g[i+src.w]+src.g[i+src.w+1])>>2;
+  }
+  return {g:o,w:w2,h:h2};
+}
+function buildTemplate(p){
+  var half=(TPL-1)/2;
+  var x0=Math.round(p.x)-half, y0=Math.round(p.y)-half;
+  if(x0<0||y0<0||x0+TPL>S.W||y0+TPL>S.H) return null;
+  var f=grayRect(x0,y0,TPL,TPL);
+  if(!f) return null;
+  return {full:{g:f.g,w:TPL,h:TPL}, half:halve({g:f.g,w:TPL,h:TPL})};
+}
+function findMarker(pred, tol){
+  var R=SEARCH_MARK;
+  var rect=grayRect(pred.x-R,pred.y-R,R*2,R*2);
+  if(!rect) return null;
+  var d=rect.rgba, w=rect.w, h=rect.h;
+  var sx=0, sy=0, sw=0, cnt=0;
+  var minS=Math.max(0.22, S.marker.s*0.45), minV=Math.max(0.16, S.marker.v*0.35);
+  for(var y=0;y<h;y++) for(var x=0;x<w;x++){
+    var i=(y*w+x)*4;
+    var hsv=rgb2hsv(d[i],d[i+1],d[i+2]);
+    if(hsv[1]<minS||hsv[2]<minV) continue;
+    if(hueDiff(hsv[0],S.marker.h)>tol) continue;
+    var wt=hsv[1]*hsv[2];
+    sx+=x*wt; sy+=y*wt; sw+=wt; cnt++;
+  }
+  if(cnt<6||sw<=0) return null;
+  return {x:rect.x0+sx/sw, y:rect.y0+sy/sw, q:Math.min(1,cnt/40)};
+}
+function sad(img,tpl,ox,oy){
+  var s=0;
+  for(var y=0;y<tpl.h;y++){
+    var ri=(oy+y)*img.w+ox, ti=y*tpl.w;
+    for(var x=0;x<tpl.w;x++){ var dv=img.g[ri+x]-tpl.g[ti+x]; s+=dv<0?-dv:dv; }
+  }
+  return s;
+}
+function parab(a,b,c){
+  var den=a-2*b+c;
+  if(Math.abs(den)<1e-9) return 0;
+  return clamp(0.5*(a-c)/den,-1,1);
+}
+function findTemplate(pred){
+  var R=SEARCH_TPL;
+  var rect=grayRect(pred.x-R,pred.y-R,R*2,R*2);
+  if(!rect||!S.tpl||!S.tpl.half) return null;
+  var hrect=halve(rect);
+  if(!hrect) return null;
+  var th=S.tpl.half, tf=S.tpl.full;
+
+  var bx=-1, by=-1, best=Infinity;
+  var mx=hrect.w-th.w, my=hrect.h-th.h;
+  for(var y=0;y<=my;y++) for(var x=0;x<=mx;x++){
+    var s=sad(hrect,th,x,y);
+    if(s<best){ best=s; bx=x; by=y; }
+  }
+  if(bx<0) return null;
+
+  var cx=bx*2, cy=by*2, RAD=3, SPAN=RAD*2+1;
+  var grid=new Float64Array(SPAN*SPAN); grid.fill(Infinity);
+  var fbest=Infinity, fdx=0, fdy=0;
+  for(var dy=-RAD;dy<=RAD;dy++) for(var dx=-RAD;dx<=RAD;dx++){
+    var ax=cx+dx, ay=cy+dy;
+    if(ax<0||ay<0||ax+tf.w>rect.w||ay+tf.h>rect.h) continue;
+    var v=sad(rect,tf,ax,ay);
+    grid[(dy+RAD)*SPAN+(dx+RAD)]=v;
+    if(v<fbest){ fbest=v; fdx=dx; fdy=dy; }
+  }
+  if(!isFinite(fbest)) return null;
+  var at=function(dx2,dy2){
+    if(dx2<-RAD||dx2>RAD||dy2<-RAD||dy2>RAD) return Infinity;
+    return grid[(dy2+RAD)*SPAN+(dx2+RAD)];
+  };
+  var cN=at(fdx,fdy);
+  var xL=at(fdx-1,fdy), xR=at(fdx+1,fdy), yU=at(fdx,fdy-1), yD=at(fdx,fdy+1);
+  var subx=(isFinite(xL)&&isFinite(xR))?parab(xL,cN,xR):0;
+  var suby=(isFinite(yU)&&isFinite(yD))?parab(yU,cN,yD):0;
+  var half=(TPL-1)/2;
+  var q=clamp(1-(fbest/(tf.w*tf.h))/60,0,1);
+  return {x:rect.x0+cx+fdx+half+subx, y:rect.y0+cy+fdy+half+suby, q:q};
+}
+
+/* ============================ tracking ============================ */
+
+$("runBtn").addEventListener("click", function(){
+  if(S.tracking){ S.tracking=false; return; }
+  track();
+});
+
+async function track(){
+  S.touchMode=null; hint(null); showPath=false;
+  if(replaying) stopReplay(false);
+  if(exporting) stopExport();
+  if(S.folded) setFold(false);
+  $("reviewBtn").textContent="Show bar path";
+  S.tracking=true;
+  $("runBtn").textContent="Stop"; $("runBtn").classList.add("stop");
+
+  var start=(S.t0!==null?S.t0:0), end=(S.t1!==null?S.t1:S.dur);
+  if(end<=start) end=S.dur;
+  await seek(start);
+
+  S.path=[];
+  var tol=+$("tol").value;
+  var cur={x:S.seed.x,y:S.seed.y}, prev=null;
+  var lost=0, seen=0, lastT=-1;
+  var hasRVFC=typeof vid.requestVideoFrameCallback==="function";
+  var finished=false;
+
+  var finish=function(){
+    if(finished) return; finished=true;
+    S.tracking=false; vid.pause();
+    $("runBtn").textContent="Track again"; $("runBtn").classList.remove("stop");
+    var lostPct=S.path.length ? lost/S.path.length : 1;
+    if(S.path.length<8){
+      $("runNote").textContent="Only "+S.path.length+" frames captured. If the clip did not play, tap Track again \u2014 iOS sometimes needs a second tap.";
+      return;
+    }
+    if(lostPct>0.35){
+      $("runNote").textContent="Lost the target on "+Math.round(lostPct*100)+"% of frames. "
+        + (S.mode==="marker" ? "Widen the colour tolerance, or re-tap the tape in step 3."
+                             : "Try a spot with more contrast, or switch to tape mode in step 3.");
+    } else {
+      $("runNote").textContent=S.path.length+" frames tracked"+(lost?(", "+lost+" filled in"):"")+".";
+    }
+    $("resultsBox").classList.remove("hid");
+    $("reviewBtn").disabled=false;
+    $("replayBtn").disabled=false;
+    $("vidBtn").disabled=false;
+    runAnalysis();
+  };
+  var queue=function(){
+    if(!S.tracking){ finish(); return; }
+    if(hasRVFC) vid.requestVideoFrameCallback(step);
+    else requestAnimationFrame(function(n){ step(n,null); });
+  };
+  var step=function(now,meta){
+    if(!S.tracking){ finish(); return; }
+    var t=meta?meta.mediaTime:vid.currentTime;
+    if(t<=lastT+1e-4){ queue(); return; }
+    lastT=t;
+    if(t>end+1e-3){ finish(); return; }
+
+    try{ wx.drawImage(vid,0,0,S.W,S.H); }catch(e){}
+    var pred = prev ? {x:cur.x+(cur.x-prev.x)*0.9, y:cur.y+(cur.y-prev.y)*0.9} : cur;
+    pred={x:clamp(pred.x,0,S.W-1), y:clamp(pred.y,0,S.H-1)};
+
+    var hitp=(S.mode==="marker")?findMarker(pred,tol):findTemplate(pred);
+    if(!hitp && S.mode==="marker") hitp=findMarker(cur,Math.min(60,tol+12));
+
+    if(hitp){ prev=cur; cur={x:hitp.x,y:hitp.y}; S.path.push({t:t,x:hitp.x,y:hitp.y,q:hitp.q}); seen++; }
+    else { S.path.push({t:t,x:cur.x,y:cur.y,q:0}); lost++; }
+
+    if(seen%4===0||!hitp) liveOverlay(cur,hitp);
+    $("runNote").textContent="Tracking \u2014 "+clamp(Math.round((t-start)/Math.max(0.001,end-start)*100),0,100)+"%"
+      + (lost?("  \u00b7 "+lost+" frames lost"):"");
+
+    if(vid.ended){ finish(); return; }
+    queue();
+  };
+
+  vid.addEventListener("ended", function(){ if(S.tracking) finish(); }, {once:true});
+  queue();
+  try{ await vid.play(); }
+  catch(e){
+    S.tracking=false;
+    $("runBtn").textContent="Track the bar"; $("runBtn").classList.remove("stop");
+    $("runNote").textContent="The clip would not start playing. Tap Track the bar again.";
+  }
+}
+
+function liveOverlay(cur,hitp){
+  var d=ovDisp();
+  ovx.clearRect(0,0,d.w,d.h);
+  var p=toDisp(cur);
+  ovx.save();
+  if(S.path.length>1){
+    ovx.beginPath();
+    var n=Math.min(S.path.length,140), s=S.path.length-n;
+    for(var i=s;i<S.path.length;i++){
+      var q=toDisp(S.path[i]);
+      if(i===s) ovx.moveTo(q.x,q.y); else ovx.lineTo(q.x,q.y);
+    }
+    ovx.strokeStyle="rgba(242,243,240,.75)"; ovx.lineWidth=1.7; ovx.stroke();
+  }
+  ovx.beginPath(); ovx.arc(p.x,p.y,10,0,6.2832);
+  ovx.fillStyle=hitp?"rgba(35,64,216,.35)":"rgba(158,59,35,.35)"; ovx.fill();
+  ovx.strokeStyle=hitp?"#2340D8":"#9E3B23"; ovx.lineWidth=2.5; ovx.stroke();
+  ovx.restore();
+}
+function stopReplay(restore){
+  replaying=false;
+  if(replayRaf){ cancelAnimationFrame(replayRaf); replayRaf=null; }
+  try{ vid.pause(); vid.playbackRate=1; }catch(e){}
+  $("replayBtn").textContent="Replay";
+  $("replayBtn").classList.remove("stop");
+  if(restore) renderReps();
+}
+async function replay(){
+  if(replaying){ stopReplay(true); paintOverlay(); return; }
+  if(!S.path.length) return;
+  if(S.folded) setFold(false);
+  showPath=true; $("reviewBtn").textContent="Hide bar path";
+
+  var start=S.path[0].t, end=S.path[S.path.length-1].t;
+  await seek(start);
+  var rate=parseFloat($("replaySpeed").value)||1;
+
+  replaying=true;
+  $("replayBtn").textContent="Stop"; $("replayBtn").classList.add("stop");
+
+  var tick=function(){
+    if(!replaying) return;
+    var t=vid.currentTime;
+    paintOverlay(); gauge(t);
+    if(t>=end-0.001 || vid.ended){
+      stopReplay(false);
+      paintOverlay(); gauge(end);
+      return;
+    }
+    replayRaf=requestAnimationFrame(tick);
+  };
+  try{
+    vid.playbackRate=rate;
+    await vid.play();
+  }catch(e){
+    stopReplay(true); paintOverlay();
+    $("runNote").textContent="Replay would not start playing. Tap Replay again \u2014 iOS sometimes needs a second tap.";
+    return;
+  }
+  tick();
+}
+$("replayBtn").addEventListener("click", replay);
+$("replaySpeed").addEventListener("change", function(){
+  if(replaying){ try{ vid.playbackRate=parseFloat(this.value)||1; }catch(e){} }
+});
+
+$("reviewBtn").addEventListener("click", function(){
+  showPath=!showPath;
+  this.textContent=showPath?"Hide bar path":"Show bar path";
+  if(showPath && S.folded) setFold(false);
+  paintOverlay();
+});
+
+/* ============================ analysis ============================ */
+
+function sgCoeffs(m){
+  var out=[], den=(2*m+1)*(4*m*m+4*m-3), base=3*(3*m*m+3*m-1);
+  for(var i=-m;i<=m;i++) out.push((base-15*i*i)/den);
+  return out;
+}
+function sgSmooth(y,m){
+  if(y.length<2*m+1) return y.slice();
+  var c=sgCoeffs(m), o=new Array(y.length);
+  for(var i=0;i<y.length;i++){
+    if(i<m||i>=y.length-m){ o[i]=y[i]; continue; }
+    var s=0;
+    for(var j=-m;j<=m;j++) s+=c[j+m]*y[i+j];
+    o[i]=s;
+  }
+  for(var k=0;k<m;k++){
+    o[k]=(y[k]+y[Math.min(k+1,y.length-1)])/2;
+    var e=y.length-1-k;
+    o[e]=(y[e]+y[Math.max(e-1,0)])/2;
+  }
+  return o;
+}
+
+function runAnalysis(){
+  var mpp=mPerPx();
+  if(!mpp||S.path.length<8){ S.A=null; drawChart(); renderReps(); return; }
+
+  var raw=S.path.slice();
+  for(var i=0;i<raw.length;i++){
+    if(raw[i].q>0) continue;
+    var a=i-1; while(a>=0 && raw[a].q<=0) a--;
+    var b=i+1; while(b<raw.length && raw[b].q<=0) b++;
+    if(a<0 && b>=raw.length) break;
+    if(a<0){ raw[i]={t:raw[i].t,x:raw[b].x,y:raw[b].y,q:0.01}; continue; }
+    if(b>=raw.length){ raw[i]={t:raw[i].t,x:raw[a].x,y:raw[a].y,q:0.01}; continue; }
+    var f=(raw[i].t-raw[a].t)/Math.max(1e-6,(raw[b].t-raw[a].t));
+    raw[i]={t:raw[i].t, x:raw[a].x+(raw[b].x-raw[a].x)*f, y:raw[a].y+(raw[b].y-raw[a].y)*f, q:0.01};
+  }
+
+  var ds=[];
+  for(var j=1;j<raw.length;j++){ var dd=raw[j].t-raw[j-1].t; if(dd>1e-4) ds.push(dd); }
+  if(!ds.length){ S.A=null; drawChart(); renderReps(); return; }
+  ds.sort(function(p,q){return p-q;});
+  var dt=ds[Math.floor(ds.length/2)], fps=1/dt;
+  var t0=raw[0].t, t1=raw[raw.length-1].t;
+  var N=Math.max(8, Math.floor((t1-t0)/dt)+1);
+  var T=new Array(N), Y=new Array(N), ptr=0;
+  for(var n=0;n<N;n++){
+    var t=t0+n*dt;
+    while(ptr<raw.length-2 && raw[ptr+1].t<t) ptr++;
+    var A1=raw[ptr], B1=raw[Math.min(ptr+1,raw.length-1)];
+    var f2=(B1.t>A1.t)?(t-A1.t)/(B1.t-A1.t):0;
+    T[n]=t; Y[n]=A1.y+(B1.y-A1.y)*clamp(f2,0,1);
+  }
+
+  var y0=Y[0];
+  var pos=Y.map(function(v){ return (y0-v)*mpp; });
+
+  // smooth position over a fixed ~60 ms window, so behaviour is frame-rate independent
+  var m=clamp(Math.round(fps*0.03),2,14);
+  var sp=sgSmooth(pos,m);
+  // differentiate over a fixed ~40 ms span rather than adjacent frames, or high frame
+  // rates divide pixel jitter by a tiny dt and the velocity trace explodes
+  var hs=clamp(Math.round(0.020/dt),1,24);
+  var vel=new Array(N);
+  for(var q2=0;q2<N;q2++){
+    var a2=Math.max(0,q2-hs), b2=Math.min(N-1,q2+hs);
+    vel[q2]=(sp[b2]-sp[a2])/((b2-a2)*dt);
+  }
+  vel=sgSmooth(vel,Math.max(2,Math.round(m*0.7)));
+
+  var minRom=+$("minRom").value||DEFAULT_ROM[profileKey()];
+  var runs=[], inRun=false, s0=0;
+  for(var r=0;r<N;r++){
+    if(vel[r]>VTH && !inRun){ inRun=true; s0=r; }
+    else if(vel[r]<=VTH && inRun){ inRun=false; runs.push([s0,r-1]); }
+  }
+  if(inRun) runs.push([s0,N-1]);
+
+  var gapN=Math.max(1,Math.round(0.09/dt)), merged=[];
+  runs.forEach(function(rr){
+    if(merged.length && rr[0]-merged[merged.length-1][1]<=gapN) merged[merged.length-1][1]=rr[1];
+    else merged.push(rr.slice());
+  });
+
+  // drop runs too small to be a rep before extending, so noise in a pause cannot
+  // latch onto the previous rep's turnaround
+  var EPS=0.005, WIN=Math.max(2,Math.round(0.40/dt)), found=[];
+  merged.forEach(function(rr){
+    var rawPk=0;
+    for(var i2=rr[0];i2<=rr[1];i2++) if(vel[i2]>rawPk) rawPk=vel[i2];
+    if((sp[rr[1]]-sp[rr[0]]) < Math.max(0.04,minRom*0.35) || rawPk<0.12) return;
+
+    var lo=Math.max(0,rr[0]-WIN), imin=rr[0];
+    for(var i3=lo;i3<=rr[0];i3++) if(sp[i3]<sp[imin]) imin=i3;
+    var a3=imin;
+    for(var i4=imin;i4<=rr[0];i4++) if(sp[i4]<=sp[imin]+EPS) a3=i4;
+
+    var hiB=Math.min(N-1,rr[1]+WIN), imax=rr[1];
+    for(var i5=rr[1];i5<=hiB;i5++) if(sp[i5]>sp[imax]) imax=i5;
+    var b3=imax;
+    for(var i6=imax;i6>=rr[1];i6--) if(sp[i6]>=sp[imax]-EPS) b3=i6;
+
+    if(b3<=a3) return;
+    var rom=sp[b3]-sp[a3], dur=(b3-a3)*dt;
+    if(rom<minRom||dur<MIN_DUR) return;
+    var pk=0;
+    for(var z=a3;z<=b3;z++) if(vel[z]>pk) pk=vel[z];
+    found.push({i0:a3,i1:b3,rom:rom,dur:dur,mcv:rom/dur,pv:pk,t0:T[a3],t1:T[b3]});
+  });
+
+  // two runs inside one rep both extend to the same turnaround, so drop overlaps
+  var reps=[];
+  found.forEach(function(rp){
+    var pv=reps[reps.length-1];
+    if(pv && rp.i0<=pv.i1){ if(rp.rom>pv.rom*1.15) reps[reps.length-1]=rp; return; }
+    reps.push(rp);
+  });
+
+  S.A={T:T,pos:sp,vel:vel,dt:dt,fps:fps,reps:reps};
+  drawChart(); renderReps();
+}
+
+/* ============================ rpe ============================ */
+
+function rpeFor(v,lift){
+  var A=ANCHORS[lift], off=mvtFor(lift)-A[10];
+  var rs=[4,5,6,7,8,9,10], pts=rs.map(function(r){ return {r:r, v:A[r]+off}; });
+  if(v<=pts[6].v) return 10;
+  if(v>=pts[0].v) return 4;
+  for(var i=0;i<pts.length-1;i++){
+    var a=pts[i], b=pts[i+1];
+    if(v<=a.v && v>=b.v) return a.r + ((a.v-v)/Math.max(1e-9,(a.v-b.v)))*(b.r-a.r);
+  }
+  return null;
+}
+function rpeLabel(r){
+  if(r===null||r===undefined) return "\u2014";
+  var x=Math.round(r*2)/2;
+  if(x<=4) return "<5";
+  return (x%1===0)?String(x):x.toFixed(1);
+}
+
+/* ============================ results ============================ */
+
+function activeReps(){
+  if(!S.A) return [];
+  return S.A.reps.filter(function(_,i){ return !S.drop[i]; });
+}
+function renderReps(){
+  var list=$("repList"); list.innerHTML="";
+  if(!S.A||!S.A.reps.length){
+    $("sum").classList.add("hid"); $("csvBtn").disabled=true;
+    setBig(null, S.A ? "No reps found. Lower the minimum rep height in step 3, or re-check the scale." : "Track the bar to get numbers.");
+    return;
+  }
+  var lift=profileKey(), keep=activeReps();
+  var bestV=keep.length?Math.max.apply(null,keep.map(function(r){return r.mcv;})):0;
+
+  S.A.reps.forEach(function(r,i){
+    var li=document.createElement("li");
+    li.className="rep";
+    if(S.drop[i]) li.style.opacity=".34";
+    var rp=rpeFor(r.mcv,lift);
+    var cls=(rp===null)?"":(rp>=9?"hard":(rp<=6?"easy":""));
+    var loss=(bestV && !S.drop[i]) ? (1-r.mcv/bestV)*100 : null;
+    li.innerHTML=
+      '<span class="n">'+(i+1)+'</span>'+
+      '<span class="v">'+fmt(r.mcv,2)+'<small>m/s</small></span>'+
+      '<span class="meta">peak '+fmt(r.pv,2)+' \u00b7 '+fmt(r.rom*100,0)+' cm \u00b7 '+fmt(r.dur,2)+' s'+
+        (loss!==null && loss>0.5 ? ' \u00b7 \u2212'+fmt(loss,0)+'%' : '')+'</span>'+
+      '<span class="rpe '+cls+'"><b>'+rpeLabel(rp)+'</b><span>RPE</span></span>';
+    var x=document.createElement("button");
+    x.className="x"; x.type="button";
+    x.textContent=S.drop[i]?"\u21ba":"\u00d7";
+    x.setAttribute("aria-label",(S.drop[i]?"Restore rep ":"Discard rep ")+(i+1));
+    x.addEventListener("click", function(){ S.drop[i]=!S.drop[i]; renderReps(); drawChart(); });
+    li.appendChild(x);
+    list.appendChild(li);
+  });
+
+  if(!keep.length){
+    $("sum").classList.add("hid"); $("csvBtn").disabled=true;
+    setBig(null,"Every rep discarded.");
+    return;
+  }
+  var last=keep[keep.length-1], lastRpe=rpeFor(last.mcv,lift);
+  setBig(last.mcv, "Last rep \u00b7 RPE "+rpeLabel(lastRpe)+" \u00b7 "+keep.length+(keep.length===1?" rep":" reps"));
+
+  var lossTotal=(1-last.mcv/bestV)*100;
+  $("sumDl").innerHTML=
+    "<dt>Reps</dt><dd>"+keep.length+"</dd>"+
+    "<dt>Fastest</dt><dd>"+fmt(bestV,2)+" m/s</dd>"+
+    "<dt>Last</dt><dd>"+fmt(last.mcv,2)+" m/s</dd>"+
+    "<dt>Velocity loss</dt><dd>"+fmt(lossTotal,0)+"%</dd>"+
+    "<dt>Set RPE</dt><dd>"+rpeLabel(lastRpe)+"</dd>"+
+    "<dt>Frame rate</dt><dd>"+fmt(S.A.fps,0)+" fps</dd>";
+  $("sumNote").textContent=lossNote(lossTotal,keep.length,S.A.fps);
+  $("sum").classList.remove("hid");
+  $("csvBtn").disabled=false;
+  setAnchorField(lift);
+  $("mvtNote").textContent = S.mvt[lift] ? "Using your own anchor." : "Using a population default \u2014 set your own for a tighter estimate.";
+}
+function lossNote(loss,n,fps){
+  var parts=[];
+  if(n>1){
+    if(loss<8) parts.push("Barely any drop-off across the set \u2014 plenty left in reserve.");
+    else if(loss<18) parts.push("Moderate drop-off, consistent with stopping a few reps short.");
+    else if(loss<28) parts.push("Substantial drop-off \u2014 the last rep was close to the limit.");
+    else parts.push("Heavy drop-off. The set went to or very near failure.");
+  }
+  if(fps && fps<45) parts.push("At "+Math.round(fps)+" fps treat peak velocity as indicative only.");
+  parts.push("RPE here is inferred from bar speed, not from how the rep felt \u2014 sanity-check it against the lifter.");
+  return parts.join(" ");
+}
+$("mvt").addEventListener("input", function(){
+  var raw=this.value;
+  if(raw==="" || raw===".") return;          // mid-entry, leave it alone
+  var v=parseFloat(raw), lift=profileKey();
+  if(isFinite(v)&&v>=0.03&&v<=0.9){ S.mvt[lift]=v; savePrefs(); renderReps(); }
+});
+$("mvtReset").addEventListener("click", function(){
+  var lift=profileKey();
+  delete S.mvt[lift]; savePrefs();
+  $("mvt").value=anchorStr(mvtFor(lift));
+  renderReps();
+});
+
+/* ============================ chart ============================ */
+
+function drawChart(){
+  var c=$("chart"), dpr=Math.min(window.devicePixelRatio||1,2.5);
+  var w=c.clientWidth||320, h=184;
+  c.width=Math.round(w*dpr); c.height=Math.round(h*dpr);
+  var g=c.getContext("2d");
+  g.setTransform(dpr,0,0,dpr,0,0);
+  g.clearRect(0,0,w,h);
+  if(!S.A){
+    g.fillStyle="rgba(21,25,26,.32)"; g.font="13px -apple-system,sans-serif";
+    g.textAlign="center"; g.fillText("Velocity over time appears here", w/2, h/2+4);
+    return;
+  }
+  var V=S.A.vel, T=S.A.T, N=V.length;
+  var vmax=0.3, vmin=-0.3;
+  for(var i=0;i<N;i++){ if(V[i]>vmax) vmax=V[i]; if(V[i]<vmin) vmin=V[i]; }
+  vmax*=1.12; vmin*=1.12;
+  var padL=34, padR=8, padT=10, padB=20;
+  var pw=w-padL-padR, ph=h-padT-padB;
+  var X=function(i2){ return padL+(i2/(N-1))*pw; };
+  var Yv=function(v){ return padT+(vmax-v)/(vmax-vmin)*ph; };
+
+  g.strokeStyle="rgba(21,25,26,.08)"; g.lineWidth=1;
+  var stepv=(vmax-vmin)>2.2?0.5:0.25;
+  for(var v2=Math.ceil(vmin/stepv)*stepv; v2<=vmax; v2+=stepv){
+    var yy=Yv(v2);
+    g.beginPath(); g.moveTo(padL,yy); g.lineTo(w-padR,yy); g.stroke();
+    g.fillStyle="rgba(21,25,26,.42)"; g.font="10px -apple-system,sans-serif"; g.textAlign="right";
+    g.fillText(v2.toFixed(2).replace(/0$/,""), padL-5, yy+3);
+  }
+  S.A.reps.forEach(function(r,ri){
+    if(S.drop[ri]) return;
+    g.fillStyle="rgba(35,64,216,.10)";
+    g.fillRect(X(r.i0),padT,Math.max(2,X(r.i1)-X(r.i0)),ph);
+    g.fillStyle="rgba(35,64,216,.85)"; g.font="600 10px -apple-system,sans-serif"; g.textAlign="center";
+    g.fillText(String(ri+1),(X(r.i0)+X(r.i1))/2,padT+11);
+  });
+  g.strokeStyle="rgba(21,25,26,.34)"; g.lineWidth=1;
+  g.beginPath(); g.moveTo(padL,Yv(0)); g.lineTo(w-padR,Yv(0)); g.stroke();
+  g.lineWidth=1.7; g.lineJoin="round"; g.strokeStyle="rgba(21,25,26,.30)";
+  g.beginPath();
+  for(var j=0;j<N;j++){ var x=X(j), y=Yv(V[j]); if(j===0) g.moveTo(x,y); else g.lineTo(x,y); }
+  g.stroke();
+  g.strokeStyle="#2340D8"; g.lineWidth=2.1;
+  S.A.reps.forEach(function(r,ri){
+    if(S.drop[ri]) return;
+    g.beginPath();
+    for(var k=r.i0;k<=r.i1;k++){ var xx=X(k), y2=Yv(V[k]); if(k===r.i0) g.moveTo(xx,y2); else g.lineTo(xx,y2); }
+    g.stroke();
+  });
+  g.fillStyle="rgba(21,25,26,.42)"; g.font="10px -apple-system,sans-serif";
+  g.textAlign="left"; g.fillText("m/s",4,padT+8);
+  g.textAlign="right"; g.fillText(fmt(T[N-1]-T[0],1)+" s", w-padR, h-6);
+}
+window.addEventListener("resize", drawChart);
+
+/* ============================ video export ============================ */
+
+/* Renders the clip plus the bar path and per-rep RPE to a canvas and records that
+   canvas with MediaRecorder. Capture is real time, so a 12 s clip takes 12 s.
+   Output container is whatever the browser will write - MP4/H.264 on iOS - not the
+   .mov that went in, and there is no audio track. */
+var exp=document.createElement("canvas"), expx=exp.getContext("2d");
+var EW=0, EH=0, exporting=false, expRec=null, expChunks=[], expBlob=null, expExt="mp4";
+
+function pickVideoMime(){
+  if(typeof window.MediaRecorder!=="function") return null;
+  var cands=["video/mp4;codecs=avc1.42E01E","video/mp4;codecs=avc1","video/mp4",
+             "video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"];
+  if(typeof MediaRecorder.isTypeSupported!=="function") return "video/mp4";
+  for(var i=0;i<cands.length;i++) if(MediaRecorder.isTypeSupported(cands[i])) return cands[i];
+  return "";
+}
+function roundRect(g,x,y,w,h,r){
+  r=Math.min(r,w/2,h/2);
+  g.beginPath();
+  g.moveTo(x+r,y); g.lineTo(x+w-r,y); g.quadraticCurveTo(x+w,y,x+w,y+r);
+  g.lineTo(x+w,y+h-r); g.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  g.lineTo(x+r,y+h); g.quadraticCurveTo(x,y+h,x,y+h-r);
+  g.lineTo(x,y+r); g.quadraticCurveTo(x,y,x+r,y);
+  g.closePath();
+}
+function keptReps(){
+  var out=[];
+  if(!S.A) return out;
+  for(var i=0;i<S.A.reps.length;i++) if(!S.drop[i]) out.push({i:i, r:S.A.reps[i]});
+  return out;
+}
+function drawExportChips(t){
+  var g=expx, lift=profileKey(), K=keptReps();
+  if(!K.length) return;
+  var pad=Math.round(EW*0.022);
+  var f=Math.max(9, Math.round(EW/44)), labels=K.map(function(o){
+    return (o.i+1)+"   RPE "+rpeLabel(rpeFor(o.r.mcv,lift));
+  });
+  var widths=[], total=0;
+  for(;;){
+    g.font="600 "+f+"px -apple-system,sans-serif";
+    widths=labels.map(function(L){ return g.measureText(L).width+f*1.5; });
+    total=widths.reduce(function(a,b){return a+b;},0)+Math.round(f*0.5)*(labels.length-1);
+    if(total<=EW-pad*2 || f<=9) break;
+    f--;
+  }
+  var ri=repAt(t);
+  if(total>EW-pad*2){                       // too many reps to show them all
+    if(ri<0) return;
+    labels=[(ri+1)+"   RPE "+rpeLabel(rpeFor(S.A.reps[ri].mcv,lift))];
+    K=[{i:ri}];
+    f=Math.max(11,Math.round(EW/34));
+    g.font="600 "+f+"px -apple-system,sans-serif";
+    widths=[g.measureText(labels[0]).width+f*1.5];
+  }
+  var h=Math.round(f*2), gap=Math.round(f*0.5), x=pad, y=pad;
+  g.textAlign="center"; g.textBaseline="middle";
+  for(var j=0;j<labels.length;j++){
+    var on=(K[j].i===ri);
+    roundRect(g,x,y,widths[j],h,h/2);
+    g.fillStyle=on?"#2340D8":"rgba(14,17,18,.64)"; g.fill();
+    g.font="600 "+f+"px -apple-system,sans-serif";
+    g.fillStyle=on?"#FFFFFF":"rgba(237,239,235,.82)";
+    g.fillText(labels[j], x+widths[j]/2, y+h/2+1);
+    x+=widths[j]+gap;
+  }
+}
+function drawExportBar(t){
+  var g=expx, lift=profileKey();
+  var f=Math.max(11, Math.round(EW/29)), h=Math.round(f*2.4), y=EH-h;
+  g.fillStyle="rgba(14,17,18,.74)"; g.fillRect(0,y,EW,h);
+  var v=velAt(t), ri=repAt(t), left;
+  if(ri>=0){
+    var r=S.A.reps[ri];
+    left="Rep "+(ri+1)+"     "+r.mcv.toFixed(2)+" m/s     RPE "+rpeLabel(rpeFor(r.mcv,lift));
+  } else {
+    left=(v===null) ? "" : ((v<-0.05?"descending     ":"")+v.toFixed(2)+" m/s");
+  }
+  g.textBaseline="middle";
+  g.fillStyle="#F2F3F0"; g.font="600 "+f+"px -apple-system,sans-serif"; g.textAlign="left";
+  g.fillText(left, Math.round(EW*0.022), y+h/2);
+  g.fillStyle="rgba(237,239,235,.68)"; g.font="500 "+Math.round(f*0.7)+"px -apple-system,sans-serif";
+  g.textAlign="right";
+  g.fillText(LIFTNAME[lift], EW-Math.round(EW*0.022), y+h/2);
+}
+function drawExportFrame(t){
+  var g=expx, sc=EW/S.W;
+  g.setTransform(1,0,0,1,0,0);
+  try{ g.drawImage(vid,0,0,EW,EH); }catch(e){}
+  if(S.path.length>1){
+    g.lineJoin="round"; g.lineCap="round";
+    g.beginPath();
+    for(var i=0;i<S.path.length;i++){
+      var x=S.path[i].x*sc, y=S.path[i].y*sc;
+      if(i===0) g.moveTo(x,y); else g.lineTo(x,y);
+    }
+    g.strokeStyle="rgba(242,243,240,.85)"; g.lineWidth=Math.max(2.5,EW/210); g.stroke();
+    g.strokeStyle="#2340D8"; g.lineWidth=Math.max(1.2,EW/500); g.stroke();
+  }
+  var p=pathAt(t);
+  if(p){
+    var ri=repAt(t), R=Math.max(7,EW/74);
+    g.beginPath(); g.arc(p.x*sc,p.y*sc,R,0,6.2832);
+    g.fillStyle=ri>=0?"rgba(35,64,216,.38)":"rgba(14,17,18,.32)"; g.fill();
+    g.strokeStyle="#F2F3F0"; g.lineWidth=Math.max(2.5,EW/290); g.stroke();
+    g.strokeStyle=ri>=0?"#2340D8":"rgba(242,243,240,.95)"; g.lineWidth=Math.max(1.2,EW/620); g.stroke();
+  }
+  drawExportChips(t);
+  drawExportBar(t);
+}
+
+function stopExport(){
+  exporting=false;
+  try{ vid.pause(); }catch(e){}
+  $("vidBtn").textContent="Export video"; $("vidBtn").classList.remove("stop");
+  if(expRec && expRec.state!=="inactive"){ try{ expRec.stop(); }catch(e){} }
+}
+async function exportVideo(){
+  if(exporting){ stopExport(); return; }
+  if(!S.A || !S.path.length){ return; }
+
+  var mime=pickVideoMime();
+  if(mime===null){
+    $("vidExpNote").textContent="This browser cannot record video. Open the app in Safari and try again.";
+    return;
+  }
+  if(replaying) stopReplay(false);
+  if(S.folded) setFold(false);
+
+  expBlob=null; expChunks=[];
+  $("saveVidBtn").classList.add("hid");
+
+  var LONG=1280, sc=Math.min(1, LONG/Math.max(S.vw,S.vh));
+  EW=Math.round(S.vw*sc/2)*2; EH=Math.round(S.vh*sc/2)*2;   // even dimensions for H.264
+  exp.width=EW; exp.height=EH;
+
+  var fps=(S.A.fps>0)?Math.min(60,Math.max(24,Math.round(S.A.fps))):30;
+  var stream;
+  try{ stream=exp.captureStream(fps); }
+  catch(e){ $("vidExpNote").textContent="This browser cannot capture the canvas, so video export is unavailable here."; return; }
+
+  try{
+    expRec = mime ? new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:Math.round(EW*EH*fps*0.12)})
+                  : new MediaRecorder(stream);
+  }catch(e){
+    try{ expRec=new MediaRecorder(stream); }
+    catch(e2){ $("vidExpNote").textContent="Video recording was refused by this browser."; return; }
+  }
+  var actual=expRec.mimeType||mime||"video/mp4";
+  expExt = actual.indexOf("webm")>=0 ? "webm" : "mp4";
+
+  expRec.ondataavailable=function(ev){ if(ev.data && ev.data.size) expChunks.push(ev.data); };
+  expRec.onstop=function(){
+    expBlob=new Blob(expChunks,{type:actual.split(";")[0]});
+    exporting=false;
+    $("vidBtn").textContent="Export video"; $("vidBtn").classList.remove("stop");
+    if(!expBlob.size){ $("vidExpNote").textContent="Nothing was recorded. Tap Export video and let it run to the end."; return; }
+    $("saveVidBtn").classList.remove("hid");
+    $("vidExpNote").textContent="Ready \u2014 "+(expBlob.size/1048576).toFixed(1)+" MB "
+      + expExt.toUpperCase()+", silent, "+EW+"\u00d7"+EH+". Tap Save video.";
+  };
+
+  var start=S.path[0].t, end=S.path[S.path.length-1].t;
+  await seek(start);
+  drawExportFrame(start);
+
+  exporting=true;
+  $("vidBtn").textContent="Stop"; $("vidBtn").classList.add("stop");
+  $("vidExpNote").textContent="Recording in real time \u2014 keep this screen open.";
+
+  try{ expRec.start(); }
+  catch(e){ exporting=false; $("vidBtn").textContent="Export video"; $("vidBtn").classList.remove("stop");
+            $("vidExpNote").textContent="Recorder would not start. Try Safari."; return; }
+
+  var hasRVFC=typeof vid.requestVideoFrameCallback==="function";
+  var step=function(now,meta){
+    if(!exporting) return;
+    var t=meta?meta.mediaTime:vid.currentTime;
+    drawExportFrame(t);
+    paintOverlay(); gauge(t);
+    $("vidExpNote").textContent="Recording \u2014 "
+      + clamp(Math.round((t-start)/Math.max(0.001,end-start)*100),0,100)+"%";
+    if(t>=end-0.001 || vid.ended){ stopExport(); return; }
+    if(hasRVFC) vid.requestVideoFrameCallback(step);
+    else requestAnimationFrame(function(n){ step(n,null); });
+  };
+  if(hasRVFC) vid.requestVideoFrameCallback(step);
+  else requestAnimationFrame(function(n){ step(n,null); });
+
+  try{ vid.playbackRate=1; await vid.play(); }
+  catch(e){
+    stopExport();
+    $("vidExpNote").textContent="The clip would not start playing. Tap Export video again.";
+  }
+}
+$("vidBtn").addEventListener("click", exportVideo);
+
+$("saveVidBtn").addEventListener("click", async function(){
+  if(!expBlob) return;
+  await saveFile(expBlob, "barspeed_"+profileKey()+"_"+new Date().toISOString().slice(0,10)+"."+expExt);
+});
+
+/* An <a download> click is silently ignored inside an installed iOS home-screen
+   app, so every file leaves through the share sheet when one is available and
+   falls back to a download link in a normal browser tab. */
+async function saveFile(blob, name){
+  try{
+    if(navigator.canShare && typeof File==="function"){
+      var f=new File([blob],name,{type:blob.type||"application/octet-stream"});
+      if(navigator.canShare({files:[f]})){ await navigator.share({files:[f]}); return true; }
+    }
+  }catch(e){ return false; }   // sheet dismissed, or sharing unavailable
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1500);
+  return true;
+}
+
+/* ============================ export ============================ */
+
+$("csvBtn").addEventListener("click", function(){
+  if(!S.A) return;
+  var lift=profileKey(), keep=activeReps();
+  var best=keep.length?Math.max.apply(null,keep.map(function(r){return r.mcv;})):0;
+  var rows=[
+    "# Bar Speed export",
+    "# lift,"+lift,
+    "# rpe10_anchor_mps,"+mvtFor(lift).toFixed(3),
+    "# scale_mm_per_px,"+(mPerPx()*1000).toFixed(4),
+    "# fps,"+S.A.fps.toFixed(1),
+    "Rep,MeanConcentricVelocity (m/s),PeakVelocity (m/s),ROM (m),Duration (s),VelocityLoss (%),EstimatedRPE"
+  ];
+  keep.forEach(function(r,i){
+    var rp=rpeFor(r.mcv,lift);
+    rows.push([i+1,r.mcv.toFixed(3),r.pv.toFixed(3),r.rom.toFixed(3),r.dur.toFixed(3),
+      (best?((1-r.mcv/best)*100).toFixed(1):"0.0"),
+      (rp===null?"":(Math.round(rp*2)/2).toFixed(1))].join(","));
+  });
+  saveFile(new Blob([rows.join("\n")],{type:"text/csv"}),
+           "barspeed_"+lift+"_"+new Date().toISOString().slice(0,10)+".csv");
+});
+
+/* ============================ boot ============================ */
+
+loadPrefs();
+syncLift();
+S.cal.mm=+$("refMm").value||450;
+$("tolv").textContent=$("tol").value+"\u00b0";
+drawChart();
+renderTrail();
+refreshStep();
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  });
+}
+</script>
+
+<!-- ============================================================
+     Spotter embed shim.
+     Only runs when loaded inside Power Logs (?embed=1). Opened on
+     its own, this file is untouched — nothing below executes.
+     Kept separate from the tool's own logic above.
+     ============================================================ -->
+<style id="embedStyles"></style>
+<script>
+(function () {
+  "use strict";
+  // Small query reader rather than URLSearchParams: keeps this file free of any
+  // global the repo's static smoke test can't account for.
+  // Only ever reads embed=1 and theme=light|dark, so no unescaping is needed.
+  function qp(name) {
+    var m = new RegExp("[?&]" + name + "=([^&]*)").exec(location.search);
+    return m ? m[1] : null;
+  }
+  if (qp("embed") !== "1") return;   // standalone: leave everything alone
+
+  document.documentElement.setAttribute("data-embedded", "1");
+
+  // Hide only the "‹ Spotter" back link — the app supplies its own Back button.
+  // The step trail (1-2-3-4) stays: that's the tool's own navigation.
+  var base =
+    "#brand{display:none !important}" +
+    "html,body{background:transparent}";
+
+  // This tool ships a single light palette. Rather than invent a dark theme for
+  // it, map its handful of root variables so it sits in a dark app without
+  // glaring. Light mode uses its own values unchanged.
+  var darkVars =
+    ':root[data-theme="dark"]{' +
+      "--ground:#14171a;--paper:#1d2125;--ink:#e8eae6;" +
+      "--ink-60:rgba(232,234,230,.62);--ink-38:rgba(232,234,230,.40);" +
+      "--ink-14:rgba(232,234,230,.16);--ink-07:rgba(232,234,230,.08);" +
+    "}";
+
+  document.getElementById("embedStyles").textContent = base + darkVars;
+
+  function applyHostTheme(t) {
+    if (t !== "dark" && t !== "light") return;
+    document.documentElement.setAttribute("data-theme", t);
+  }
+  window.addEventListener("message", function (e) {
+    var d = e.data;
+    if (d && d.type === "spotter-theme") applyHostTheme(d.theme);
+  });
+  applyHostTheme(qp("theme"));   // honour the URL so there's no wrong-palette flash
+
+  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-1" }, "*"); } catch (e) {}
+})();
+</script>
+
+</body>
+</html>

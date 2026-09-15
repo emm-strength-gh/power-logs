@@ -326,12 +326,21 @@ details.help li{margin-bottom:6px}
     <p class="sub" id="s3sub">Tap the coloured tape on the bar end. The zoom bubble shows exactly which pixels you are picking.</p>
     <div class="seg" id="modeSeg">
       <button id="mMark" aria-pressed="true">Tape marker</button>
-      <button id="mPoint" aria-pressed="false">Tap a point</button>
+      <button id="mPoint" aria-pressed="false">Select area</button>
     </div>
     <div class="stat" id="seedNote" style="margin-top:12px">Tap the bar on the video above.</div>
     <div id="markOpts" style="margin-top:14px">
       <label class="f" for="tol">Colour tolerance <span id="tolv" style="font-variant-numeric:tabular-nums">28°</span></label>
       <input type="range" id="tol" min="8" max="60" value="28" step="1" style="width:100%;accent-color:var(--ink);min-height:34px">
+    </div>
+    <div class="hid" id="areaOpts" style="margin-top:14px">
+      <label class="f">Patch shape</label>
+      <div class="seg" id="shapeSeg" style="margin-bottom:14px">
+        <button id="shpSquare" aria-pressed="true">Square</button>
+        <button id="shpCircle" aria-pressed="false">Circle</button>
+      </div>
+      <label class="f" for="areaSize">Patch size <span id="areaSizev" style="font-variant-numeric:tabular-nums">21 px</span></label>
+      <input type="range" id="areaSize" min="11" max="41" value="21" step="2" style="width:100%;accent-color:var(--ink);min-height:34px">
     </div>
     <div class="grid2" style="margin-top:14px">
       <div>
@@ -422,6 +431,7 @@ details.help li{margin-bottom:6px}
         <li>Stand perpendicular to the bar, lens roughly level with the middle of the range of motion. Shooting from an angle or from the floor foreshortens the bar path and reads low.</li>
         <li>Film the same bar end throughout, and scale against a plate in that same plane.</li>
         <li>For tape mode use strongly coloured tape — fluoro pink, orange or green. White, black, silver and grey have no hue to lock onto.</li>
+        <li>For area mode, pick a patch with real texture or contrast in it — a collar edge, engraved lettering, a knurling band — not a smooth painted surface. A smaller patch locks on tighter but loses it more easily if the bar drifts out of the search window; a larger one is more forgiving but slower to match. Circle vs square rarely matters — pick whichever shape better covers the feature without spilling onto the background.</li>
         <li>30 fps gives a usable mean velocity but a noisy peak. 60 fps is comfortable, 120 or 240 better.</li>
         <li>Expect mean concentric velocity within roughly 0.03&nbsp;m/s of a linear transducer with a good setup, and tighter at slow grinding speeds. RPE carries about ±1 until you set your own anchor.</li>
         <li>Sumo and conventional hit the same bar speed at a genuine max, but sumo is slower at every effort below it and travels 20–25% less distance, so each stance gets its own table. A lifter's anchor for one stance does not transfer to the other — set both separately.</li>
@@ -471,8 +481,8 @@ var WORKW = 640;
 var VTH = 0.06;
 var MIN_DUR = 0.15;
 var SEARCH_MARK = 78;
-var SEARCH_TPL  = 56;
-var TPL = 21;
+var SEARCH_TPL  = 62;
+var TPL = 21;              // default/fallback patch size — the live size is S.areaSize
 
 /* ============================ state ============================ */
 
@@ -480,6 +490,7 @@ var S = {
   url:null, vw:0, vh:0, k:1, W:0, H:0, dur:0, fpsGuess:0,
   cal:{a:null,b:null,mm:450},
   seed:null, mode:"marker", marker:null, tpl:null,
+  areaShape:"square", areaSize:TPL,
   path:[], A:null, drop:{},
   t0:null, t1:null,
   touchMode:null, drag:null, tracking:false,
@@ -541,12 +552,15 @@ function loadPrefs(){
     if(p.mode) setMode(p.mode, true);
     if(p.refMm){ $("refMm").value=p.refMm; S.cal.mm=+p.refMm; syncRefSel(); }
     if(p.tol){ $("tol").value=p.tol; }
+    if(p.areaShape==="square"||p.areaShape==="circle") setAreaShape(p.areaShape, true);
+    if(p.areaSize){ S.areaSize=clamp(+p.areaSize,11,41); $("areaSize").value=S.areaSize; $("areaSizev").textContent=S.areaSize+" px"; }
   }catch(e){}
 }
 function savePrefs(){
   try{
     localStorage.setItem("barspeed.prefs", JSON.stringify({
-      mvt:S.mvt, lift:$("lift").value, stance:S.stance, mode:S.mode, refMm:$("refMm").value, tol:$("tol").value
+      mvt:S.mvt, lift:$("lift").value, stance:S.stance, mode:S.mode, refMm:$("refMm").value, tol:$("tol").value,
+      areaShape:S.areaShape, areaSize:S.areaSize
     }));
   }catch(e){}
 }
@@ -608,7 +622,7 @@ function crumbValue(n){
     return fmt(a,2)+"\u2013"+fmt(b,2)+" s";
   }
   if(n===2) return fmt(mPerPx()*1000,2)+" mm/px";
-  if(n===3) return (S.mode==="marker" ? "tape" : "point") + " \u00b7 " + SHORTNAME[profileKey()];
+  if(n===3) return (S.mode==="marker" ? "tape" : (S.areaShape+" "+S.areaSize+"px")) + " \u00b7 " + SHORTNAME[profileKey()];
   return "";
 }
 var CRUMBLB = {1:"Clip", 2:"Scale", 3:"Target"};
@@ -650,7 +664,7 @@ function goStep(n){
 
   if(n===1) hint(S.vw ? "Scrub to a frame where the plate is clearly visible" : null);
   else if(n===2) hint("Drag a line across the plate, through its centre \u2014 then nudge the end dots");
-  else if(n===3) hint(S.mode==="marker" ? "Tap the coloured tape on the bar end" : "Tap a small high-contrast spot on the bar end");
+  else if(n===3) hint(S.mode==="marker" ? "Tap the coloured tape on the bar end" : "Tap and drag to place the patch on the bar end");
   else hint(null);
 
   loupe=null;
@@ -921,19 +935,36 @@ function drawCal(){
   });
   ovx.restore();
 }
+function drawAreaShape(p,half){
+  ovx.beginPath();
+  if(S.areaShape==="circle") ovx.arc(p.x,p.y,half,0,6.2832);
+  else ovx.rect(p.x-half,p.y-half,half*2,half*2);
+  ovx.stroke();
+}
 function drawSeed(){
   var p=toDisp(S.seed);
   ovx.save();
-  ovx.strokeStyle="#F2F3F0"; ovx.lineWidth=3.4;
-  ovx.beginPath(); ovx.arc(p.x,p.y,12,0,6.2832); ovx.stroke();
-  ovx.strokeStyle="#9E3B23"; ovx.lineWidth=1.8;
-  ovx.beginPath(); ovx.arc(p.x,p.y,12,0,6.2832); ovx.stroke();
-  ovx.beginPath();
-  ovx.moveTo(p.x-17,p.y); ovx.lineTo(p.x-5,p.y);
-  ovx.moveTo(p.x+5,p.y);  ovx.lineTo(p.x+17,p.y);
-  ovx.moveTo(p.x,p.y-17); ovx.lineTo(p.x,p.y-5);
-  ovx.moveTo(p.x,p.y+5);  ovx.lineTo(p.x,p.y+17);
-  ovx.stroke();
+  if(S.mode==="point"){
+    var scale=ovDisp().w/(S.W||1);
+    var half=(S.areaSize/2)*scale;
+    ovx.strokeStyle="#F2F3F0"; ovx.lineWidth=3.4; drawAreaShape(p,half);
+    ovx.strokeStyle="#9E3B23"; ovx.lineWidth=1.8; drawAreaShape(p,half);
+    ovx.beginPath();
+    ovx.moveTo(p.x-6,p.y); ovx.lineTo(p.x+6,p.y);
+    ovx.moveTo(p.x,p.y-6); ovx.lineTo(p.x,p.y+6);
+    ovx.stroke();
+  } else {
+    ovx.strokeStyle="#F2F3F0"; ovx.lineWidth=3.4;
+    ovx.beginPath(); ovx.arc(p.x,p.y,12,0,6.2832); ovx.stroke();
+    ovx.strokeStyle="#9E3B23"; ovx.lineWidth=1.8;
+    ovx.beginPath(); ovx.arc(p.x,p.y,12,0,6.2832); ovx.stroke();
+    ovx.beginPath();
+    ovx.moveTo(p.x-17,p.y); ovx.lineTo(p.x-5,p.y);
+    ovx.moveTo(p.x+5,p.y);  ovx.lineTo(p.x+17,p.y);
+    ovx.moveTo(p.x,p.y-17); ovx.lineTo(p.x,p.y-5);
+    ovx.moveTo(p.x,p.y+5);  ovx.lineTo(p.x,p.y+17);
+    ovx.stroke();
+  }
   ovx.restore();
 }
 /* The magnifier lives in a fixed panel below the video rather than a bubble that
@@ -941,6 +972,11 @@ function drawSeed(){
    frame edges, so you never know where to look. LSPAN is the width of the
    magnified region in tracking pixels. */
 var LSPAN=44, LCSS=124;
+/* the magnified window widens for a bigger area patch so it stays visible with
+   some margin around it, instead of filling (or overflowing) the loupe. */
+function loupeSpan(){
+  return (S.touchMode==="seed" && S.mode==="point") ? Math.max(LSPAN, S.areaSize*1.6) : LSPAN;
+}
 function loupeCtx(){
   var c=$("loupeCv"), g=c.getContext("2d");
   var dpr=Math.min(window.devicePixelRatio||1,2.5);
@@ -961,19 +997,40 @@ function drawLoupePanel(){
     g.fillText("to magnify", LCSS/2, LCSS/2+10);
     return;
   }
-  var k=S.vw/S.W, half=(LSPAN/2)*k;
+  var span=loupeSpan();
+  var k=S.vw/S.W, half=(span/2)*k;
   g.imageSmoothingEnabled=false;   // crisp blocks, so you can see the actual pixels
   try{ g.drawImage(hi, loupe.x*k-half, loupe.y*k-half, half*2, half*2, 0,0, LCSS,LCSS); }catch(e){}
   var col = (S.touchMode==="cal") ? "#6E8AF2" : "#DE7B58";
-  g.strokeStyle="rgba(242,243,240,.9)"; g.lineWidth=1;
-  g.beginPath();
-  g.moveTo(0,LCSS/2); g.lineTo(LCSS/2-9,LCSS/2);
-  g.moveTo(LCSS/2+9,LCSS/2); g.lineTo(LCSS,LCSS/2);
-  g.moveTo(LCSS/2,0); g.lineTo(LCSS/2,LCSS/2-9);
-  g.moveTo(LCSS/2,LCSS/2+9); g.lineTo(LCSS/2,LCSS);
-  g.stroke();
-  g.strokeStyle=col; g.lineWidth=1.7;
-  g.beginPath(); g.arc(LCSS/2,LCSS/2,9,0,6.2832); g.stroke();
+  var showArea = (S.touchMode==="seed" && S.mode==="point");
+  if(!showArea){
+    g.strokeStyle="rgba(242,243,240,.9)"; g.lineWidth=1;
+    g.beginPath();
+    g.moveTo(0,LCSS/2); g.lineTo(LCSS/2-9,LCSS/2);
+    g.moveTo(LCSS/2+9,LCSS/2); g.lineTo(LCSS,LCSS/2);
+    g.moveTo(LCSS/2,0); g.lineTo(LCSS/2,LCSS/2-9);
+    g.moveTo(LCSS/2,LCSS/2+9); g.lineTo(LCSS/2,LCSS);
+    g.stroke();
+    g.strokeStyle=col; g.lineWidth=1.7;
+    g.beginPath(); g.arc(LCSS/2,LCSS/2,9,0,6.2832); g.stroke();
+  } else {
+    var shalf=(S.areaSize/2)*(LCSS/span);
+    g.strokeStyle="rgba(14,17,18,.55)"; g.lineWidth=3;
+    g.beginPath();
+    if(S.areaShape==="circle") g.arc(LCSS/2,LCSS/2,shalf,0,6.2832);
+    else g.rect(LCSS/2-shalf,LCSS/2-shalf,shalf*2,shalf*2);
+    g.stroke();
+    g.strokeStyle=col; g.lineWidth=1.6;
+    g.beginPath();
+    if(S.areaShape==="circle") g.arc(LCSS/2,LCSS/2,shalf,0,6.2832);
+    else g.rect(LCSS/2-shalf,LCSS/2-shalf,shalf*2,shalf*2);
+    g.stroke();
+    g.strokeStyle="rgba(242,243,240,.9)"; g.lineWidth=1;
+    g.beginPath();
+    g.moveTo(LCSS/2-5,LCSS/2); g.lineTo(LCSS/2+5,LCSS/2);
+    g.moveTo(LCSS/2,LCSS/2-5); g.lineTo(LCSS/2,LCSS/2+5);
+    g.stroke();
+  }
 }
 function loupeMeta(){
   var e=$("loupeMeta");
@@ -994,6 +1051,9 @@ function loupeMeta(){
         + '<span class="mono">hue '+Math.round(hsv[0])+"\u00b0 \u00b7 sat "+Math.round(hsv[1]*100)+"%</span>"
         + (hsv[1]<0.30 ? '<br><span style="color:var(--rust)">too washed out to follow</span>' : "");
     }catch(e2){}
+  } else if(S.touchMode==="seed" && S.mode==="point"){
+    body += '<br><span class="mono">'+S.areaSize+"\u00d7"+S.areaSize+" px "
+      + (S.areaShape==="circle"?"circle":"square")+"</span>";
   }
   e.innerHTML="<b>"+lbl+"</b>"+body;
 }
@@ -1166,16 +1226,39 @@ function setMode(m, quiet){
   $("mMark").setAttribute("aria-pressed", m==="marker"?"true":"false");
   $("mPoint").setAttribute("aria-pressed", m==="point"?"true":"false");
   $("markOpts").classList.toggle("hid", m!=="marker");
+  $("areaOpts").classList.toggle("hid", m!=="point");
   $("s3sub").textContent = (m==="marker")
     ? "Tap the coloured tape on the bar end. The zoom bubble shows exactly which pixels you are picking."
-    : "Tap a small, high-contrast spot on the bar end \u2014 a collar edge or a letter on the sleeve.";
+    : "Drag out a square or circle over a patch on the bar end \u2014 a collar edge, a sleeve marking, or a strip of tape. The zoom bubble shows exactly which pixels are captured.";
   S.marker=null; S.tpl=null;
   if(quiet) return;
-  if(S.step===3) hint(m==="marker" ? "Tap the coloured tape on the bar end" : "Tap a small high-contrast spot on the bar end");
+  if(S.step===3) hint(m==="marker" ? "Tap the coloured tape on the bar end" : "Tap and drag to place the patch on the bar end");
   if(S.seed) finishSeed(); else { setStat("seedNote","Tap the bar on the video above."); refreshStep(); }
-  if(S.step===3) loupeMeta();
+  if(S.step===3){ loupeMeta(); paintOverlay(); }
 }
 $("tol").addEventListener("input", function(){ $("tolv").textContent=this.value+"\u00b0"; savePrefs(); });
+function setAreaShape(v, quiet){
+  S.areaShape = (v==="circle") ? "circle" : "square";
+  $("shpSquare").setAttribute("aria-pressed", S.areaShape==="square"?"true":"false");
+  $("shpCircle").setAttribute("aria-pressed", S.areaShape==="circle"?"true":"false");
+  if(quiet) return;
+  paintOverlay();
+  if(S.step===3 && !$("loupeBox").classList.contains("hid")) drawLoupePanel();
+  if(S.seed && S.mode==="point") finishSeed();
+  savePrefs();
+}
+$("shpSquare").addEventListener("click", function(){ setAreaShape("square"); });
+$("shpCircle").addEventListener("click", function(){ setAreaShape("circle"); });
+$("areaSize").addEventListener("input", function(){
+  S.areaSize = clamp(+this.value,11,41);
+  $("areaSizev").textContent = S.areaSize+" px";
+  paintOverlay();
+  if(S.step===3 && !$("loupeBox").classList.contains("hid")) drawLoupePanel();
+});
+$("areaSize").addEventListener("change", function(){
+  if(S.seed && S.mode==="point") finishSeed();
+  savePrefs();
+});
 
 function syncLift(){
   var isDl = $("lift").value==="deadlift";
@@ -1229,14 +1312,21 @@ function finishSeed(){
     var hsv=rgb2hsv(r/n,g/n,b/n);
     S.marker={h:hsv[0], s:hsv[1], v:hsv[2]};
     if(hsv[1]<0.30){
-      setStat("seedNote","That colour is too washed out to follow reliably. Use brighter tape, or switch to Tap a point.","bad");
+      setStat("seedNote","That colour is too washed out to follow reliably. Use brighter tape, or switch to Select area.","bad");
     } else {
       setStat("seedNote","Locked onto hue <b>"+Math.round(hsv[0])+"\u00b0</b>. Widen the tolerance below if it loses the tape.","ok");
     }
   } else {
-    S.tpl=buildTemplate(S.seed);
-    if(S.tpl) setStat("seedNote","Target patch captured.","ok");
-    else setStat("seedNote","Too close to the frame edge \u2014 tap further in.","bad");
+    S.tpl=buildTemplate(S.seed, S.areaSize, S.areaShape);
+    if(S.tpl){
+      var mpp2=mPerPx();
+      var mmTxt = mpp2 ? (" \u2248"+fmt(S.areaSize*mpp2*1000,0)+" mm across") : "";
+      setStat("seedNote",
+        "Captured a <b>"+S.areaSize+"\u00d7"+S.areaSize+" px</b> "
+        + (S.areaShape==="circle"?"circular":"square")+" patch"+mmTxt+".","ok");
+    } else {
+      setStat("seedNote","Too close to the frame edge \u2014 tap further in, or shrink the patch.","bad");
+    }
   }
   if(S.path.length){
     $("runNote").textContent="Target moved — track again to refresh the numbers.";
@@ -1267,13 +1357,33 @@ function halve(src){
   }
   return {g:o,w:w2,h:h2};
 }
-function buildTemplate(p){
-  var half=(TPL-1)/2;
+/* size must be odd (the area-size slider only ever emits odd values). shape
+   "circle" adds a mask so the SAD match only scores pixels inside the disc —
+   built once here rather than tested per-frame, since the mask never moves
+   relative to the template. */
+function buildTemplate(p, size, shape){
+  size = size || TPL;
+  var odd = (size%2===0) ? size+1 : size;
+  var half=(odd-1)/2;
   var x0=Math.round(p.x)-half, y0=Math.round(p.y)-half;
-  if(x0<0||y0<0||x0+TPL>S.W||y0+TPL>S.H) return null;
-  var f=grayRect(x0,y0,TPL,TPL);
+  if(x0<0||y0<0||x0+odd>S.W||y0+odd>S.H) return null;
+  var f=grayRect(x0,y0,odd,odd);
   if(!f) return null;
-  return {full:{g:f.g,w:TPL,h:TPL}, half:halve({g:f.g,w:TPL,h:TPL})};
+  var mask=null, count=odd*odd;
+  if(shape==="circle"){
+    mask=new Uint8Array(odd*odd);
+    var c=(odd-1)/2, r2=(odd/2)*(odd/2);
+    count=0;
+    for(var y=0;y<odd;y++) for(var x=0;x<odd;x++){
+      var dx=x-c, dy=y-c;
+      if(dx*dx+dy*dy<=r2){ mask[y*odd+x]=1; count++; }
+    }
+  }
+  return {
+    full:{g:f.g,w:odd,h:odd,mask:mask,count:count},
+    half:halve({g:f.g,w:odd,h:odd}),
+    size:odd, shape:shape||"square"
+  };
 }
 function findMarker(pred, tol){
   var R=SEARCH_MARK;
@@ -1295,6 +1405,16 @@ function findMarker(pred, tol){
 }
 function sad(img,tpl,ox,oy){
   var s=0;
+  if(tpl.mask){
+    for(var y2=0;y2<tpl.h;y2++){
+      var ri2=(oy+y2)*img.w+ox, ti2=y2*tpl.w;
+      for(var x2=0;x2<tpl.w;x2++){
+        if(!tpl.mask[ti2+x2]) continue;
+        var dv2=img.g[ri2+x2]-tpl.g[ti2+x2]; s+=dv2<0?-dv2:dv2;
+      }
+    }
+    return s;
+  }
   for(var y=0;y<tpl.h;y++){
     var ri=(oy+y)*img.w+ox, ti=y*tpl.w;
     for(var x=0;x<tpl.w;x++){ var dv=img.g[ri+x]-tpl.g[ti+x]; s+=dv<0?-dv:dv; }
@@ -1341,8 +1461,9 @@ function findTemplate(pred){
   var xL=at(fdx-1,fdy), xR=at(fdx+1,fdy), yU=at(fdx,fdy-1), yD=at(fdx,fdy+1);
   var subx=(isFinite(xL)&&isFinite(xR))?parab(xL,cN,xR):0;
   var suby=(isFinite(yU)&&isFinite(yD))?parab(yU,cN,yD):0;
-  var half=(TPL-1)/2;
-  var q=clamp(1-(fbest/(tf.w*tf.h))/60,0,1);
+  var half=(tf.w-1)/2;
+  var cnt=tf.mask?tf.count:(tf.w*tf.h);
+  var q=clamp(1-(fbest/Math.max(1,cnt))/60,0,1);
   return {x:rect.x0+cx+fdx+half+subx, y:rect.y0+cy+fdy+half+suby, q:q};
 }
 
@@ -1385,7 +1506,7 @@ async function track(){
     if(lostPct>0.35){
       $("runNote").textContent="Lost the target on "+Math.round(lostPct*100)+"% of frames. "
         + (S.mode==="marker" ? "Widen the colour tolerance, or re-tap the tape in step 3."
-                             : "Try a spot with more contrast, or switch to tape mode in step 3.");
+                             : "Try a higher-contrast patch, a smaller size, or switch to tape mode in step 3.");
     } else {
       $("runNote").textContent=S.path.length+" frames tracked"+(lost?(", "+lost+" filled in"):"")+".";
     }
@@ -2144,7 +2265,7 @@ if("serviceWorker" in navigator){
   });
   applyHostTheme(qp("theme"));   // honour the URL so there's no wrong-palette flash
 
-  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-7" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-8" }, "*"); } catch (e) {}
 })();
 </script>
 

@@ -541,8 +541,20 @@
   .hub-frame { display: block; width: 100%; height: 1200px; border: 0; }
   /* Velocity Tracker: fixed height with its own scroll — the tool has a sticky
      step trail and a pinned video stage, both of which need a real viewport. */
-  .vbt-frame-wrap { margin-top: 18px; border: 1px solid var(--border-strong); border-radius: 14px; overflow: hidden; background: var(--surface); }
-  .vbt-frame { display: block; width: 100%; height: clamp(560px, calc(100vh - 210px), 1000px); border: 0; }
+  /* Velocity Tracker fills the rest of the screen: one-line header, then a frame
+     sized in JS (sizeVbtFrame) so its bottom meets the viewport bottom. The tool
+     inside never scrolls either, so there is never a page scrollbar here. */
+  .vbt-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .vbt-head .wk-back { margin: 0; }
+  .vbt-head .section-head { font-size: 22px; margin: 0; }
+  .vbt-info { width: 26px; height: 26px; border-radius: 999px; border: 1px solid var(--border-strong); background: transparent; color: var(--muted); font: italic 600 13px Georgia, serif; display: grid; place-items: center; padding: 0; flex: none; }
+  .vbt-info[aria-expanded="true"] { background: var(--pine); border-color: var(--pine); color: #fff; }
+  .vbt-info-pop { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin: 0 0 10px; font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+  .vbt-info-pop p { margin: 0; }
+  .vbt-info-pop .rpe-fallback { margin-top: 8px; }
+  .vbt-frame-wrap { border: 1px solid var(--border-strong); border-radius: 14px; overflow: hidden; background: var(--surface); }
+  .vbt-frame { display: block; width: 100%; height: 600px; border: 0; }
+  .layout.vbt-open .content { max-width: none; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
   .hub-stale { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--clay); border-radius: 10px;
                background: var(--clay-soft, rgba(179,71,50,.08)); color: var(--ink); font-size: 13px; line-height: 1.55; }
   .hub-stale code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
@@ -655,6 +667,18 @@
   }
   @media (max-width: 420px) {
     .maxes { grid-template-columns: 1fr; }
+  }
+  /* Narrow phones: the header row (menu, logo, lifter picker, four icon
+     buttons) used to add up to ~440px, which pushed the whole page sideways
+     and made iOS zoom out. The picker now takes whatever width is left. */
+  @media (max-width: 480px) {
+    header.bar { gap: 6px; padding-left: 10px; padding-right: 10px; }
+    .bar-spacer { display: none; }
+    .brand { margin-right: auto; }
+    .picker { flex: 1 1 auto; min-width: 0; justify-content: flex-end; }
+    select.lifter { max-width: none; width: 100%; min-width: 0; padding-left: 12px; padding-right: 28px; }
+    .picker .caret { right: 10px; }
+    .icon-btn { width: 34px; height: 34px; }
   }
 
   /* ===================== iOS / PWA standalone ===================== */
@@ -938,20 +962,25 @@
       </section>
 
       <section class="view" id="viewVbt">
-        <button class="wk-back" id="vbtBack">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-          Back
-        </button>
-        <h1 class="section-head">Velocity Tracker</h1>
-        <p class="section-sub">Measure barbell velocity from a video clip and get mean concentric velocity, estimated RPE, ROM and velocity loss per rep. Set a personal velocity anchor per lift for the RPE estimates to tighten up. Runs as its own self-contained tool and doesn't touch your loaded programs.</p>
-        <div class="vbt-frame-wrap">
+        <div class="vbt-head">
+          <button class="wk-back" id="vbtBack">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            Back
+          </button>
+          <h1 class="section-head">Velocity Tracker</h1>
+          <button class="vbt-info" id="vbtInfoBtn" aria-expanded="false" aria-controls="vbtInfo" aria-label="About the Velocity Tracker">i</button>
+        </div>
+        <div class="vbt-info-pop hidden" id="vbtInfo">
+          <p>Measure barbell velocity from a video clip and get mean concentric velocity, estimated RPE, ROM and velocity loss per rep. Set a personal velocity anchor per lift (the ⚙ on the results step) for the RPE estimates to tighten up. Runs as its own self-contained tool and doesn't touch your loaded programs.</p>
+          <p class="rpe-fallback">
+            Can't see the tracker? It lives in <code>VBT.html</code> next to this file — make sure both are uploaded together.
+            <a id="vbtOpenNew" href="VBT.html" target="_blank" rel="noopener">Open it in a new tab</a>.
+          </p>
+        </div>
+        <div class="vbt-frame-wrap" id="vbtFrameWrap">
           <iframe id="vbtFrame" class="vbt-frame" title="Velocity Tracker" loading="lazy"
                   allow="camera; fullscreen" src="about:blank"></iframe>
         </div>
-        <p class="rpe-fallback">
-          Can't see the tracker? It lives in <code>VBT.html</code> next to this file — make sure both are uploaded together.
-          <a id="vbtOpenNew" href="VBT.html" target="_blank" rel="noopener">Open it in a new tab</a>.
-        </p>
       </section>
 
       <section class="view" id="viewCompare">
@@ -1126,7 +1155,7 @@
   var STORE_ADDOPEN  = "spotter.dmAddOpen.v2";   // v2: default flipped to open, so the panel is findable
   // Shown at the bottom of Manage program. Bump when power-logs.html changes, so
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
-  var APP_BUILD = "15";
+  var APP_BUILD = "16";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -1589,6 +1618,7 @@
   // ───────────────────────── Rendering ─────────────────────────
   function showView(id) {
     if (id !== "viewDayMgr" && id !== "viewCompare") dmUnlocked = false;   // leaving Manage days (and its Compare sub-view) re-locks it
+    if (id !== "viewVbt") { var lay = document.querySelector(".layout"); if (lay) lay.classList.remove("vbt-open"); }
     ["viewEmpty", "viewOverview", "viewWeek", "viewAnalytics", "viewDayMgr", "viewCompare", "viewRpe", "viewVbt"].forEach(function (v) {
       $(v).classList.toggle("active", v === id);
     });
@@ -4817,7 +4847,7 @@
   // ──────────────── Velocity Tracker (embedded tool) ────────────────
   // Its own file (VBT.html), shown in an iframe; we only talk to it over
   // postMessage to keep its palette matched to the app's.
-  var VBT_BUILD = "10";
+  var VBT_BUILD = "11";
   function loadVbtFrame() {
     var f = $("vbtFrame"); if (!f) return;
     var want = "VBT.html?embed=1&theme=" + currentThemeName() + "&v=" + VBT_BUILD;
@@ -4826,16 +4856,33 @@
       f.src = want;
     }
   }
+  function sizeVbtFrame() {
+    var f = $("vbtFrame"); if (!f || !inVbt) return;
+    var top = f.getBoundingClientRect().top + (window.scrollY || 0);
+    var c = document.querySelector(".content");
+    var pad = c ? (parseFloat(getComputedStyle(c).paddingBottom) || 16) : 16;
+    f.style.height = Math.max(440, Math.floor(window.innerHeight - top - pad - 2)) + "px";
+  }
+  function setVbtLayout(on) {
+    var lay = document.querySelector(".layout");
+    if (lay) lay.classList.toggle("vbt-open", !!on);
+  }
   function openVbt() {
     inVbt = true; inRpe = false; inAnalytics = false; inDayMgr = false; inCompare = false; currentWeek = null;
     loadVbtFrame();
     showView("viewVbt");
+    setVbtLayout(true);
     renderSidebar();
+    sizeVbtFrame();
+    requestAnimationFrame(sizeVbtFrame);
   }
   function closeVbt() {
     inVbt = false;
+    setVbtLayout(false);
     openOverview();
   }
+  window.addEventListener("resize", sizeVbtFrame);
+  window.addEventListener("orientationchange", function () { setTimeout(sizeVbtFrame, 300); });
 
   function openRpe() {
     inRpe = true; inVbt = false; inAnalytics = false; inDayMgr = false; inCompare = false; currentWeek = null;
@@ -5715,6 +5762,12 @@
     $("cmpBack").onclick = closeCompare;
     $("rpeBack").onclick = closeRpe;
     $("vbtBack").onclick = closeVbt;
+    $("vbtInfoBtn").onclick = function () {
+      var pop = $("vbtInfo"), open = pop.classList.contains("hidden");
+      pop.classList.toggle("hidden", !open);
+      this.setAttribute("aria-expanded", open ? "true" : "false");
+      sizeVbtFrame();
+    };
     // The embedded RPE tool announces itself once its listener is live; reply
     // with the current theme so it can't miss the initial sync.
     window.addEventListener("message", function (e) {

@@ -19,430 +19,595 @@
   --ink-60:rgba(21,25,26,.60); --ink-38:rgba(21,25,26,.38);
   --ink-14:rgba(21,25,26,.14); --ink-07:rgba(21,25,26,.07);
   --signal:#2340D8; --rust:#9E3B23;
-  --pad:18px;
+  --stage:#0E1112;
+  --pad:14px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0;background:var(--ground);color:var(--ink)}
+/* The whole tool is one screen tall. Nothing scrolls at page level; the only
+   scrolling anywhere is inside a step panel that has more than fits (rare), the
+   rep list, and the settings sheet. */
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--ground);color:var(--ink);overscroll-behavior:none}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
   font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased;
-  overscroll-behavior-y:contain;
 }
 .hid{display:none !important}
 button{font:inherit;color:inherit;cursor:pointer}
+button:disabled{cursor:default}
 :focus-visible{outline:2px solid var(--signal);outline-offset:2px}
 
-/* ---------- sticky hood: trail + video + scrub ---------- */
-/* Step 1 trim controls can float. They act on the playhead (Start/End here read
-   vid.currentTime), and the preview sits in a sticky hood, so pinning them to the
-   bottom puts the frame and the controls on screen together — scrub and tap with
-   no scrolling. Only floats while it's actually useful: step 1, clip loaded,
-   preview open. In flow otherwise, which is also the desktop/collapsed case. */
-#trimBox.floating{
-  position:fixed; left:0; right:0; bottom:0; z-index:30;
-  margin:0 !important; padding:10px 14px calc(10px + env(safe-area-inset-bottom));
-  background:var(--paper); border-top:1px solid var(--ink-14);
-  box-shadow:0 -6px 18px rgba(0,0,0,.10);
+.app{
+  height:100vh;height:100dvh;display:flex;flex-direction:column;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  position:relative;
 }
-#trimBox.floating .f{display:block; margin-bottom:6px; font-size:10px}
-#trimBox.floating .row{gap:8px}
-#trimBox.floating .stat{margin-top:6px}
-/* keeps the Done button reachable above the floating bar */
-#s1.trim-floating .act{padding-bottom:132px}
-.hood{
-  position:sticky;top:0;z-index:20;background:var(--ground);
-  padding-top:env(safe-area-inset-top);
-  border-bottom:1px solid var(--ink-14);
-}
-.hoodin{max-width:560px;margin:0 auto;padding:0 var(--pad)}
 
-.trailrow{display:flex;align-items:center;gap:12px;padding:9px 0 10px}
-.mark{font-size:12.5px;color:var(--ink-38);letter-spacing:-.005em;white-space:nowrap}
-.trail{display:flex;align-items:center;gap:0;margin:0 0 0 auto;padding:0;list-style:none;flex:0 0 auto}
-.mark.back{text-decoration:none;color:var(--ink-60);flex:0 0 auto}
-.mark.back:active{color:var(--ink)}
+/* ---------- top bar ---------- */
+.tbar{display:flex;align-items:center;gap:10px;padding:8px var(--pad);flex:0 0 auto}
+.mark{font-size:13px;color:var(--ink-60);text-decoration:none;white-space:nowrap}
+.mark:active{color:var(--ink)}
 .eject{
   display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;
-  min-height:30px;padding:0 12px;border-radius:999px;
+  min-height:30px;padding:0 11px;border-radius:999px;
   border:1px solid var(--ink-14);background:transparent;color:var(--ink-60);
-  font-size:12.5px;font-weight:550;letter-spacing:-.005em;white-space:nowrap;
+  font-size:12.5px;font-weight:550;white-space:nowrap;
 }
 .eject:active{background:var(--ink-07);color:var(--ink)}
 .eject.armed{border-color:var(--rust);color:var(--rust);background:rgba(158,59,35,.07)}
 .eject span{font-size:11px}
-@media (max-width:359px){ .mark{display:none} }
+.trail{display:flex;align-items:center;margin:0 0 0 auto;padding:0;list-style:none}
 .trail li{display:flex;align-items:center}
-.trail li+li::before{content:"";width:14px;height:1px;background:var(--ink-14)}
+.trail li+li::before{content:"";width:10px;height:1px;background:var(--ink-14)}
 .trail button{
-  width:27px;height:27px;border-radius:999px;border:1px solid var(--ink-14);
-  background:transparent;color:var(--ink-38);font-size:12.5px;font-weight:600;
-  display:flex;align-items:center;justify-content:center;padding:0;
-  font-variant-numeric:tabular-nums;
+  width:28px;height:28px;border-radius:999px;border:1px solid var(--ink-14);
+  background:transparent;color:var(--ink-38);font-size:12px;font-weight:650;padding:0;
+  display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;
 }
 .trail button[data-state="done"]{border-color:var(--ink);color:var(--ink)}
 .trail button[data-state="now"]{background:var(--ink);border-color:var(--ink);color:var(--ground)}
-.trail button[disabled]{cursor:default}
+
+/* finished-step chips (phone) */
+.chips{display:flex;gap:6px;padding:0 var(--pad) 8px;overflow-x:auto;scrollbar-width:none;flex:0 0 auto}
+.chips::-webkit-scrollbar{display:none}
+.chips:empty,.results .chips{display:none}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;
+  height:28px;padding:0 11px 0 6px;border-radius:999px;
+  background:var(--paper);border:1px solid var(--ink-14);
+  font-size:12px;color:var(--ink-60);white-space:nowrap;
+}
+.chip b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.chip .ck{width:16px;height:16px;border-radius:999px;background:var(--ink);color:var(--ground);font-size:9.5px;display:flex;align-items:center;justify-content:center}
+.chip:active{background:var(--ink-07)}
+.chip.info{padding-left:11px}
+
+/* ---------- body: stage + panel ---------- */
+.body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.stagecol{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;padding:0 var(--pad)}
+.results .stagecol{flex:0 0 34%}
 
 .stage{
-  position:relative;background:#0E1112;overflow:hidden;border-radius:4px;
-  display:flex;align-items:center;justify-content:center;
+  position:relative;flex:1 1 auto;min-height:120px;border-radius:12px;overflow:hidden;
+  background:var(--stage);display:flex;align-items:center;justify-content:center;
 }
-.vwrap{position:relative;display:inline-block;line-height:0;max-width:100%}
-.vwrap video{display:block;max-height:44vh;max-width:100%;width:auto;height:auto;background:#0E1112}
+.stage.empty{background:var(--paper);border:1px dashed var(--ink-14)}
+.emptybox{display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px;text-align:center}
+.emptybox p{margin:0;color:var(--ink-60);font-size:14px;max-width:30ch}
+.vwrap{position:relative;line-height:0}
+.vwrap video{display:block;width:100%;height:100%;background:var(--stage)}
 .vwrap canvas.ov{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
-.stage.empty{
-  display:flex;align-items:center;justify-content:center;min-height:132px;
-  background:var(--paper);border:1px dashed var(--ink-14);
+
+/* things laid over the video */
+.vtag{
+  position:absolute;left:10px;top:10px;max-width:calc(100% - 20px);
+  padding:6px 11px;border-radius:999px;background:rgba(14,17,18,.72);
+  color:#F2F3F0;font-size:12.5px;font-weight:550;line-height:1.3;pointer-events:none;
 }
-.stage.empty p{margin:0;padding:22px;color:var(--ink-38);font-size:13.5px;text-align:center;max-width:28ch}
-.loupebox{
-  display:flex;gap:12px;align-items:center;margin:8px 0 0;padding:10px;
-  background:var(--paper);border:1px solid var(--ink-14);border-radius:4px;
+.loupe{
+  position:absolute;top:10px;right:10px;width:112px;
+  border-radius:10px;overflow:hidden;background:#1b1f21;
+  border:2px solid #F2F3F0;box-shadow:0 6px 18px rgba(0,0,0,.45);pointer-events:none;
 }
-.loupebox canvas{
-  width:124px;height:124px;flex:0 0 auto;border-radius:3px;
-  background:#0E1112;border:1px solid var(--ink-14);
-}
-.lmeta{font-size:12.5px;color:var(--ink-60);line-height:1.4;min-width:0}
-.lmeta b{display:block;color:var(--ink);font-size:13.5px;font-weight:600;margin-bottom:3px}
+.loupe.left{right:auto;left:10px}
+.loupe canvas{display:block;width:108px;height:108px}
+.lmeta{padding:4px 7px 5px;font-size:10.5px;line-height:1.3;color:rgba(242,243,240,.82);font-variant-numeric:tabular-nums}
+.lmeta b{display:block;color:#fff;font-weight:600}
 .lmeta .mono{font-variant-numeric:tabular-nums}
-.swatch{
-  display:inline-block;width:13px;height:13px;border-radius:3px;
-  border:1px solid var(--ink-14);vertical-align:-2px;margin-right:5px;
+.swatch{display:inline-block;width:10px;height:10px;border-radius:2px;border:1px solid rgba(255,255,255,.4);vertical-align:-1px;margin-right:4px}
+.stagebtn{
+  position:absolute;right:10px;top:10px;min-height:30px;padding:0 12px;border-radius:999px;
+  border:0;background:rgba(14,17,18,.72);color:#F2F3F0;font-size:12.5px;font-weight:550;
 }
-.cue{
-  margin:8px 0 0;padding:9px 12px;font-size:13px;line-height:1.35;
-  color:var(--ink);background:rgba(35,64,216,.07);
-  border:1px solid rgba(35,64,216,.26);border-radius:4px;
-}
-.scrub{display:flex;align-items:center;gap:10px;padding:8px 0 9px}
-.scrub input[type=range]{flex:1;accent-color:var(--ink);min-height:32px;margin:0}
-.fold{
-  display:flex;align-items:center;justify-content:center;gap:7px;
-  width:100%;min-height:34px;padding:0;margin:0;
-  border:0;border-top:1px solid var(--ink-14);background:transparent;
-  color:var(--ink-60);font-size:12.5px;font-weight:550;letter-spacing:-.005em;
-}
-.fold:active{background:var(--ink-07)}
-.fold .fchev{
-  font-size:13px;line-height:1;display:inline-block;
-  transform:translateY(1px);transition:transform .16s ease;
-}
-.fold[aria-expanded="false"] .fchev{transform:rotate(180deg) translateY(1px)}
-@media (prefers-reduced-motion:reduce){ .fold .fchev{transition:none} }
-.scrub .tc{font-size:12.5px;color:var(--ink-60);min-width:5.4em;text-align:right;font-variant-numeric:tabular-nums}
+.stagebtn[aria-pressed="true"]{background:var(--signal)}
 
-/* ---------- flow body ---------- */
-main{max-width:560px;margin:0 auto;padding:0 var(--pad) calc(env(safe-area-inset-bottom) + 40px)}
+.scrub{
+  position:absolute;left:10px;right:10px;bottom:10px;
+  display:flex;align-items:center;gap:8px;padding:4px 12px 4px 4px;
+  border-radius:999px;background:rgba(14,17,18,.66);color:#F2F3F0;
+}
+.play{
+  flex:0 0 32px;width:32px;height:32px;border-radius:999px;border:0;padding:0;
+  background:transparent;color:#F2F3F0;display:flex;align-items:center;justify-content:center;
+}
+.play svg{width:14px;height:14px;fill:currentColor}
+.play:active{background:rgba(255,255,255,.12)}
+.play:disabled{opacity:.35}
+.scrub input[type=range]{
+  flex:1;min-width:0;margin:0;height:30px;background:transparent;
+  -webkit-appearance:none;appearance:none;
+}
+.scrub input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:9px;background:var(--trk,rgba(242,243,240,.3))}
+.scrub input[type=range]::-moz-range-track{height:4px;border-radius:9px;background:var(--trk,rgba(242,243,240,.3))}
+.scrub input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;margin-top:-6px;border-radius:999px;background:#fff;border:0}
+.scrub input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:999px;background:#fff;border:0}
+.scrub .tc{font-size:11.5px;min-width:3.6em;text-align:right;font-variant-numeric:tabular-nums}
+.scrub select{
+  font:inherit;font-size:11.5px;color:#F2F3F0;background:transparent;border:0;padding:0 2px;
+  -webkit-appearance:none;appearance:none;width:auto;
+}
+.scrub select option{color:#000}
 
-.crumb{
-  display:flex;align-items:center;gap:10px;width:100%;text-align:left;
-  padding:11px 0;border:0;border-bottom:1px solid var(--ink-14);background:transparent;
+/* ---------- panel ---------- */
+.panel{
+  flex:0 1 auto;min-height:0;max-height:64%;margin-top:10px;
+  display:flex;flex-direction:column;
+  background:var(--paper);border-top:1px solid var(--ink-14);
+  border-radius:20px 20px 0 0;box-shadow:0 -8px 22px rgba(0,0,0,.05);
 }
-.crumb .ck{
-  width:18px;height:18px;border-radius:999px;background:var(--ink);color:var(--ground);
-  font-size:10.5px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+.results .panel{flex:1 1 auto;max-height:none}
+.step{display:flex;flex-direction:column;min-height:0;flex:1 1 auto}
+.phead{padding:14px 18px 4px;flex:0 0 auto}
+.phead .row1{display:flex;align-items:center;gap:10px}
+.phead h1{margin:0;font-size:19px;font-weight:650;letter-spacing:-.02em;line-height:1.2}
+.phead .of{margin-left:auto;font-size:12px;color:var(--ink-38);white-space:nowrap}
+.phead .sub{margin:4px 0 0;font-size:13px;color:var(--ink-60);line-height:1.4}
+.pbody{padding:8px 18px 4px;overflow-y:auto;min-height:0;flex:0 1 auto;overscroll-behavior:contain}
+.pfoot{
+  display:flex;gap:8px;align-items:center;flex:0 0 auto;
+  padding:10px 18px calc(env(safe-area-inset-bottom) + 14px);
 }
-.crumb .lb{font-size:14px;font-weight:550}
-.crumb .vl{font-size:12.5px;color:var(--ink-60);margin-left:auto;text-align:right;font-variant-numeric:tabular-nums}
-.crumb .ed{font-size:12.5px;color:var(--signal);flex:0 0 auto}
-.crumb:active{background:var(--ink-07)}
 
-.step{padding:22px 0 4px}
-.step h1{margin:0 0 5px;font-size:22px;font-weight:600;letter-spacing:-.025em;line-height:1.2}
-.step .sub{margin:0 0 16px;font-size:14px;color:var(--ink-60);max-width:46ch}
-.act{
-  position:sticky;bottom:0;padding:14px 0 calc(env(safe-area-inset-bottom) + 14px);
-  background:linear-gradient(to top,var(--ground) 62%,rgba(231,233,229,0));
-}
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:7px;
-  min-height:48px;padding:0 22px;border-radius:999px;border:1px solid var(--ink);
-  background:var(--ink);color:var(--ground);font-size:15.5px;font-weight:550;letter-spacing:-.005em;
+  min-height:46px;padding:0 20px;border-radius:999px;border:1px solid var(--ink);
+  background:var(--ink);color:var(--ground);font-size:15px;font-weight:600;white-space:nowrap;
 }
 .btn.ghost{background:transparent;color:var(--ink);border-color:var(--ink-14)}
 .btn.ghost:active{background:var(--ink-07)}
-.btn.wide{width:100%}
-.btn.sm{min-height:40px;padding:0 15px;font-size:14px}
+.btn.grow{flex:1 1 auto}
+.btn.icon{flex:0 0 46px;width:46px;padding:0;font-size:18px}
+.btn.sm{min-height:38px;padding:0 14px;font-size:14px}
 .btn:disabled{opacity:.3}
 .btn.stop{background:var(--rust);border-color:var(--rust);color:#fff}
-.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row.nowrap{flex-wrap:nowrap}
+.row > .btn.sm{flex:1 1 0}
+.mb{margin-bottom:10px}
 
-.seg{display:flex;border:1px solid var(--ink-14);border-radius:999px;overflow:hidden;background:var(--paper)}
-.seg button{flex:1;border:0;background:transparent;min-height:44px;padding:0 12px;font-size:14.5px;font-weight:500;color:var(--ink-60)}
+.seg{display:flex;border:1px solid var(--ink-14);border-radius:999px;overflow:hidden;background:var(--ground)}
+.seg button{flex:1;border:0;background:transparent;min-height:38px;padding:0 10px;font-size:14px;font-weight:500;color:var(--ink-60)}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--ground);font-weight:600}
 
-label.f{display:block;font-size:12.5px;color:var(--ink-60);margin:0 0 5px}
+label.f{display:block;font-size:12px;color:var(--ink-60);margin:0 0 4px}
 @media (pointer: coarse) and (max-width: 900px){
   input[type=number],input[type=text],select,textarea{font-size:16px}
 }
 input[type=number],input[type=text],select{
-  font:inherit;font-size:15.5px;width:100%;padding:11px 12px;background:var(--paper);
-  color:var(--ink);border:1px solid var(--ink-14);border-radius:6px;appearance:none;
+  font:inherit;font-size:15px;width:100%;min-height:40px;padding:8px 11px;background:var(--ground);
+  color:var(--ink);border:1px solid var(--ink-14);border-radius:8px;appearance:none;-webkit-appearance:none;
   font-variant-numeric:tabular-nums;
 }
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+input[type=range].rng{width:100%;accent-color:var(--ink);min-height:30px;margin:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid2.wide{grid-template-columns:1fr 104px}
+.field{margin-bottom:10px}
+.inline{display:flex;align-items:center;gap:10px}
+.inline .seg{flex:0 0 118px}
+.inline .rngwrap{flex:1;min-width:0}
+.rngwrap{display:flex;align-items:center;gap:10px}
+.rngwrap span{font-size:12.5px;color:var(--ink-60);white-space:nowrap;font-variant-numeric:tabular-nums;min-width:3.4em;text-align:right}
+
 .stat{
-  margin:14px 0 0;padding:12px 13px;background:var(--paper);border:1px solid var(--ink-14);
-  border-radius:4px;font-size:13.5px;color:var(--ink-60);
+  margin:0 0 10px;padding:8px 11px;background:var(--ground);border:1px solid var(--ink-14);
+  border-radius:8px;font-size:13px;color:var(--ink-60);line-height:1.4;
 }
 .stat b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
-.stat.ok{border-color:rgba(35,64,216,.35)}
-.stat.bad{border-color:rgba(158,59,35,.4);color:var(--rust)}
-.note{font-size:13px;color:var(--ink-60);margin:11px 0 0}
+.stat.ok{border-color:rgba(35,64,216,.38);background:rgba(35,64,216,.05)}
+.stat.bad{border-color:rgba(158,59,35,.4);color:var(--rust);background:rgba(158,59,35,.05)}
+.note{font-size:12.5px;color:var(--ink-60);margin:0 0 10px;line-height:1.4}
+.note:empty{display:none}
 
-/* ---------- readout + results ---------- */
-.face{padding:2px 0 18px}
-.readout{display:flex;align-items:flex-end;gap:8px;line-height:.82}
-.readout .num{font-size:clamp(60px,21vw,96px);font-weight:600;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
-.readout .unit{font-size:15px;font-weight:500;color:var(--ink-60);padding-bottom:.55em}
-.face .cap{margin:12px 0 0;font-size:13.5px;color:var(--ink-60)}
+/* ---------- step 4 ---------- */
+.gear{
+  width:32px;height:32px;border-radius:999px;border:1px solid var(--ink-14);background:transparent;
+  color:var(--ink-60);display:flex;align-items:center;justify-content:center;padding:0;flex:0 0 auto;margin-left:auto;
+}
+.gear svg{width:16px;height:16px}
+.face{display:flex;align-items:flex-end;gap:8px;padding:6px 0 2px}
+.readout{display:flex;align-items:flex-end;gap:6px;line-height:.85}
+.readout .num{font-size:clamp(44px,15vw,60px);font-weight:650;letter-spacing:-.05em;font-variant-numeric:tabular-nums;color:var(--ink-14)}
+.readout .unit{font-size:12.5px;font-weight:500;color:var(--ink-60);padding-bottom:.5em;white-space:nowrap}
 .face.live .num{color:var(--signal)}
-
-.chart{width:100%;height:184px;display:block;border:1px solid var(--ink-14);border-radius:4px;background:var(--paper)}
-.reps{margin:16px 0 0;padding:0;list-style:none;border-top:1px solid var(--ink-14)}
-.rep{display:flex;align-items:center;gap:11px;padding:13px 0;border-bottom:1px solid var(--ink-14)}
-.rep .n{font-size:12.5px;color:var(--ink-38);width:1.5em;font-variant-numeric:tabular-nums}
-.rep .v{font-size:25px;font-weight:600;letter-spacing:-.035em;font-variant-numeric:tabular-nums;min-width:2.9em}
-.rep .v small{font-size:11px;font-weight:500;color:var(--ink-38);letter-spacing:0;margin-left:3px}
+.rpebox{margin-left:auto;text-align:right;line-height:1.1}
+.rpebox b{display:block;font-size:26px;font-weight:650;letter-spacing:-.03em}
+.rpebox b.hard{color:var(--rust)}
+.rpebox span{font-size:11.5px;color:var(--ink-38)}
+.cap{margin:6px 0 8px;font-size:12.5px;color:var(--ink-60)}
+.chartlbl{font-size:11px;color:var(--ink-38);margin:0 0 3px}
+.chart{width:100%;height:92px;display:block;border:1px solid var(--ink-14);border-radius:8px;background:var(--ground)}
+.reps{margin:10px 0 0;padding:0;list-style:none;border-top:1px solid var(--ink-14)}
+.rep{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--ink-14)}
+.rep .n{font-size:12px;color:var(--ink-38);width:1.4em;font-variant-numeric:tabular-nums}
+.rep .v{font-size:20px;font-weight:650;letter-spacing:-.03em;font-variant-numeric:tabular-nums;min-width:2.7em}
+.rep .v small{font-size:10.5px;font-weight:500;color:var(--ink-38);letter-spacing:0;margin-left:2px}
 .rep .meta{flex:1;font-size:11.5px;color:var(--ink-60);line-height:1.35;font-variant-numeric:tabular-nums}
-.rep .rpe{text-align:right;min-width:3.3em;font-variant-numeric:tabular-nums}
-.rep .rpe b{display:block;font-size:20px;font-weight:600;letter-spacing:-.03em}
-.rep .rpe span{display:block;font-size:10.5px;color:var(--ink-38)}
+.rep .rpe{text-align:right;min-width:2.8em;font-variant-numeric:tabular-nums}
+.rep .rpe b{display:block;font-size:17px;font-weight:650;letter-spacing:-.03em}
+.rep .rpe span{display:block;font-size:10px;color:var(--ink-38)}
 .rep .rpe.hard b{color:var(--rust)}
 .rep .rpe.easy b{color:var(--signal)}
-.rep .x{border:0;background:transparent;color:var(--ink-38);font-size:19px;padding:4px 0 4px 6px;line-height:1}
+.rep .x{border:0;background:transparent;color:var(--ink-38);font-size:18px;padding:4px 0 4px 6px;line-height:1}
+.summary{margin:10px 0 4px}
+.summary dl{margin:0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.summary dl div{background:var(--ground);border:1px solid var(--ink-14);border-radius:8px;padding:6px 9px}
+.summary dt{font-size:10.5px;color:var(--ink-38)}
+.summary dd{margin:0;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.summary p{margin:8px 0 0;font-size:12px;color:var(--ink-60);line-height:1.4}
+.ready{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  margin:0 18px;padding:8px 10px;border-radius:10px;
+  background:rgba(35,64,216,.06);border:1px solid rgba(35,64,216,.3);
+}
+.ready .note{flex:1 1 100%;margin:0}
+.ready .btn{flex:1 1 0}
+.vnote{margin:0;padding:8px 18px 6px;font-size:12.5px;color:var(--ink-60);border-top:1px solid var(--ink-14)}
+.vnote:empty{display:none}
 
-.summary{margin-top:16px;padding:15px;background:var(--paper);border:1px solid var(--ink-14);border-radius:4px}
-.summary dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:13.5px}
-.summary dt{color:var(--ink-60)}
-.summary dd{margin:0;font-variant-numeric:tabular-nums;font-weight:550}
-.summary p{margin:12px 0 0;font-size:12.5px;color:var(--ink-60)}
+.menuwrap{position:relative;flex:1 1 auto;display:flex}
+.menuwrap > .btn{flex:1 1 auto}
+.menu{
+  position:absolute;right:0;bottom:calc(100% + 8px);min-width:220px;z-index:40;
+  background:var(--paper);border:1px solid var(--ink-14);border-radius:14px;
+  box-shadow:0 12px 30px rgba(0,0,0,.18);padding:6px;
+}
+.menu button{
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;width:100%;
+  min-height:48px;padding:7px 12px;border:0;border-radius:9px;background:transparent;
+  font-size:14.5px;font-weight:550;text-align:left;
+}
+.menu button:active{background:var(--ink-07)}
+.menu button:disabled{opacity:.35}
+.menu button span{font-size:12px;color:var(--ink-38);font-weight:400}
+.menu button.stop{color:var(--rust)}
 
-details.help{margin-top:24px;font-size:13.5px;color:var(--ink-60)}
-details.help summary{cursor:pointer;color:var(--ink);font-weight:550;font-size:14px}
-details.help ul{padding-left:1.15em;margin:10px 0}
-details.help li{margin-bottom:6px}
-.foot{padding:22px 0 8px;font-size:12px;color:var(--ink-38);border-top:1px solid var(--ink-14);margin-top:22px}
+/* settings sheet */
+.sheet{
+  position:absolute;inset:0;z-index:50;background:rgba(14,17,18,.35);
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.sheetin{
+  width:100%;max-width:560px;max-height:88%;overflow-y:auto;overscroll-behavior:contain;
+  background:var(--paper);border-radius:20px 20px 0 0;
+  padding:16px 18px calc(env(safe-area-inset-bottom) + 20px);
+}
+.sheetin h2{margin:0;font-size:18px;letter-spacing:-.02em}
+.sheetin h3{margin:18px 0 4px;font-size:15px}
+.sheetin .sub{margin:0 0 10px;font-size:13px;color:var(--ink-60)}
+.sheetin ul{padding-left:1.1em;margin:6px 0;font-size:13px;color:var(--ink-60)}
+.sheetin li{margin-bottom:6px}
+.foot{padding:14px 0 0;margin-top:14px;font-size:12px;color:var(--ink-38);border-top:1px solid var(--ink-14)}
+#dsteps{display:none}
+
+/* ---------- wide screens: video left, controls right ---------- */
+@media (min-width:760px){
+  :root{--pad:18px}
+  .chips,.trail{display:none}
+  .pbody{flex:1 1 auto}
+  .body{flex-direction:row;gap:16px;padding:0 var(--pad) var(--pad)}
+  .stagecol,.results .stagecol{flex:1 1 auto;padding:0}
+  .panel,.results .panel{
+    flex:0 0 360px;max-height:none;margin:0;
+    border:1px solid var(--ink-14);border-radius:14px;box-shadow:none;
+  }
+  .pfoot{padding-bottom:16px}
+  #dsteps{display:block;padding:12px 18px 0}
+  .dstep{
+    display:flex;align-items:center;gap:10px;width:100%;padding:8px 0;border:0;
+    border-bottom:1px solid var(--ink-14);background:transparent;font-size:13.5px;text-align:left;
+  }
+  .dstep i{
+    font-style:normal;width:22px;height:22px;border-radius:999px;border:1px solid var(--ink-14);
+    font-size:11px;font-weight:650;display:flex;align-items:center;justify-content:center;color:var(--ink-38);flex:0 0 auto;
+  }
+  .dstep.done i{background:var(--ink);border-color:var(--ink);color:var(--ground)}
+  .dstep.now{font-weight:650;cursor:default}
+  .dstep.now i{background:var(--signal);border-color:var(--signal);color:#fff}
+  .dstep.later{color:var(--ink-38);cursor:default}
+  .dstep span{margin-left:auto;color:var(--ink-38);font-size:12px;font-variant-numeric:tabular-nums}
+  .dstep.done:hover span{color:var(--signal)}
+  .loupe{width:136px}
+  .loupe canvas{width:132px;height:132px}
+  .sheet{align-items:center}
+  .sheetin{border-radius:16px;max-height:80%}
+  .readout .num{font-size:56px}
+}
+/* wide but short (a phone on its side): the step list costs too much height,
+   so fall back to the numbered trail and drop the sub-lines */
+@media (min-width:760px) and (max-height:560px){
+  #dsteps{display:none}
+  .trail{display:flex}
+  .phead .sub{display:none}
+  .tbar{padding-top:4px;padding-bottom:4px}
+  .body{padding-bottom:10px}
+}
+/* short phones (SE, landscape-ish splits): trim the chrome so the video keeps room */
+@media (max-height:700px) and (max-width:759px){
+  .phead .sub{display:none}
+  .phead{padding-top:10px}
+  .readout .num{font-size:44px}
+  .rpebox b{font-size:22px}
+  .chart{height:70px}
+  .loupe{width:92px}
+  .loupe canvas{width:88px;height:88px}
+  .lmeta{font-size:9.5px}
+  .btn{min-height:42px}
+}
+@media (prefers-reduced-motion:no-preference){
+  .btn,.chip,.seg button{transition:background-color .12s ease,color .12s ease}
+}
 </style>
 </head>
 <body>
+<div class="app" id="app">
 
-<div class="hood">
-  <div class="hoodin">
-    <div class="trailrow">
-      <a class="mark back" id="brand" href="./power-logs.html">‹ Spotter</a>
-      <button type="button" class="eject hid" id="ejectBtn" aria-label="Eject video">
-        <span aria-hidden="true">⏏</span><span id="ejectLabel">Eject</span>
-      </button>
-      <ol class="trail" id="trail">
-        <li><button type="button" data-go="1" data-state="now">1</button></li>
-        <li><button type="button" data-go="2" disabled>2</button></li>
-        <li><button type="button" data-go="3" disabled>3</button></li>
-        <li><button type="button" data-go="4" disabled>4</button></li>
-      </ol>
-    </div>
-    <div id="preview">
-    <div class="stage empty" id="stage">
-      <p id="stageEmpty">Your clip stays here while you work through the steps</p>
-      <div class="vwrap hid" id="vwrap">
-        <video id="vid" playsinline muted preload="auto"></video>
-        <canvas class="ov" id="ov"></canvas>
-      </div>
-    </div>
-    <div class="loupebox hid" id="loupeBox">
-      <canvas id="loupeCv" width="124" height="124" aria-hidden="true"></canvas>
-      <div class="lmeta" id="loupeMeta"></div>
-    </div>
-    <div class="cue hid" id="hint"></div>
-    <div class="scrub hid" id="scrubRow">
-      <input type="range" id="scrub" min="0" max="1000" value="0" step="1" aria-label="Scrub clip">
-      <span class="tc" id="tc">0.00 s</span>
-    </div>
-    </div>
-    <button type="button" class="fold hid" id="foldBtn" aria-expanded="true" aria-controls="preview">
-      <span class="fchev" aria-hidden="true">⌃</span><span id="foldLabel">Hide preview</span>
+  <header class="tbar">
+    <a class="mark back" id="brand" href="./power-logs.html">‹ Spotter</a>
+    <button type="button" class="eject hid" id="ejectBtn" aria-label="Eject video">
+      <span aria-hidden="true">⏏</span><span id="ejectLabel">Eject</span>
     </button>
-  </div>
-</div>
+    <ol class="trail" id="trail">
+      <li><button type="button" data-go="1" data-state="now" aria-label="Step 1, clip">1</button></li>
+      <li><button type="button" data-go="2" disabled aria-label="Step 2, scale">2</button></li>
+      <li><button type="button" data-go="3" disabled aria-label="Step 3, target">3</button></li>
+      <li><button type="button" data-go="4" disabled aria-label="Step 4, results">4</button></li>
+    </ol>
+  </header>
+  <div class="chips" id="crumbs"></div>
 
-<main>
-  <div id="crumbs"></div>
-
-  <!-- ---------------- 1 ---------------- -->
-  <section class="step" id="s1">
-    <h1>Load the clip</h1>
-    <p class="sub">Film square-on to the bar with the phone fixed, lens level with the middle of the rep. 60&nbsp;fps or faster is best.</p>
-    <div class="row">
-      <button class="btn" id="pickBtn">Choose video</button>
-      <button class="btn ghost hid" id="replaceBtn">Replace</button>
-    </div>
-    <input type="file" id="file" accept="video/*" class="hid">
-    <div class="stat hid" id="vidStat"></div>
-
-    <div class="hid" id="trimBox" style="margin-top:18px">
-      <label class="f">Trim to the working set — optional, and it speeds tracking up</label>
-      <div class="row">
-        <button class="btn ghost sm" id="setT0">Start here</button>
-        <button class="btn ghost sm" id="setT1">End here</button>
-        <button class="btn ghost sm" id="wholeClip">Whole clip</button>
-      </div>
-      <div class="stat" id="trimStat">Using the whole clip.</div>
-    </div>
-
-    <div class="act"><button class="btn wide" id="done1" disabled>Done</button></div>
-  </section>
-
-  <!-- ---------------- 2 ---------------- -->
-  <section class="step hid" id="s2">
-    <h1>Set the scale</h1>
-    <p class="sub">Drag a line across the plate face, through its centre. Pick a plate in the same plane as the bar end you will track.</p>
-    <div class="grid2">
-      <div>
-        <label class="f" for="refSel">Reference</label>
-        <select id="refSel">
-          <option value="450">Competition plate — 450 mm</option>
-          <option value="50">Bar sleeve — 50 mm</option>
-          <option value="2200">Bar, end to end — 2200 mm</option>
-          <option value="400">Training plate — 400 mm</option>
-          <option value="0">Something else</option>
-        </select>
-      </div>
-      <div>
-        <label class="f" for="refMm">Real length (mm)</label>
-        <input type="number" id="refMm" value="450" min="10" step="1" inputmode="decimal">
+  <div class="body">
+    <div class="stagecol">
+      <div class="stage empty" id="stage">
+        <div class="emptybox" id="stageEmpty">
+          <p>Film square-on to the bar with the phone fixed, lens level with the middle of the rep. 60&nbsp;fps or faster is best.</p>
+          <button class="btn" id="pickBtn">Choose video</button>
+        </div>
+        <div class="vwrap hid" id="vwrap">
+          <video id="vid" playsinline muted preload="auto"></video>
+          <canvas class="ov" id="ov"></canvas>
+        </div>
+        <div class="vtag hid" id="hint"></div>
+        <button type="button" class="stagebtn hid" id="reviewBtn" aria-pressed="false">Bar path</button>
+        <div class="loupe hid" id="loupeBox">
+          <canvas id="loupeCv" width="108" height="108" aria-hidden="true"></canvas>
+          <div class="lmeta" id="loupeMeta"></div>
+        </div>
+        <div class="scrub hid" id="scrubRow">
+          <button type="button" class="play" id="playBtn" aria-label="Play">
+            <svg viewBox="0 0 14 14" id="playIco"><path d="M3 1.5v11l9.5-5.5z"/></svg>
+          </button>
+          <input type="range" id="scrub" min="0" max="1000" value="0" step="1" aria-label="Scrub clip">
+          <select id="replaySpeed" class="hid" aria-label="Replay speed">
+            <option value="1">1×</option>
+            <option value="0.5">½×</option>
+            <option value="0.25">¼×</option>
+          </select>
+          <span class="tc" id="tc">0.00 s</span>
+        </div>
       </div>
     </div>
-    <div class="stat" id="calNote">Drag across the plate on the video above.</div>
-    <div class="row" style="margin-top:12px">
-      <button class="btn ghost sm" id="calClear">Clear line</button>
-    </div>
-    <div class="act"><button class="btn wide" id="done2" disabled>Done</button></div>
-  </section>
 
-  <!-- ---------------- 3 ---------------- -->
-  <section class="step hid" id="s3">
-    <h1>Pick what to follow</h1>
-    <p class="sub" id="s3sub">Tap the coloured tape on the bar end. The zoom bubble shows exactly which pixels you are picking.</p>
-    <div class="seg" id="modeSeg">
-      <button id="mMark" aria-pressed="true">Tape marker</button>
-      <button id="mPoint" aria-pressed="false">Select area</button>
-    </div>
-    <div class="stat" id="seedNote" style="margin-top:12px">Tap the bar on the video above.</div>
-    <div id="markOpts" style="margin-top:14px">
-      <label class="f" for="tol">Colour tolerance <span id="tolv" style="font-variant-numeric:tabular-nums">28°</span></label>
-      <input type="range" id="tol" min="8" max="60" value="28" step="1" style="width:100%;accent-color:var(--ink);min-height:34px">
-    </div>
-    <div class="hid" id="areaOpts" style="margin-top:14px">
-      <label class="f">Patch shape</label>
-      <div class="seg" id="shapeSeg" style="margin-bottom:14px">
-        <button id="shpSquare" aria-pressed="true">Square</button>
-        <button id="shpCircle" aria-pressed="false">Circle</button>
-      </div>
-      <label class="f" for="areaSize">Patch size <span id="areaSizev" style="font-variant-numeric:tabular-nums">21 px</span></label>
-      <input type="range" id="areaSize" min="11" max="41" value="21" step="2" style="width:100%;accent-color:var(--ink);min-height:34px">
-    </div>
-    <div class="grid2" style="margin-top:14px">
-      <div>
-        <label class="f" for="lift">Lift</label>
-        <select id="lift">
-          <option value="squat">Squat</option>
-          <option value="bench">Bench press</option>
-          <option value="deadlift">Deadlift</option>
-        </select>
-      </div>
-      <div>
-        <label class="f" for="minRom">Min rep height (m)</label>
-        <input type="number" id="minRom" value="0.25" min="0.03" max="1.2" step="0.01" inputmode="decimal">
-      </div>
-    </div>
-    <div id="stanceBox" class="hid" style="margin-top:14px">
-      <label class="f">Stance</label>
-      <div class="seg" id="stanceSeg">
-        <button id="stConv" aria-pressed="true">Conventional</button>
-        <button id="stSumo" aria-pressed="false">Sumo</button>
-      </div>
-      <p class="note" id="stanceNote"></p>
-    </div>
-    <div class="act"><button class="btn wide" id="done3" disabled>Done</button></div>
-  </section>
+    <aside class="panel" id="panel">
+      <div id="dsteps"></div>
 
-  <!-- ---------------- 4 ---------------- -->
-  <section class="step hid" id="s4">
-    <h1>Read the set</h1>
-    <p class="sub">Mean concentric velocity per rep, with an RPE estimate from your own velocity anchors.</p>
-
-    <div class="face" id="face">
-      <div class="readout">
-        <span class="num" id="bigNum">—.——</span>
-        <span class="unit">m/s<span id="bigTag"></span></span>
-      </div>
-      <p class="cap" id="bigCap">Track the bar to get numbers.</p>
-    </div>
-
-    <button class="btn wide" id="runBtn" disabled>Track the bar</button>
-    <p class="note" id="runNote"></p>
-
-    <div id="resultsBox" class="hid" style="margin-top:20px">
-      <canvas class="chart" id="chart"></canvas>
-      <ul class="reps" id="repList"></ul>
-      <div class="summary hid" id="sum">
-        <dl id="sumDl"></dl>
-        <p id="sumNote"></p>
-      </div>
-      <div class="row" style="margin-top:14px">
-        <button class="btn ghost sm" id="replayBtn" disabled>Replay</button>
-        <select id="replaySpeed" aria-label="Replay speed"
-          style="width:auto;padding:9px 10px;font-size:13.5px">
-          <option value="1">1×</option>
-          <option value="0.5">½×</option>
-          <option value="0.25">¼×</option>
-        </select>
-        <button class="btn ghost sm" id="reviewBtn" disabled>Show bar path</button>
-        <button class="btn ghost sm" id="csvBtn" disabled>Export CSV</button>
-      </div>
-      <div class="row" style="margin-top:9px">
-        <button class="btn ghost sm" id="vidBtn" disabled>Export video</button>
-        <button class="btn sm hid" id="saveVidBtn">Save video</button>
-        <button class="btn ghost sm hid" id="savePcBtn">Save to PC</button>
-      </div>
-      <p class="note" id="vidExpNote"></p>
-
-      <div style="margin-top:24px;padding-top:18px;border-top:1px solid var(--ink-14)">
-        <h1 style="font-size:16px">Velocity anchors</h1>
-        <p class="sub">The speed of a true grinding single is personal but stable. Set it per lift and every RPE below shifts with it.</p>
-        <div class="grid2">
-          <div>
-            <label class="f" for="mvt">RPE 10 speed, this lift (m/s)</label>
-            <input type="number" id="mvt" step="0.005" min="0.03" max="0.90" inputmode="decimal">
-          </div>
-          <div>
-            <label class="f">&nbsp;</label>
-            <button class="btn ghost wide" id="mvtReset" style="min-height:45px">Use default</button>
+      <!-- ---------------- 1 ---------------- -->
+      <section class="step" id="s1">
+        <div class="phead">
+          <div class="row1"><h1 id="s1title">Load the clip</h1><span class="of">1 of 4</span></div>
+          <p class="sub" id="s1sub">Pick a video of the set. It's decoded on this device and never uploaded.</p>
+        </div>
+        <div class="pbody">
+          <input type="file" id="file" accept="video/*" class="hid">
+          <div class="stat hid" id="vidStat"></div>
+          <div class="hid" id="trimBox">
+            <div class="row nowrap mb">
+              <button class="btn ghost sm" id="setT0">⇤ Start</button>
+              <button class="btn ghost sm" id="setT1">End ⇥</button>
+              <button class="btn ghost sm" id="wholeClip">All</button>
+            </div>
+            <div class="stat" id="trimStat">Using the whole clip.</div>
           </div>
         </div>
-        <p class="note" id="mvtNote"></p>
-      </div>
-    </div>
+        <div class="pfoot">
+          <button class="btn ghost hid" id="replaceBtn">Replace</button>
+          <button class="btn grow" id="done1" disabled>Next</button>
+        </div>
+      </section>
 
-    <details class="help">
-      <summary>Getting numbers you can trust</summary>
+      <!-- ---------------- 2 ---------------- -->
+      <section class="step hid" id="s2">
+        <div class="phead">
+          <div class="row1"><h1>Set the scale</h1><span class="of">2 of 4</span></div>
+          <p class="sub">Drag across a plate, through its centre, in the same plane as the bar end you'll track.</p>
+        </div>
+        <div class="pbody">
+          <div class="grid2 wide field">
+            <div>
+              <label class="f" for="refSel">Reference</label>
+              <select id="refSel">
+                <option value="450">Competition plate</option>
+                <option value="50">Bar sleeve</option>
+                <option value="2200">Bar, end to end</option>
+                <option value="400">Training plate</option>
+                <option value="0">Something else</option>
+              </select>
+            </div>
+            <div>
+              <label class="f" for="refMm">Length, mm</label>
+              <input type="number" id="refMm" value="450" min="10" step="1" inputmode="decimal">
+            </div>
+          </div>
+          <div class="stat" id="calNote">Drag across the plate on the video.</div>
+        </div>
+        <div class="pfoot">
+          <button class="btn ghost icon" id="calClear" aria-label="Clear line" title="Clear line">↺</button>
+          <button class="btn grow" id="done2" disabled>Next</button>
+        </div>
+      </section>
+
+      <!-- ---------------- 3 ---------------- -->
+      <section class="step hid" id="s3">
+        <div class="phead">
+          <div class="row1"><h1>Pick what to follow</h1><span class="of">3 of 4</span></div>
+          <p class="sub" id="s3sub">Tap the coloured tape on the bar end.</p>
+        </div>
+        <div class="pbody">
+          <div class="seg field" id="modeSeg">
+            <button id="mMark" aria-pressed="true">Tape marker</button>
+            <button id="mPoint" aria-pressed="false">Select area</button>
+          </div>
+          <div class="field" id="markOpts">
+            <label class="f" for="tol">Colour tolerance</label>
+            <div class="rngwrap">
+              <input type="range" class="rng" id="tol" min="8" max="60" value="28" step="1">
+              <span id="tolv">28°</span>
+            </div>
+          </div>
+          <div class="field hid" id="areaOpts">
+            <label class="f" for="areaSize">Patch shape and size</label>
+            <div class="inline">
+              <div class="seg" id="shapeSeg">
+                <button id="shpSquare" aria-pressed="true" aria-label="Square">■</button>
+                <button id="shpCircle" aria-pressed="false" aria-label="Circle">●</button>
+              </div>
+              <div class="rngwrap">
+                <input type="range" class="rng" id="areaSize" min="11" max="41" value="21" step="2">
+                <span id="areaSizev">21 px</span>
+              </div>
+            </div>
+          </div>
+          <div class="grid2 field">
+            <div>
+              <label class="f" for="lift">Lift</label>
+              <select id="lift">
+                <option value="squat">Squat</option>
+                <option value="bench">Bench press</option>
+                <option value="deadlift">Deadlift</option>
+              </select>
+            </div>
+            <div>
+              <label class="f" for="minRom">Min rep height, m</label>
+              <input type="number" id="minRom" value="0.25" min="0.03" max="1.2" step="0.01" inputmode="decimal">
+            </div>
+          </div>
+          <div id="stanceBox" class="field hid">
+            <div class="seg" id="stanceSeg">
+              <button id="stConv" aria-pressed="true">Conventional</button>
+              <button id="stSumo" aria-pressed="false">Sumo</button>
+            </div>
+            <p class="note" id="stanceNote" style="margin:6px 0 0"></p>
+          </div>
+          <div class="stat" id="seedNote">Tap the bar on the video.</div>
+        </div>
+        <div class="pfoot">
+          <button class="btn grow" id="done3" disabled>Track the bar</button>
+        </div>
+      </section>
+
+      <!-- ---------------- 4 ---------------- -->
+      <section class="step hid" id="s4">
+        <div class="phead">
+          <div class="row1">
+            <h1 id="s4title">Results</h1>
+            <button type="button" class="gear" id="gearBtn" aria-label="Velocity anchors and tips">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+          </div>
+          <div class="face" id="face">
+            <div class="readout">
+              <span class="num" id="bigNum">0.00</span>
+              <span class="unit">m/s<span id="bigTag"></span></span>
+            </div>
+            <div class="rpebox hid" id="bigRpe"><b id="bigRpeV"></b><span id="bigRpeS"></span></div>
+          </div>
+          <p class="cap" id="bigCap">No reading yet — track the bar to get numbers.</p>
+        </div>
+        <div class="pbody" style="flex:1 1 auto">
+          <p class="note" id="runNote"></p>
+          <div id="resultsBox" class="hid">
+            <p class="chartlbl">Bar velocity, m/s</p>
+            <canvas class="chart" id="chart"></canvas>
+            <ul class="reps" id="repList"></ul>
+            <div class="summary hid" id="sum">
+              <dl id="sumDl"></dl>
+              <p id="sumNote"></p>
+            </div>
+          </div>
+        </div>
+        <p class="vnote" id="vidExpNote"></p>
+        <div class="ready hid" id="readyRow">
+          <button class="btn sm" id="saveVidBtn">Save video</button>
+          <button class="btn ghost sm hid" id="savePcBtn">Save to PC</button>
+        </div>
+        <div class="pfoot">
+          <button class="btn grow" id="runBtn" disabled>Track the bar</button>
+          <div class="menuwrap hid" id="expWrap">
+            <button class="btn" id="expToggle" aria-haspopup="true" aria-expanded="false">Export ▾</button>
+            <div class="menu hid" id="expMenu" role="menu">
+              <button role="menuitem" id="csvBtn" disabled>Export CSV <span>per-rep numbers</span></button>
+              <button role="menuitem" id="vidBtn" disabled>Export video <span>with overlay + audio</span></button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <!-- settings sheet: anchors + tips -->
+  <div class="sheet hid" id="setSheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+    <div class="sheetin">
+      <div class="row nowrap" style="justify-content:space-between">
+        <h2 id="setTitle">Velocity anchors</h2>
+        <button class="btn ghost sm" id="setClose" style="flex:0 0 auto">Done</button>
+      </div>
+      <p class="sub" style="margin-top:6px">The speed of a true grinding single is personal but stable. Set it per lift and every RPE shifts with it.</p>
+      <div class="grid2">
+        <div>
+          <label class="f" for="mvt">RPE 10 speed, this lift (m/s)</label>
+          <input type="number" id="mvt" step="0.005" min="0.03" max="0.90" inputmode="decimal">
+        </div>
+        <div>
+          <label class="f">&nbsp;</label>
+          <button class="btn ghost" id="mvtReset" style="width:100%;min-height:40px">Use default</button>
+        </div>
+      </div>
+      <p class="note" id="mvtNote" style="margin-top:8px"></p>
+
+      <h3>Getting numbers you can trust</h3>
       <ul>
         <li>Phone on a tripod or propped against something solid. Handheld camera motion goes straight into the velocity trace.</li>
         <li>Stand perpendicular to the bar, lens roughly level with the middle of the range of motion. Shooting from an angle or from the floor foreshortens the bar path and reads low.</li>
         <li>Film the same bar end throughout, and scale against a plate in that same plane.</li>
         <li>For tape mode use strongly coloured tape — fluoro pink, orange or green. White, black, silver and grey have no hue to lock onto.</li>
-        <li>For area mode, pick a patch with real texture or contrast in it — a collar edge, engraved lettering, a knurling band — not a smooth painted surface. A smaller patch locks on tighter but loses it more easily if the bar drifts out of the search window; a larger one is more forgiving but slower to match. Circle vs square rarely matters — pick whichever shape better covers the feature without spilling onto the background.</li>
+        <li>For area mode, pick a patch with real texture or contrast in it — a collar edge, engraved lettering, a knurling band — not a smooth painted surface. A smaller patch locks on tighter but loses it more easily if the bar drifts out of the search window; a larger one is more forgiving but slower to match.</li>
         <li>30 fps gives a usable mean velocity but a noisy peak. 60 fps is comfortable, 120 or 240 better.</li>
         <li>Expect mean concentric velocity within roughly 0.03&nbsp;m/s of a linear transducer with a good setup, and tighter at slow grinding speeds. RPE carries about ±1 until you set your own anchor.</li>
         <li>Sumo and conventional hit the same bar speed at a genuine max, but sumo is slower at every effort below it and travels 20–25% less distance, so each stance gets its own table. A lifter's anchor for one stance does not transfer to the other — set both separately.</li>
         <li>Deadlift velocity is less reliable than squat or bench, and load–velocity profiles tend to under-predict a real deadlift max. Trust velocity loss across a set more than the absolute number here.</li>
       </ul>
-    </details>
-    <div class="foot">Works offline once installed. Nothing leaves the phone — video is decoded locally and discarded.</div>
-  </section>
-</main>
-
+      <div class="foot">Works offline once installed. Nothing leaves the device — video is decoded locally and discarded.</div>
+    </div>
+  </div>
+</div>
 <script>
 "use strict";
 
@@ -496,7 +661,7 @@ var S = {
   t0:null, t1:null,
   touchMode:null, drag:null, tracking:false,
   step:1, reached:1,
-  stance:"conv", folded:false,
+  stance:"conv",
   mvt:{}
 };
 
@@ -525,11 +690,22 @@ function setStat(id, text, kind){
   e.innerHTML = text;
   e.className = "stat" + (kind ? " "+kind : "");
 }
+/* Empty state is a pale 0.00 rather than a row of dashes: at this size and
+   letter-spacing the dashes merged into solid bars and read as a render bug. */
 function setBig(val, cap, tag){
-  $("bigNum").textContent = (val===null) ? "\u2014.\u2014\u2014" : fmt(val,2);
+  $("bigNum").textContent = (val===null) ? "0.00" : fmt(val,2);
   $("face").className = (val===null) ? "face" : "face live";
   $("bigCap").textContent = cap || "";
   $("bigTag").textContent = tag || "";
+  if(val===null) setBigRpe(null);
+}
+function setBigRpe(rpeTxt, sub, hard){
+  var box=$("bigRpe");
+  if(rpeTxt===null){ box.classList.add("hid"); return; }
+  box.classList.remove("hid");
+  $("bigRpeV").textContent="RPE "+rpeTxt;
+  $("bigRpeV").className = hard ? "hard" : "";
+  $("bigRpeS").textContent=sub||"";
 }
 
 /* ============================ storage ============================ */
@@ -585,31 +761,6 @@ function mvtFor(lift){
 
 /* ============================ flow ============================ */
 
-function setFold(folded){
-  S.folded=!!folded;
-  $("preview").classList.toggle("hid", S.folded);
-  $("foldBtn").setAttribute("aria-expanded", S.folded ? "false" : "true");
-  $("foldLabel").textContent = S.folded ? "Show preview" : "Hide preview";
-  if(!S.folded){
-    // the video box had no layout while hidden, so the overlay needs re-measuring
-    sizeOverlay();
-    setTimeout(sizeOverlay,60);
-  }
-  syncTrimFloat();
-}
-$("foldBtn").addEventListener("click", function(){ setFold(!S.folded); });
-
-/* Float the trim controls only when all three are true: we're on step 1, a clip is
-   loaded, and the preview is open to scrub against. Any other time they sit in the
-   normal flow where they read as part of "Load the clip". */
-function syncTrimFloat(){
-  var box=$("trimBox"), s1=$("s1");
-  if(!box||!s1) return;
-  var useful = S.step===1 && !box.classList.contains("hid") && !S.folded;
-  box.classList.toggle("floating", useful);
-  s1.classList.toggle("trim-floating", useful);
-}
-
 function stepReady(n){
   if(n===1) return !!S.vw;
   if(n===2) return mPerPx()>0;
@@ -620,26 +771,39 @@ function crumbValue(n){
   if(n===1){
     if(S.t0===null && S.t1===null) return "whole clip";
     var a=(S.t0===null?0:S.t0), b=(S.t1===null?S.dur:S.t1);
-    return fmt(a,2)+"\u2013"+fmt(b,2)+" s";
+    return fmt(a,2)+"–"+fmt(b,2)+" s";
   }
   if(n===2) return fmt(mPerPx()*1000,2)+" mm/px";
-  if(n===3) return (S.mode==="marker" ? "tape" : (S.areaShape+" "+S.areaSize+"px")) + " \u00b7 " + SHORTNAME[profileKey()];
+  if(n===3) return (S.mode==="marker" ? "tape" : (S.areaShape+" "+S.areaSize+"px")) + " · " + SHORTNAME[profileKey()];
   return "";
 }
-var CRUMBLB = {1:"Clip", 2:"Scale", 3:"Target"};
+var CRUMBLB = {1:"Clip", 2:"Scale", 3:"Target", 4:"Results"};
+function bindGo(el,n){ el.addEventListener("click", function(){ goStep(n); }); }
 
+/* Finished steps render twice from one source: as chips above the video on a
+   phone, and as the step list at the top of the side panel on a wide screen.
+   CSS shows whichever one fits the layout. */
 function renderCrumbs(){
-  var box=$("crumbs");
-  box.innerHTML="";
+  var box=$("crumbs"), ds=$("dsteps");
+  box.innerHTML=""; ds.innerHTML="";
   for(var n=1;n<=3;n++){
-    if(n>=S.step) continue;
-    if(!stepReady(n)) continue;
+    if(n>=S.step || !stepReady(n)) continue;
     var b=document.createElement("button");
-    b.type="button"; b.className="crumb";
-    b.innerHTML='<span class="ck">\u2713</span><span class="lb">'+CRUMBLB[n]+'</span>'
-      + '<span class="vl">'+crumbValue(n)+'</span><span class="ed">Edit</span>';
-    (function(k){ b.addEventListener("click", function(){ goStep(k); }); })(n);
+    b.type="button"; b.className="chip";
+    b.innerHTML='<span class="ck">✓</span>'+CRUMBLB[n]+' <b>'+crumbValue(n)+'</b>';
+    b.setAttribute("aria-label","Edit "+CRUMBLB[n].toLowerCase()+", "+crumbValue(n));
+    bindGo(b,n);
     box.appendChild(b);
+  }
+  for(var k=1;k<=4;k++){
+    var now=(k===S.step), done=(k<S.step && stepReady(k));
+    var d=document.createElement("button");
+    d.type="button";
+    d.className="dstep "+(now?"now":(done?"done":"later"));
+    d.innerHTML='<i>'+(done?"✓":k)+'</i>'+CRUMBLB[k]
+      + '<span>'+(done&&k<4?crumbValue(k):(now?"":(k<=S.reached?"\u203a":"")))+'</span>';
+    if(!now && k<=S.reached) bindGo(d,k); else d.disabled=true;
+    ds.appendChild(d);
   }
 }
 function renderTrail(){
@@ -651,36 +815,45 @@ function renderTrail(){
       n===S.step ? "now" : ((n<S.step && stepReady(n)) ? "done" : "next"));
   }
 }
+function stepHint(){
+  var n=S.step;
+  if(!S.vw) return null;
+  if(n===1) return "Scrub to the set, then mark where it starts and ends";
+  if(n===2) return (S.cal.a && S.cal.b) ? "Drag an end dot to fine-tune" : "Drag across the plate, through its centre";
+  if(n===3) return S.mode==="marker" ? "Tap the coloured tape on the bar end" : "Tap and drag to place the patch on the bar end";
+  return null;
+}
 function goStep(n){
+  if(replaying && n!==4) stopReplay(false);
+  if(previewing) stopPreview();
+  closeMenu();
   S.step=n;
   if(n>S.reached) S.reached=n;
-  // only force the preview open when the step still needs a point placed;
-  // once it is set, the fold is the user's call
-  if(n<4 && S.folded && !stepReady(n)) setFold(false);
   for(var i=1;i<=4;i++) $("s"+i).classList.toggle("hid", i!==n);
+  $("app").classList.toggle("results", n===4);
 
   S.touchMode = (n===2) ? "cal" : (n===3 ? "seed" : null);
   S.drag=null;
-  syncTrimFloat();
 
-  if(n===1) hint(S.vw ? "Scrub to a frame where the plate is clearly visible" : null);
-  else if(n===2) hint("Drag a line across the plate, through its centre \u2014 then nudge the end dots");
-  else if(n===3) hint(S.mode==="marker" ? "Tap the coloured tape on the bar end" : "Tap and drag to place the patch on the bar end");
-  else hint(null);
-
-  loupe=null;
-  showLoupe(!!S.vw && (n===2 || n===3));
+  hint(stepHint());
+  loupe=null; showLoupe(false);
+  var hasPath = n===4 && S.path.length>0;
+  $("reviewBtn").classList.toggle("hid", !hasPath);
+  $("replaySpeed").classList.toggle("hid", !hasPath);
+  syncPlayBtn();
   refreshStep();
   renderCrumbs();
   renderTrail();
-  paintOverlay();
-  window.scrollTo(0,0);
+  // the stage changes height between the results layout and the others
+  sizeOverlay();
+  requestAnimationFrame(sizeOverlay);
 }
 function refreshStep(){
+  var runnable = stepReady(2) && stepReady(3);
   $("done1").disabled = !stepReady(1);
   $("done2").disabled = !stepReady(2);
-  $("done3").disabled = !stepReady(3);
-  $("runBtn").disabled = !(stepReady(2) && stepReady(3));
+  $("done3").disabled = !runnable;
+  $("runBtn").disabled = !runnable && !S.tracking;
 }
 function advance(n){
   if(!stepReady(n)) return;
@@ -688,13 +861,60 @@ function advance(n){
 }
 $("done1").addEventListener("click", function(){ advance(1); });
 $("done2").addEventListener("click", function(){ advance(2); });
-$("done3").addEventListener("click", function(){ advance(3); });
+/* Step 3's button goes straight to tracking — there is nothing to do on step 4
+   before tracking, so a separate Done tap was dead weight. */
+$("done3").addEventListener("click", function(){
+  if(!(stepReady(2) && stepReady(3))) return;
+  goStep(4);
+  track();
+});
 Array.prototype.forEach.call($("trail").querySelectorAll("button"), function(b){
   b.addEventListener("click", function(){
     var n=+b.getAttribute("data-go");
     if(n<=S.reached) goStep(n);
   });
 });
+
+/* Run button: a full-width "Track the bar" until there are numbers, then a
+   compact ↻ beside Export, and red "Stop" while tracking. */
+function setRunBtn(state){
+  var b=$("runBtn"), has=!!(S.A && S.path.length);
+  b.classList.remove("stop","icon","ghost","grow");
+  b.removeAttribute("aria-label"); b.removeAttribute("title");
+  if(state==="stop"){ b.textContent="Stop"; b.classList.add("stop","grow"); }
+  else if(has){
+    b.textContent="↻"; b.classList.add("icon","ghost");
+    b.setAttribute("aria-label","Track again"); b.setAttribute("title","Track again");
+  }
+  else { b.textContent="Track the bar"; b.classList.add("grow"); }
+  $("expWrap").classList.toggle("hid", state==="stop" || !has);
+}
+
+/* Export menu */
+function closeMenu(){
+  $("expMenu").classList.add("hid");
+  $("expToggle").setAttribute("aria-expanded","false");
+}
+$("expToggle").addEventListener("click", function(e){
+  e.stopPropagation();
+  if(exporting){ stopExport(); return; }
+  var open=$("expMenu").classList.contains("hid");
+  $("expMenu").classList.toggle("hid", !open);
+  this.setAttribute("aria-expanded", open?"true":"false");
+});
+document.addEventListener("click", function(e){
+  if(!$("expWrap").contains(e.target)) closeMenu();
+});
+document.addEventListener("keydown", function(e){
+  if(e.key==="Escape"){ closeMenu(); closeSheet(); }
+});
+
+/* Settings sheet: anchors + tips */
+function openSheet(){ $("setSheet").classList.remove("hid"); setAnchorField(profileKey()); $("setClose").focus(); }
+function closeSheet(){ $("setSheet").classList.add("hid"); }
+$("gearBtn").addEventListener("click", openSheet);
+$("setClose").addEventListener("click", closeSheet);
+$("setSheet").addEventListener("click", function(e){ if(e.target===this) closeSheet(); });
 
 /* ============================ video load ============================ */
 
@@ -736,12 +956,12 @@ function resetAll(){
   replaying=false;
   if(replayRaf){ cancelAnimationFrame(replayRaf); replayRaf=null; }
   try{ vid.playbackRate=1; }catch(e){}
-  $("replayBtn").disabled=true;
-  $("replayBtn").textContent="Replay"; $("replayBtn").classList.remove("stop");
+  if(previewing) stopPreview();
   exporting=false; expBlob=null; expChunks=[];
   if(expRec && expRec.state!=="inactive"){ try{ expRec.stop(); }catch(e){} }
-  $("vidBtn").disabled=true; $("vidBtn").textContent="Export video"; $("vidBtn").classList.remove("stop");
-  $("saveVidBtn").classList.add("hid"); $("savePcBtn").classList.add("hid"); $("vidExpNote").textContent="";
+  $("vidBtn").disabled=true; setVidBtnLabel(false);
+  $("readyRow").classList.add("hid"); $("savePcBtn").classList.add("hid"); $("vidExpNote").textContent="";
+  closeMenu(); closeSheet();
   // .muted is a live property, not the original content attribute — an export
   // interrupted mid-recording (eject tapped while it was unmuted for the audio
   // tap) would otherwise carry a live, unmuted video into the next clip.
@@ -757,25 +977,24 @@ function resetAll(){
   $("stage").classList.add("empty"); $("stageEmpty").classList.remove("hid");
   $("scrubRow").classList.add("hid");
   $("trimBox").classList.add("hid"); $("vidStat").classList.add("hid");
-  syncTrimFloat();
   $("replaceBtn").classList.add("hid");
-  $("pickBtn").classList.remove("hid");
+  $("s1title").textContent="Load the clip";
+  $("s1sub").textContent="Pick a video of the set. It's decoded on this device and never uploaded.";
   $("ejectBtn").classList.add("hid");
   disarmEject();
-  $("foldBtn").classList.add("hid");
   loupe=null; showLoupe(false);
-  S.folded=false; $("preview").classList.remove("hid");
-  $("foldBtn").setAttribute("aria-expanded","true");
-  $("foldLabel").textContent="Hide preview";
   $("resultsBox").classList.add("hid");
   $("repList").innerHTML=""; $("sum").classList.add("hid");
-  $("csvBtn").disabled=true; $("reviewBtn").disabled=true;
+  $("csvBtn").disabled=true;
   $("runNote").textContent="";
-  setStat("calNote","Drag across the plate on the video above.");
-  setStat("seedNote","Tap the bar on the video above.");
+  setStat("calNote","Drag across the plate on the video.");
+  setStat("seedNote","Tap the bar on the video.");
   setStat("trimStat","Using the whole clip.");
-  showPath=false; $("reviewBtn").textContent="Show bar path";
-  setBig(null,"Track the bar to get numbers.");
+  setPathBtn(false);
+  setRunBtn();
+  syncTrimBand();
+  $("tc").textContent="0.00 s"; $("scrub").value=0;
+  setBig(null,"No reading yet — track the bar to get numbers.");
   hint(null); drawChart();
 }
 
@@ -804,11 +1023,10 @@ async function loadVideo(file){
   $("stage").classList.remove("empty"); $("stageEmpty").classList.add("hid");
   $("scrubRow").classList.remove("hid");
   $("trimBox").classList.remove("hid");
-  syncTrimFloat();
   $("replaceBtn").classList.remove("hid");
-  $("pickBtn").classList.add("hid");
+  $("s1title").textContent="Trim to the set";
+  $("s1sub").textContent="Optional — mark where the set starts and ends. The blue band on the scrub bar shows the window, and a shorter window tracks faster.";
   $("ejectBtn").classList.remove("hid");
-  $("foldBtn").classList.remove("hid");
 
   var fps=null;
   if(typeof vid.requestVideoFrameCallback==="function") fps=await measureFps();
@@ -867,6 +1085,7 @@ function drawFrames(){
 var scrubbing=false;
 $("scrub").addEventListener("input", function(e){
   if(replaying) stopReplay(true);
+  if(previewing) stopPreview(true);
   scrubbing=true;
   var t=(+e.target.value/1000)*S.dur;
   $("tc").textContent=fmt(t,2)+" s";
@@ -889,13 +1108,79 @@ function trimText(){
   if(b<=a) return "End is before the start \u2014 tap Whole clip to reset.";
   return "Analysing <b>"+fmt(a,2)+"</b> to <b>"+fmt(b,2)+"</b> s \u00b7 <b>"+fmt(b-a,2)+" s</b> window.";
 }
-$("setT0").addEventListener("click", function(){ S.t0=vid.currentTime; setStat("trimStat",trimText()); renderCrumbs(); });
-$("setT1").addEventListener("click", function(){ S.t1=vid.currentTime; setStat("trimStat",trimText()); renderCrumbs(); });
-$("wholeClip").addEventListener("click", function(){ S.t0=null; S.t1=null; setStat("trimStat",trimText()); renderCrumbs(); });
+function trimChanged(){ setStat("trimStat",trimText()); syncTrimBand(); renderCrumbs(); }
+$("setT0").addEventListener("click", function(){ S.t0=vid.currentTime; trimChanged(); });
+$("setT1").addEventListener("click", function(){ S.t1=vid.currentTime; trimChanged(); });
+$("wholeClip").addEventListener("click", function(){ S.t0=null; S.t1=null; trimChanged(); });
+
+/* The analysed window is painted onto the scrub track itself, so trimming is
+   visible wherever you are rather than only in step 1's text. */
+function syncTrimBand(){
+  var el=$("scrub");
+  if(!S.dur || (S.t0===null && S.t1===null)){ el.style.removeProperty("--trk"); return; }
+  var a=(S.t0===null?0:S.t0)/S.dur*100, b=(S.t1===null?S.dur:S.t1)/S.dur*100;
+  var dim="rgba(242,243,240,.22)", on="#6E8AF2";
+  el.style.setProperty("--trk","linear-gradient(90deg,"+dim+" "+a+"%,"+on+" "+a+"%,"+on+" "+b+"%,"+dim+" "+b+"%)");
+}
+
+/* Plain playback for steps 1-3, inside the trim window. Step 4's play button is
+   the bar-path replay instead (replay() below). */
+var previewing=false, previewRaf=null;
+function startPreview(){
+  if(!S.vw || S.tracking || exporting) return;
+  var a=(S.t0===null?0:S.t0), b=(S.t1===null?S.dur:S.t1);
+  if(b<=a){ a=0; b=S.dur; }
+  var go=function(){
+    previewing=true; syncPlayBtn();
+    var tick=function(){
+      if(!previewing) return;
+      var t=vid.currentTime;
+      $("scrub").value=Math.round(t/Math.max(0.001,S.dur)*1000);
+      $("tc").textContent=fmt(t,2)+" s";
+      if(t>=b-0.02 || vid.ended){ stopPreview(); return; }
+      previewRaf=requestAnimationFrame(tick);
+    };
+    vid.play().then(tick).catch(function(){ previewing=false; syncPlayBtn(); });
+  };
+  if(vid.currentTime<a || vid.currentTime>=b-0.05) seek(a).then(go); else go();
+}
+function stopPreview(skipSeek){
+  previewing=false;
+  if(previewRaf){ cancelAnimationFrame(previewRaf); previewRaf=null; }
+  try{ vid.pause(); }catch(e){}
+  syncPlayBtn();
+  // the pick/track canvases need the frame we stopped on
+  if(!skipSeek && S.vw) seek(vid.currentTime);
+}
+var PLAY_ICO='<path d="M3 1.5v11l9.5-5.5z"/>', PAUSE_ICO='<path d="M2.5 1.5h3.2v11H2.5zM8.3 1.5h3.2v11H8.3z"/>';
+function syncPlayBtn(){
+  var playing = previewing || replaying;
+  var isReplay = S.step===4 && S.path.length>0;
+  $("playIco").innerHTML = playing ? PAUSE_ICO : PLAY_ICO;
+  $("playBtn").setAttribute("aria-label", playing ? "Pause" : (isReplay ? "Replay with bar path" : "Play"));
+  $("playBtn").disabled = !S.vw || S.tracking || exporting;
+}
+$("playBtn").addEventListener("click", function(){
+  if(S.step===4 && S.path.length){ replay(); return; }
+  if(previewing) stopPreview(); else startPreview();
+});
 
 /* ============================ overlay ============================ */
 
+/* The video box is sized in JS to the largest rectangle of the clip's aspect
+   that fits the stage, so the overlay canvas maps 1:1 onto real picture and
+   never onto letterbox bars. */
+function fitVideo(){
+  if(!S.vw) return;
+  var st=$("stage"), cw=st.clientWidth, ch=st.clientHeight;
+  if(!cw || !ch) return;
+  var k=Math.min(cw/S.vw, ch/S.vh);
+  var vw=$("vwrap");
+  vw.style.width=Math.floor(S.vw*k)+"px";
+  vw.style.height=Math.floor(S.vh*k)+"px";
+}
 function sizeOverlay(){
+  fitVideo();
   var r=vid.getBoundingClientRect();
   if(!r.width) return;
   var dpr=Math.min(window.devicePixelRatio||1,2.5);
@@ -905,6 +1190,9 @@ function sizeOverlay(){
   paintOverlay();
 }
 window.addEventListener("resize", function(){ sizeOverlay(); if(!$("loupeBox").classList.contains("hid")) drawLoupePanel(); });
+if(window.ResizeObserver){
+  new window.ResizeObserver(function(){ sizeOverlay(); }).observe($("stage"));
+}
 window.addEventListener("orientationchange", function(){ setTimeout(sizeOverlay,320); });
 
 function ovDisp(){ var r=ov.getBoundingClientRect(); return {w:r.width,h:r.height}; }
@@ -921,19 +1209,23 @@ var loupe=null, showPath=false, replaying=false, replayRaf=null;
 function paintOverlay(){
   var d=ovDisp();
   ovx.clearRect(0,0,d.w,d.h);
-  if(S.cal.a && S.cal.b) drawCal();
-  if(S.seed) drawSeed();
-  if(S.A && showPath) drawPathTrail();
+  // the scale line only matters while you're setting it; the target only while
+  // you're picking it — later steps get a clean frame
+  if(S.step===2 && S.cal.a) drawCal();
+  if(S.step===3 && S.seed) drawSeed();
+  if(S.step===4 && S.A && showPath) drawPathTrail();
   if(S.path.length && !S.tracking && S.step===4) drawMarkerAt(vid.currentTime);
 }
 function drawCal(){
-  var a=toDisp(S.cal.a), b=toDisp(S.cal.b);
+  var a=toDisp(S.cal.a), b=S.cal.b ? toDisp(S.cal.b) : null;
   ovx.save();
-  ovx.strokeStyle="#F2F3F0"; ovx.lineWidth=3.4; ovx.lineCap="round";
-  ovx.beginPath(); ovx.moveTo(a.x,a.y); ovx.lineTo(b.x,b.y); ovx.stroke();
-  ovx.strokeStyle="#2340D8"; ovx.lineWidth=1.5;
-  ovx.beginPath(); ovx.moveTo(a.x,a.y); ovx.lineTo(b.x,b.y); ovx.stroke();
-  [a,b].forEach(function(p){
+  if(b){
+    ovx.strokeStyle="#F2F3F0"; ovx.lineWidth=3.4; ovx.lineCap="round";
+    ovx.beginPath(); ovx.moveTo(a.x,a.y); ovx.lineTo(b.x,b.y); ovx.stroke();
+    ovx.strokeStyle="#2340D8"; ovx.lineWidth=1.5;
+    ovx.beginPath(); ovx.moveTo(a.x,a.y); ovx.lineTo(b.x,b.y); ovx.stroke();
+  }
+  (b ? [a,b] : [a]).forEach(function(p){
     ovx.beginPath(); ovx.arc(p.x,p.y,8,0,6.2832);
     ovx.fillStyle="rgba(35,64,216,.92)"; ovx.fill();
     ovx.strokeStyle="#F2F3F0"; ovx.lineWidth=2.2; ovx.stroke();
@@ -950,10 +1242,17 @@ function drawSeed(){
   var p=toDisp(S.seed);
   ovx.save();
   if(S.mode==="point"){
+    // true size, but never smaller than a finger-readable box; the loupe
+    // shows the exact pixels
     var scale=ovDisp().w/(S.W||1);
-    var half=(S.areaSize/2)*scale;
-    ovx.strokeStyle="#F2F3F0"; ovx.lineWidth=3.4; drawAreaShape(p,half);
-    ovx.strokeStyle="#9E3B23"; ovx.lineWidth=1.8; drawAreaShape(p,half);
+    var half=Math.max(8,(S.areaSize/2)*scale);
+    ovx.fillStyle="rgba(222,123,88,.16)";
+    ovx.beginPath();
+    if(S.areaShape==="circle") ovx.arc(p.x,p.y,half,0,6.2832); else ovx.rect(p.x-half,p.y-half,half*2,half*2);
+    ovx.fill();
+    ovx.strokeStyle="#F2F3F0"; ovx.lineWidth=4; drawAreaShape(p,half);
+    ovx.strokeStyle="#DE7B58"; ovx.lineWidth=2; drawAreaShape(p,half);
+    ovx.strokeStyle="#F2F3F0"; ovx.lineWidth=1.4;
     ovx.beginPath();
     ovx.moveTo(p.x-6,p.y); ovx.lineTo(p.x+6,p.y);
     ovx.moveTo(p.x,p.y-6); ovx.lineTo(p.x,p.y+6);
@@ -972,11 +1271,11 @@ function drawSeed(){
   }
   ovx.restore();
 }
-/* The magnifier lives in a fixed panel below the video rather than a bubble that
-   follows the finger: a bubble sits in the hand's shadow and flips side near the
-   frame edges, so you never know where to look. LSPAN is the width of the
-   magnified region in tracking pixels. */
-var LSPAN=44, LCSS=124;
+/* The magnifier sits in a fixed corner of the video rather than following the
+   finger: a bubble under the hand is hidden by it. It swaps to the other top
+   corner when the finger is under it, and stays up briefly after lifting so the
+   last point can be checked. LSPAN is the magnified width in tracking pixels. */
+var LSPAN=44, LCSS=108;
 /* the magnified window widens for a bigger area patch so it stays visible with
    some margin around it, instead of filling (or overflowing) the loupe. */
 function loupeSpan(){
@@ -984,6 +1283,7 @@ function loupeSpan(){
 }
 function loupeCtx(){
   var c=$("loupeCv"), g=c.getContext("2d");
+  LCSS=c.clientWidth||LCSS;   // CSS sets the size: 108 on a phone, bigger on wide screens
   var dpr=Math.min(window.devicePixelRatio||1,2.5);
   if(c.width!==Math.round(LCSS*dpr)){
     c.width=Math.round(LCSS*dpr); c.height=Math.round(LCSS*dpr);
@@ -1039,12 +1339,9 @@ function drawLoupePanel(){
 }
 function loupeMeta(){
   var e=$("loupeMeta");
-  if(!loupe){
-    e.innerHTML="The crosshair marks the exact pixel you are placing. It keeps showing your last point after you lift your finger.";
-    return;
-  }
-  var lbl = (S.touchMode==="cal") ? ("Scale point "+(S.drag==="b"?"B":"A")) : "Target";
-  var body='<span class="mono">x '+Math.round(loupe.x)+", y "+Math.round(loupe.y)+"</span>";
+  if(!loupe){ e.innerHTML=""; return; }
+  var lbl = (S.touchMode==="cal") ? ("Scale point "+(S.drag==="a"?"A":"B")) : "Target";
+  var body="";
   if(S.touchMode==="seed" && S.mode==="marker"){
     try{
       var d=wx.getImageData(clamp(Math.round(loupe.x)-3,0,S.W-7), clamp(Math.round(loupe.y)-3,0,S.H-7),7,7).data;
@@ -1054,17 +1351,30 @@ function loupeMeta(){
       var hsv=rgb2hsv(r,gg,b);
       body='<span class="swatch" style="background:rgb('+r+','+gg+','+b+')"></span>'
         + '<span class="mono">hue '+Math.round(hsv[0])+"\u00b0 \u00b7 sat "+Math.round(hsv[1]*100)+"%</span>"
-        + (hsv[1]<0.30 ? '<br><span style="color:var(--rust)">too washed out to follow</span>' : "");
+        + (hsv[1]<0.30 ? '<br><span style="color:#F0A080">too washed out</span>' : "");
     }catch(e2){}
   } else if(S.touchMode==="seed" && S.mode==="point"){
-    body += '<br><span class="mono">'+S.areaSize+"\u00d7"+S.areaSize+" px "
+    body = '<span class="mono">'+S.areaSize+"\u00d7"+S.areaSize+" px "
       + (S.areaShape==="circle"?"circle":"square")+"</span>";
   }
   e.innerHTML="<b>"+lbl+"</b>"+body;
 }
+var loupeTimer=null;
 function showLoupe(on){
-  $("loupeBox").classList.toggle("hid", !on);
+  if(loupeTimer){ clearTimeout(loupeTimer); loupeTimer=null; }
+  var box=$("loupeBox");
+  box.classList.toggle("hid", !on);
+  // move out from under the finger: top-right by default, top-left when the
+  // touch is in the top-right of the frame
+  var left = !!(on && loupe && loupe.x > S.W*0.55 && loupe.y < S.H*0.45);
+  box.classList.toggle("left", left);
+  // the hint pill and the magnifier share the top edge; the magnifier wins
+  $("hint").style.visibility = on ? "hidden" : "";
   if(on){ drawLoupePanel(); loupeMeta(); }
+}
+function hideLoupeSoon(){
+  if(loupeTimer) clearTimeout(loupeTimer);
+  loupeTimer=setTimeout(function(){ loupeTimer=null; if(!S.drag) showLoupe(false); },1400);
 }
 /* Sample the tracked path and the analysed velocity at an arbitrary time, so the
    marker can follow both a replay and a manual scrub. */
@@ -1138,25 +1448,32 @@ ov.addEventListener("touchmove", onMove, {passive:false});
 ov.addEventListener("touchend", onUp, {passive:false});
 ov.addEventListener("mousedown", onDown);
 ov.addEventListener("mousemove", function(e){ if(S.drag) onMove(e); });
-ov.addEventListener("mouseup", onUp);
+window.addEventListener("mouseup", function(e){ if(S.drag) onUp(e); });
+ov.addEventListener("touchcancel", onUp, {passive:false});
 
 function near(p,q,r){ if(!q) return false; var dx=p.x-q.x, dy=p.y-q.y; return dx*dx+dy*dy < r*r; }
 
+/* Scale gestures: press on an end dot to move it; otherwise press-and-drag draws
+   a whole new line from where the finger lands to where it lifts. A plain tap
+   (no real drag) drops just the first end, and the next tap drops the second,
+   so the two-tap habit still works. */
+var calFresh=false;
 function onDown(ev){
   if(!S.touchMode || S.tracking) return;
   ev.preventDefault();
+  if(previewing) stopPreview();
   var p=fromEvent(ev);
   var grab=24*(S.W/(ovDisp().w||S.W));
+  calFresh=false;
   if(S.touchMode==="cal"){
     if(near(p,S.cal.a,grab)) S.drag="a";
     else if(near(p,S.cal.b,grab)) S.drag="b";
-    else if(!S.cal.a){ S.cal.a=p; S.drag="a"; }
-    else if(!S.cal.b){ S.cal.b=p; S.drag="b"; }
-    else { S.cal.a=p; S.cal.b=null; S.drag="a"; }
+    else if(S.cal.a && !S.cal.b){ S.cal.b=p; S.drag="b"; }
+    else { S.cal.a=p; S.cal.b={x:p.x,y:p.y}; S.drag="b"; calFresh=true; }
   } else if(S.touchMode==="seed"){
     S.seed=p; S.drag="s";
   }
-  loupe=p; drawLoupePanel(); loupeMeta(); paintOverlay();
+  loupe=p; showLoupe(true); paintOverlay();
 }
 function onMove(ev){
   if(!S.drag) return;
@@ -1165,16 +1482,22 @@ function onMove(ev){
   if(S.drag==="a") S.cal.a=p;
   else if(S.drag==="b") S.cal.b=p;
   else if(S.drag==="s") S.seed=p;
-  loupe=p; drawLoupePanel(); loupeMeta(); paintOverlay();
+  loupe=p; showLoupe(true); paintOverlay();
 }
 function onUp(ev){
   if(!S.drag) return;
-  if(ev && ev.preventDefault) ev.preventDefault();
+  if(ev && ev.preventDefault && ev.cancelable) ev.preventDefault();
   S.drag=null;
-  if(S.touchMode==="cal") finishCal();
+  if(S.touchMode==="cal"){
+    if(calFresh && calPxLen() < 6*(S.W/(ovDisp().w||S.W))) S.cal.b=null;  // a tap, not a drag
+    calFresh=false;
+    finishCal();
+    hint(stepHint());
+  }
   if(S.touchMode==="seed") finishSeed();
-  // the magnified view stays on the last point so it can be checked after lifting
+  // the magnifier holds the last point for a moment so it can be checked
   drawLoupePanel(); loupeMeta();
+  hideLoupeSoon();
   paintOverlay();
 }
 
@@ -1182,7 +1505,7 @@ function onUp(ev){
 
 $("calClear").addEventListener("click", function(){
   S.cal.a=null; S.cal.b=null; loupe=null;
-  finishCal(); drawLoupePanel(); loupeMeta(); paintOverlay();
+  finishCal(); showLoupe(false); hint(stepHint()); paintOverlay();
 });
 $("refSel").addEventListener("change", function(){
   var v=+this.value;
@@ -1209,7 +1532,7 @@ function mPerPx(){
 }
 function finishCal(){
   var mpp=mPerPx();
-  if(!mpp) setStat("calNote","Drag across the plate on the video above.");
+  if(!mpp) setStat("calNote", S.cal.a ? "Now tap or drag to the other edge of the plate." : "Drag across the plate on the video.");
   else{
     var L=calPxLen();
     var short_ = L<40;
@@ -1233,12 +1556,12 @@ function setMode(m, quiet){
   $("markOpts").classList.toggle("hid", m!=="marker");
   $("areaOpts").classList.toggle("hid", m!=="point");
   $("s3sub").textContent = (m==="marker")
-    ? "Tap the coloured tape on the bar end. The zoom bubble shows exactly which pixels you are picking."
-    : "Drag out a square or circle over a patch on the bar end \u2014 a collar edge, a sleeve marking, or a strip of tape. The zoom bubble shows exactly which pixels are captured.";
+    ? "Tap the coloured tape on the bar end."
+    : "Place a patch over something with contrast on the bar end \u2014 a collar edge, sleeve lettering, or tape.";
   S.marker=null; S.tpl=null;
   if(quiet) return;
-  if(S.step===3) hint(m==="marker" ? "Tap the coloured tape on the bar end" : "Tap and drag to place the patch on the bar end");
-  if(S.seed) finishSeed(); else { setStat("seedNote","Tap the bar on the video above."); refreshStep(); }
+  if(S.step===3) hint(stepHint());
+  if(S.seed) finishSeed(); else { setStat("seedNote","Tap the bar on the video."); refreshStep(); }
   if(S.step===3){ loupeMeta(); paintOverlay(); }
 }
 $("tol").addEventListener("input", function(){ $("tolv").textContent=this.value+"\u00b0"; savePrefs(); });
@@ -1248,7 +1571,7 @@ function setAreaShape(v, quiet){
   $("shpCircle").setAttribute("aria-pressed", S.areaShape==="circle"?"true":"false");
   if(quiet) return;
   paintOverlay();
-  if(S.step===3 && !$("loupeBox").classList.contains("hid")) drawLoupePanel();
+  peekPatch();
   if(S.seed && S.mode==="point") finishSeed();
   savePrefs();
 }
@@ -1258,8 +1581,14 @@ $("areaSize").addEventListener("input", function(){
   S.areaSize = clamp(+this.value,11,41);
   $("areaSizev").textContent = S.areaSize+" px";
   paintOverlay();
-  if(S.step===3 && !$("loupeBox").classList.contains("hid")) drawLoupePanel();
+  peekPatch();
 });
+/* While shape/size change, flash the magnifier on the placed patch so the
+   change is visible at pixel scale, not just as a small box on the video. */
+function peekPatch(){
+  if(S.step!==3 || !S.seed || S.mode!=="point") return;
+  loupe=S.seed; showLoupe(true); hideLoupeSoon();
+}
 $("areaSize").addEventListener("change", function(){
   if(S.seed && S.mode==="point") finishSeed();
   savePrefs();
@@ -1305,7 +1634,7 @@ function rgb2hsv(r,g,b){
 function hueDiff(a,b){ var d=Math.abs(a-b)%360; return d>180?360-d:d; }
 
 function finishSeed(){
-  if(!S.seed){ setStat("seedNote","Tap the bar on the video above."); refreshStep(); return; }
+  if(!S.seed){ setStat("seedNote","Tap the bar on the video."); refreshStep(); return; }
   drawFrames();
   if(S.mode==="marker"){
     var r=0,g=0,b=0,n=0;
@@ -1319,7 +1648,7 @@ function finishSeed(){
     if(hsv[1]<0.30){
       setStat("seedNote","That colour is too washed out to follow reliably. Use brighter tape, or switch to Select area.","bad");
     } else {
-      setStat("seedNote","Locked onto hue <b>"+Math.round(hsv[0])+"\u00b0</b>. Widen the tolerance below if it loses the tape.","ok");
+      setStat("seedNote","Locked onto hue <b>"+Math.round(hsv[0])+"\u00b0</b>. Widen the colour tolerance above if it loses the tape.","ok");
     }
   } else {
     S.tpl=buildTemplate(S.seed, S.areaSize, S.areaShape);
@@ -1334,8 +1663,7 @@ function finishSeed(){
     }
   }
   if(S.path.length){
-    $("runNote").textContent="Target moved — track again to refresh the numbers.";
-    $("runBtn").textContent="Track the bar";
+    $("runNote").textContent="Target moved \u2014 track again to refresh the numbers.";
   }
   refreshStep(); renderCrumbs();
 }
@@ -1480,13 +1808,20 @@ $("runBtn").addEventListener("click", function(){
 });
 
 async function track(){
-  S.touchMode=null; hint(null); showPath=false;
+  if(S.step!==4) goStep(4);
+  S.touchMode=null; hint(null); setPathBtn(false);
   if(replaying) stopReplay(false);
+  if(previewing) stopPreview(true);
   if(exporting) stopExport();
-  if(S.folded) setFold(false);
-  $("reviewBtn").textContent="Show bar path";
+  closeMenu();
   S.tracking=true;
-  $("runBtn").textContent="Stop"; $("runBtn").classList.add("stop");
+  S.A=null; S.drop={};
+  $("resultsBox").classList.add("hid");
+  $("readyRow").classList.add("hid"); $("vidExpNote").textContent="";
+  $("reviewBtn").classList.add("hid"); $("replaySpeed").classList.add("hid");
+  setBig(null,"Tracking\u2026");
+  setRunBtn("stop");
+  syncPlayBtn();
 
   var start=(S.t0!==null?S.t0:0), end=(S.t1!==null?S.t1:S.dur);
   if(end<=start) end=S.dur;
@@ -1502,10 +1837,11 @@ async function track(){
   var finish=function(){
     if(finished) return; finished=true;
     S.tracking=false; vid.pause();
-    $("runBtn").textContent="Track again"; $("runBtn").classList.remove("stop");
+    syncPlayBtn();
     var lostPct=S.path.length ? lost/S.path.length : 1;
     if(S.path.length<8){
-      $("runNote").textContent="Only "+S.path.length+" frames captured. If the clip did not play, tap Track again \u2014 iOS sometimes needs a second tap.";
+      $("runNote").textContent="Only "+S.path.length+" frames captured. If the clip did not play, tap Track the bar again \u2014 iOS sometimes needs a second tap.";
+      S.path=[]; setRunBtn(); refreshStep(); setBig(null,"No reading yet \u2014 track the bar to get numbers.");
       return;
     }
     if(lostPct>0.35){
@@ -1516,10 +1852,15 @@ async function track(){
       $("runNote").textContent=S.path.length+" frames tracked"+(lost?(", "+lost+" filled in"):"")+".";
     }
     $("resultsBox").classList.remove("hid");
-    $("reviewBtn").disabled=false;
-    $("replayBtn").disabled=false;
     $("vidBtn").disabled=false;
     runAnalysis();
+    setRunBtn();
+    refreshStep();
+    var on = S.step===4;
+    $("reviewBtn").classList.toggle("hid", !on);
+    $("replaySpeed").classList.toggle("hid", !on);
+    syncPlayBtn();
+    paintOverlay();
   };
   var queue=function(){
     if(!S.tracking){ finish(); return; }
@@ -1544,6 +1885,7 @@ async function track(){
     else { S.path.push({t:t,x:cur.x,y:cur.y,q:0}); lost++; }
 
     if(seen%4===0||!hitp) liveOverlay(cur,hitp);
+    syncScrubTo(t);
     $("runNote").textContent="Tracking \u2014 "+clamp(Math.round((t-start)/Math.max(0.001,end-start)*100),0,100)+"%"
       + (lost?("  \u00b7 "+lost+" frames lost"):"");
 
@@ -1584,30 +1926,34 @@ function stopReplay(restore){
   replaying=false;
   if(replayRaf){ cancelAnimationFrame(replayRaf); replayRaf=null; }
   try{ vid.pause(); vid.playbackRate=1; }catch(e){}
-  $("replayBtn").textContent="Replay";
-  $("replayBtn").classList.remove("stop");
+  syncPlayBtn();
   if(restore) renderReps();
+}
+function syncScrubTo(t){
+  $("scrub").value=Math.round(t/Math.max(0.001,S.dur)*1000);
+  $("tc").textContent=fmt(t,2)+" s";
 }
 async function replay(){
   if(replaying){ stopReplay(true); paintOverlay(); return; }
   if(!S.path.length) return;
-  if(S.folded) setFold(false);
-  showPath=true; $("reviewBtn").textContent="Hide bar path";
+  setPathBtn(true);
 
   var start=S.path[0].t, end=S.path[S.path.length-1].t;
-  await seek(start);
+  // resume from the playhead if it's inside the tracked window, else restart
+  var from = (vid.currentTime>start && vid.currentTime<end-0.05) ? vid.currentTime : start;
+  await seek(from);
   var rate=parseFloat($("replaySpeed").value)||1;
 
   replaying=true;
-  $("replayBtn").textContent="Stop"; $("replayBtn").classList.add("stop");
+  syncPlayBtn();
 
   var tick=function(){
     if(!replaying) return;
     var t=vid.currentTime;
-    paintOverlay(); gauge(t);
+    paintOverlay(); gauge(t); syncScrubTo(t);
     if(t>=end-0.001 || vid.ended){
       stopReplay(false);
-      paintOverlay(); gauge(end);
+      paintOverlay(); gauge(end); syncScrubTo(end);
       return;
     }
     replayRaf=requestAnimationFrame(tick);
@@ -1617,20 +1963,21 @@ async function replay(){
     await vid.play();
   }catch(e){
     stopReplay(true); paintOverlay();
-    $("runNote").textContent="Replay would not start playing. Tap Replay again \u2014 iOS sometimes needs a second tap.";
+    $("runNote").textContent="Replay would not start playing. Tap play again — iOS sometimes needs a second tap.";
     return;
   }
   tick();
 }
-$("replayBtn").addEventListener("click", replay);
 $("replaySpeed").addEventListener("change", function(){
   if(replaying){ try{ vid.playbackRate=parseFloat(this.value)||1; }catch(e){} }
 });
 
+function setPathBtn(on){
+  showPath=!!on;
+  $("reviewBtn").setAttribute("aria-pressed", showPath?"true":"false");
+}
 $("reviewBtn").addEventListener("click", function(){
-  showPath=!showPath;
-  this.textContent=showPath?"Hide bar path":"Show bar path";
-  if(showPath && S.folded) setFold(false);
+  setPathBtn(!showPath);
   paintOverlay();
 });
 
@@ -1816,12 +2163,14 @@ function activeReps(){
 }
 function renderReps(){
   var list=$("repList"); list.innerHTML="";
+  var lift=profileKey();
+  $("s4title").textContent = S.A ? LIFTNAME[lift] : "Results";
   if(!S.A||!S.A.reps.length){
     $("sum").classList.add("hid"); $("csvBtn").disabled=true;
-    setBig(null, S.A ? "No reps found. Lower the minimum rep height in step 3, or re-check the scale." : "Track the bar to get numbers.");
+    setBig(null, S.A ? "No reps found. Lower the minimum rep height in step 3, or re-check the scale." : "No reading yet \u2014 track the bar to get numbers.");
     return;
   }
-  var lift=profileKey(), keep=activeReps();
+  var keep=activeReps();
   var bestV=keep.length?Math.max.apply(null,keep.map(function(r){return r.mcv;})):0;
 
   S.A.reps.forEach(function(r,i){
@@ -1853,16 +2202,17 @@ function renderReps(){
     return;
   }
   var last=keep[keep.length-1], lastRpe=rpeForRep(last,lift);
-  setBig(last.mcv, "Last rep \u00b7 RPE "+rpeLabel(lastRpe)+" \u00b7 "+keep.length+(keep.length===1?" rep":" reps"));
-
   var lossTotal=(1-last.mcv/bestV)*100;
+  $("s4title").textContent = LIFTNAME[lift]+" \u00b7 "+keep.length+(keep.length===1?" rep":" reps");
+  setBig(last.mcv, "Last rep", "");
+  $("bigCap").textContent = "";
+  setBigRpe(rpeLabel(lastRpe), keep.length>1 ? fmt(lossTotal,0)+"% velocity loss" : "single rep", lastRpe!==null && lastRpe>=9);
+
+  var cell=function(k,v){ return "<div><dt>"+k+"</dt><dd>"+v+"</dd></div>"; };
   $("sumDl").innerHTML=
-    "<dt>Reps</dt><dd>"+keep.length+"</dd>"+
-    "<dt>Fastest</dt><dd>"+fmt(bestV,2)+" m/s</dd>"+
-    "<dt>Last</dt><dd>"+fmt(last.mcv,2)+" m/s</dd>"+
-    "<dt>Velocity loss</dt><dd>"+fmt(lossTotal,0)+"%</dd>"+
-    "<dt>Set RPE</dt><dd>"+rpeLabel(lastRpe)+"</dd>"+
-    "<dt>Frame rate</dt><dd>"+fmt(S.A.fps,0)+" fps</dd>";
+    cell("Fastest", fmt(bestV,2)+" m/s")+
+    cell("Velocity loss", fmt(lossTotal,0)+"%")+
+    cell("Frame rate", fmt(S.A.fps,0)+" fps");
   $("sumNote").textContent=lossNote(lossTotal,keep.length,S.A.fps);
   $("sum").classList.remove("hid");
   $("csvBtn").disabled=false;
@@ -1898,7 +2248,7 @@ $("mvtReset").addEventListener("click", function(){
 
 function drawChart(){
   var c=$("chart"), dpr=Math.min(window.devicePixelRatio||1,2.5);
-  var w=c.clientWidth||320, h=184;
+  var w=c.clientWidth||320, h=c.clientHeight||92;
   c.width=Math.round(w*dpr); c.height=Math.round(h*dpr);
   var g=c.getContext("2d");
   g.setTransform(dpr,0,0,dpr,0,0);
@@ -1912,13 +2262,16 @@ function drawChart(){
   var vmax=0.3, vmin=-0.3;
   for(var i=0;i<N;i++){ if(V[i]>vmax) vmax=V[i]; if(V[i]<vmin) vmin=V[i]; }
   vmax*=1.12; vmin*=1.12;
-  var padL=34, padR=8, padT=10, padB=20;
+  var padL=30, padR=8, padT=6, padB=14;
   var pw=w-padL-padR, ph=h-padT-padB;
   var X=function(i2){ return padL+(i2/(N-1))*pw; };
   var Yv=function(v){ return padT+(vmax-v)/(vmax-vmin)*ph; };
 
   g.strokeStyle="rgba(21,25,26,.08)"; g.lineWidth=1;
-  var stepv=(vmax-vmin)>2.2?0.5:0.25;
+  // about three gridlines whatever the range, so labels never collide in a
+  // short strip
+  var range=vmax-vmin, stepv=0.25;
+  [0.25,0.5,1,2,4].some(function(st){ stepv=st; return range/st<=4; });
   for(var v2=Math.ceil(vmin/stepv)*stepv; v2<=vmax; v2+=stepv){
     var yy=Yv(v2);
     g.beginPath(); g.moveTo(padL,yy); g.lineTo(w-padR,yy); g.stroke();
@@ -1946,8 +2299,7 @@ function drawChart(){
     g.stroke();
   });
   g.fillStyle="rgba(21,25,26,.42)"; g.font="10px -apple-system,sans-serif";
-  g.textAlign="left"; g.fillText("m/s",4,padT+8);
-  g.textAlign="right"; g.fillText(fmt(T[N-1]-T[0],1)+" s", w-padR, h-6);
+  g.textAlign="right"; g.fillText(fmt(T[N-1]-T[0],1)+" s", w-padR, h-3);
 }
 window.addEventListener("resize", drawChart);
 
@@ -2104,8 +2456,18 @@ function stopExport(){
   exporting=false;
   try{ vid.pause(); }catch(e){}
   vid.muted=expWasMuted;
-  $("vidBtn").textContent="Export video"; $("vidBtn").classList.remove("stop");
+  setVidBtnLabel(false);
   if(expRec && expRec.state!=="inactive"){ try{ expRec.stop(); }catch(e){} }
+}
+/* While recording, the Export button itself becomes Stop, so the control is
+   on screen without opening the menu. */
+function setVidBtnLabel(rec){
+  $("vidBtn").innerHTML = rec ? 'Stop recording' : 'Export video <span>with overlay + audio</span>';
+  $("vidBtn").classList.toggle("stop", !!rec);
+  $("expToggle").textContent = rec ? "Stop recording" : "Export \u25be";
+  $("expToggle").classList.toggle("stop", !!rec);
+  $("runBtn").disabled = !!rec || !(stepReady(2) && stepReady(3));
+  syncPlayBtn();
 }
 async function exportVideo(){
   if(exporting){ stopExport(); return; }
@@ -2117,10 +2479,11 @@ async function exportVideo(){
     return;
   }
   if(replaying) stopReplay(false);
-  if(S.folded) setFold(false);
+  if(previewing) stopPreview(true);
+  closeMenu();
 
   expBlob=null; expChunks=[];
-  $("saveVidBtn").classList.add("hid"); $("savePcBtn").classList.add("hid");
+  $("readyRow").classList.add("hid"); $("savePcBtn").classList.add("hid");
 
   // Tap the clip's own audio before anything else, still inside the click's
   // user-activation window — AudioContext.resume() needs that on iOS. Unmuting
@@ -2158,16 +2521,17 @@ async function exportVideo(){
   expRec.onstop=function(){
     expBlob=new Blob(expChunks,{type:actual.split(";")[0]});
     exporting=false;
-    $("vidBtn").textContent="Export video"; $("vidBtn").classList.remove("stop");
+    setVidBtnLabel(false);
+    renderReps();   // the live gauge ran during recording; put the set summary back
     if(!expBlob.size){ $("vidExpNote").textContent="Nothing was recorded. Tap Export video and let it run to the end."; return; }
-    $("saveVidBtn").classList.remove("hid");
+    $("readyRow").classList.remove("hid");
     // Only useful outside an installed home-screen app: <a download> silently
     // does nothing there (see saveFile below), so Save video's share sheet is
     // the only route in that context and this button would look broken.
     $("savePcBtn").classList.toggle("hid", isStandalonePWA());
     $("vidExpNote").textContent="Ready \u2014 "+(expBlob.size/1048576).toFixed(1)+" MB "
       + expExt.toUpperCase()+", "+(expHasAudio?"with the original audio":"silent \u2014 this browser can't capture audio")
-      +", "+EW+"\u00d7"+EH+". Tap Save video, or Save to PC for a direct download.";
+      +", "+EW+"\u00d7"+EH+".";
   };
 
   var start=S.path[0].t, end=S.path[S.path.length-1].t;
@@ -2175,11 +2539,11 @@ async function exportVideo(){
   drawExportFrame(start);
 
   exporting=true;
-  $("vidBtn").textContent="Stop"; $("vidBtn").classList.add("stop");
+  setVidBtnLabel(true);
   $("vidExpNote").textContent="Recording in real time \u2014 keep this screen open.";
 
   try{ expRec.start(); }
-  catch(e){ exporting=false; vid.muted=expWasMuted; $("vidBtn").textContent="Export video"; $("vidBtn").classList.remove("stop");
+  catch(e){ exporting=false; vid.muted=expWasMuted; setVidBtnLabel(false);
             $("vidExpNote").textContent="Recorder would not start. Try Safari."; return; }
 
   var hasRVFC=typeof vid.requestVideoFrameCallback==="function";
@@ -2187,7 +2551,7 @@ async function exportVideo(){
     if(!exporting) return;
     var t=meta?meta.mediaTime:vid.currentTime;
     drawExportFrame(t);
-    paintOverlay(); gauge(t);
+    paintOverlay(); gauge(t); syncScrubTo(t);
     $("vidExpNote").textContent="Recording \u2014 "
       + clamp(Math.round((t-start)/Math.max(0.001,end-start)*100),0,100)+"%";
     if(t>=end-0.001 || vid.ended){ stopExport(); return; }
@@ -2203,7 +2567,7 @@ async function exportVideo(){
     $("vidExpNote").textContent="The clip would not start playing. Tap Export video again.";
   }
 }
-$("vidBtn").addEventListener("click", exportVideo);
+$("vidBtn").addEventListener("click", function(){ closeMenu(); exportVideo(); });
 
 $("saveVidBtn").addEventListener("click", async function(){
   if(!expBlob) return;
@@ -2249,6 +2613,7 @@ async function saveFile(blob, name){
 /* ============================ export ============================ */
 
 $("csvBtn").addEventListener("click", function(){
+  closeMenu();
   if(!S.A) return;
   var lift=profileKey(), keep=activeReps();
   var best=keep.length?Math.max.apply(null,keep.map(function(r){return r.mcv;})):0;
@@ -2279,6 +2644,9 @@ S.cal.mm=+$("refMm").value||450;
 $("tolv").textContent=$("tol").value+"\u00b0";
 drawChart();
 renderTrail();
+renderCrumbs();
+setRunBtn();
+syncPlayBtn();
 refreshStep();
 
 if("serviceWorker" in navigator){
@@ -2337,7 +2705,7 @@ if("serviceWorker" in navigator){
   });
   applyHostTheme(qp("theme"));   // honour the URL so there's no wrong-palette flash
 
-  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-10" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-11" }, "*"); } catch (e) {}
 })();
 </script>
 

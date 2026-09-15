@@ -404,6 +404,7 @@ details.help li{margin-bottom:6px}
       <div class="row" style="margin-top:9px">
         <button class="btn ghost sm" id="vidBtn" disabled>Export video</button>
         <button class="btn sm hid" id="saveVidBtn">Save video</button>
+        <button class="btn ghost sm hid" id="savePcBtn">Save to PC</button>
       </div>
       <p class="note" id="vidExpNote"></p>
 
@@ -740,7 +741,11 @@ function resetAll(){
   exporting=false; expBlob=null; expChunks=[];
   if(expRec && expRec.state!=="inactive"){ try{ expRec.stop(); }catch(e){} }
   $("vidBtn").disabled=true; $("vidBtn").textContent="Export video"; $("vidBtn").classList.remove("stop");
-  $("saveVidBtn").classList.add("hid"); $("vidExpNote").textContent="";
+  $("saveVidBtn").classList.add("hid"); $("savePcBtn").classList.add("hid"); $("vidExpNote").textContent="";
+  // .muted is a live property, not the original content attribute — an export
+  // interrupted mid-recording (eject tapped while it was unmuted for the audio
+  // tap) would otherwise carry a live, unmuted video into the next clip.
+  vid.muted=true; expWasMuted=true;
   if(S.url){ URL.revokeObjectURL(S.url); S.url=null; }
   vid.removeAttribute("src"); vid.load();
   S.vw=0; S.vh=0; S.dur=0;
@@ -1951,9 +1956,38 @@ window.addEventListener("resize", drawChart);
 /* Renders the clip plus the bar path and per-rep RPE to a canvas and records that
    canvas with MediaRecorder. Capture is real time, so a 12 s clip takes 12 s.
    Output container is whatever the browser will write - MP4/H.264 on iOS - not the
-   .mov that went in, and there is no audio track. */
+   .mov that went in. The original clip's audio rides along via a Web Audio tap
+   (see ensureAudioTap below) rather than canvas.captureStream(), which is video
+   only everywhere. */
 var exp=document.createElement("canvas"), expx=exp.getContext("2d");
 var EW=0, EH=0, exporting=false, expRec=null, expChunks=[], expBlob=null, expExt="mp4";
+var expWasMuted=true, expHasAudio=false;
+
+/* audioCtx/audioSrcNode are created once and kept for the life of the page: an
+   HTMLMediaElement can only ever be handed to createMediaElementSource() a single
+   time, so re-tapping vid on a later export (or a newly loaded clip, since vid
+   itself is reused rather than recreated) would throw. The tap feeds a
+   MediaStreamDestination only — deliberately not audioCtx.destination — so the
+   clip's audio goes into the recording without ever coming out of the speaker,
+   which matches how silent this tool is everywhere else. HTMLMediaElement's own
+   captureStream() would be the more obvious route, but it has no audio (or any)
+   support on iOS Safari, which is the one browser this app has to work in. */
+var audioCtx=null, audioSrcNode=null, audioDest=null;
+function ensureAudioTap(){
+  try{
+    if(!audioCtx){
+      if(!window.AudioContext && !window.webkitAudioContext) return null;
+      audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    }
+    if(audioCtx.state==="suspended") audioCtx.resume().catch(function(){});
+    if(!audioSrcNode){
+      audioSrcNode=audioCtx.createMediaElementSource(vid);
+      audioDest=audioCtx.createMediaStreamDestination();
+      audioSrcNode.connect(audioDest);
+    }
+    return audioDest;
+  }catch(e){ return null; }
+}
 
 function pickVideoMime(){
   if(typeof window.MediaRecorder!=="function") return null;
@@ -2069,6 +2103,7 @@ function drawExportFrame(t){
 function stopExport(){
   exporting=false;
   try{ vid.pause(); }catch(e){}
+  vid.muted=expWasMuted;
   $("vidBtn").textContent="Export video"; $("vidBtn").classList.remove("stop");
   if(expRec && expRec.state!=="inactive"){ try{ expRec.stop(); }catch(e){} }
 }
@@ -2085,7 +2120,16 @@ async function exportVideo(){
   if(S.folded) setFold(false);
 
   expBlob=null; expChunks=[];
-  $("saveVidBtn").classList.add("hid");
+  $("saveVidBtn").classList.add("hid"); $("savePcBtn").classList.add("hid");
+
+  // Tap the clip's own audio before anything else, still inside the click's
+  // user-activation window — AudioContext.resume() needs that on iOS. Unmuting
+  // only matters if the tap actually worked; nothing plays out loud either way
+  // since audioDest, not audioCtx.destination, is where it's connected.
+  var audioD=ensureAudioTap();
+  expWasMuted=vid.muted;
+  expHasAudio=!!audioD;
+  if(audioD) vid.muted=false;
 
   var LONG=1280, sc=Math.min(1, LONG/Math.max(S.vw,S.vh));
   EW=Math.round(S.vw*sc/2)*2; EH=Math.round(S.vh*sc/2)*2;   // even dimensions for H.264
@@ -2094,14 +2138,18 @@ async function exportVideo(){
   var fps=(S.A.fps>0)?Math.min(60,Math.max(24,Math.round(S.A.fps))):30;
   var stream;
   try{ stream=exp.captureStream(fps); }
-  catch(e){ $("vidExpNote").textContent="This browser cannot capture the canvas, so video export is unavailable here."; return; }
+  catch(e){ vid.muted=expWasMuted; $("vidExpNote").textContent="This browser cannot capture the canvas, so video export is unavailable here."; return; }
+  if(audioD){
+    try{ audioD.stream.getAudioTracks().forEach(function(tr){ stream.addTrack(tr); }); }
+    catch(e){ expHasAudio=false; }
+  }
 
   try{
     expRec = mime ? new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:Math.round(EW*EH*fps*0.12)})
                   : new MediaRecorder(stream);
   }catch(e){
     try{ expRec=new MediaRecorder(stream); }
-    catch(e2){ $("vidExpNote").textContent="Video recording was refused by this browser."; return; }
+    catch(e2){ vid.muted=expWasMuted; $("vidExpNote").textContent="Video recording was refused by this browser."; return; }
   }
   var actual=expRec.mimeType||mime||"video/mp4";
   expExt = actual.indexOf("webm")>=0 ? "webm" : "mp4";
@@ -2113,8 +2161,13 @@ async function exportVideo(){
     $("vidBtn").textContent="Export video"; $("vidBtn").classList.remove("stop");
     if(!expBlob.size){ $("vidExpNote").textContent="Nothing was recorded. Tap Export video and let it run to the end."; return; }
     $("saveVidBtn").classList.remove("hid");
+    // Only useful outside an installed home-screen app: <a download> silently
+    // does nothing there (see saveFile below), so Save video's share sheet is
+    // the only route in that context and this button would look broken.
+    $("savePcBtn").classList.toggle("hid", isStandalonePWA());
     $("vidExpNote").textContent="Ready \u2014 "+(expBlob.size/1048576).toFixed(1)+" MB "
-      + expExt.toUpperCase()+", silent, "+EW+"\u00d7"+EH+". Tap Save video.";
+      + expExt.toUpperCase()+", "+(expHasAudio?"with the original audio":"silent \u2014 this browser can't capture audio")
+      +", "+EW+"\u00d7"+EH+". Tap Save video, or Save to PC for a direct download.";
   };
 
   var start=S.path[0].t, end=S.path[S.path.length-1].t;
@@ -2126,7 +2179,7 @@ async function exportVideo(){
   $("vidExpNote").textContent="Recording in real time \u2014 keep this screen open.";
 
   try{ expRec.start(); }
-  catch(e){ exporting=false; $("vidBtn").textContent="Export video"; $("vidBtn").classList.remove("stop");
+  catch(e){ exporting=false; vid.muted=expWasMuted; $("vidBtn").textContent="Export video"; $("vidBtn").classList.remove("stop");
             $("vidExpNote").textContent="Recorder would not start. Try Safari."; return; }
 
   var hasRVFC=typeof vid.requestVideoFrameCallback==="function";
@@ -2156,10 +2209,32 @@ $("saveVidBtn").addEventListener("click", async function(){
   if(!expBlob) return;
   await saveFile(expBlob, "barspeed_"+profileKey()+"_"+new Date().toISOString().slice(0,10)+"."+expExt);
 });
+$("savePcBtn").addEventListener("click", function(){
+  if(!expBlob) return;
+  downloadBlob(expBlob, "barspeed_"+profileKey()+"_"+new Date().toISOString().slice(0,10)+"."+expExt);
+});
 
-/* An <a download> click is silently ignored inside an installed iOS home-screen
-   app, so every file leaves through the share sheet when one is available and
-   falls back to a download link in a normal browser tab. */
+/* Installed home-screen app? iOS reports navigator.standalone; other installed
+   PWAs report the display-mode media query. Mirrors power-logs.html's helper of
+   the same name, kept separate since this file also has to run standalone. */
+function isStandalonePWA(){
+  return (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)
+      || navigator.standalone === true;
+}
+/* Plain forced download via a throwaway <a download> — works in every desktop
+   browser and in a normal (non-installed) mobile tab, landing wherever the
+   browser's own download setting points (the Downloads folder, by default).
+   The one place it doesn't work is inside an installed iOS home-screen app,
+   where the click is silently ignored — Save to PC stays hidden there, and
+   Save video's share sheet (below) is the only route. */
+function downloadBlob(blob, name){
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1500);
+}
+/* Save video's own save path: share sheet when one can take a file (installed
+   iOS app, and some other platforms), otherwise the same plain download. */
 async function saveFile(blob, name){
   try{
     if(navigator.canShare && typeof File==="function"){
@@ -2167,10 +2242,7 @@ async function saveFile(blob, name){
       if(navigator.canShare({files:[f]})){ await navigator.share({files:[f]}); return true; }
     }
   }catch(e){ return false; }   // sheet dismissed, or sharing unavailable
-  var a=document.createElement("a");
-  a.href=URL.createObjectURL(blob); a.download=name;
-  document.body.appendChild(a); a.click();
-  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1500);
+  downloadBlob(blob, name);
   return true;
 }
 
@@ -2265,7 +2337,7 @@ if("serviceWorker" in navigator){
   });
   applyHostTheme(qp("theme"));   // honour the URL so there's no wrong-palette flash
 
-  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-8" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-10" }, "*"); } catch (e) {}
 })();
 </script>
 

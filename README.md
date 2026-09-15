@@ -12,6 +12,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `power-logs.html` | The app. Same code plus a PWA `<head>`, touch field sizing, share-sheet exports, persistent-storage request, and service worker registration. |
 | `rpe-estimator.html` | The RPE → %1RM load-chart tool. Opens inside the app (RPE Estimator in the sidebar) via an iframe, and also works standalone. Precached for offline use. |
 | `program-hub.html` | The program builders (Gustav, Wendler, and the rest). Opens inside the app as the **Program Hub** tab in Manage Program, and also works standalone. Precached for offline use. |
+| `VBT.html` | Velocity Tracker — barbell velocity and RPE from a video clip. Opens inside the app from the **Velocity Tracker** nav button, and also works standalone. Precached for offline use. |
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js. |
 | `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
@@ -19,6 +20,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `.nojekyll` | Stops GitHub Pages running the files through Jekyll. |
 | `test-boot.js` | Smoke test — `npm install jsdom && node test-boot.js`. |
 | `test-weekrange.js` | Program Hub week-range export tests across all builders — `node test-weekrange.js`. |
+| `test-vbt.js` | Velocity Tracker smoke test — `node test-vbt.js`. |
 | `make_icons.py` | Regenerates the icons from `icons/_source.png`. |
 
 Everything uses **relative paths**, so it works from `username.github.io/repo-name/`
@@ -113,6 +115,25 @@ you leave Manage Program.
 
 Sending again replaces whatever donor is loaded, so you can iterate on maxes or switch
 builders and re-send without clearing first.
+
+## Velocity Tracker layout
+
+The tracker is built to fit the screen with no page scroll:
+
+- **Phone:** the video fills the free height with the scrub bar laid over it, and each
+  step's controls sit in a short panel underneath. Finished steps show as chips under
+  the 1-2-3-4 trail; tap one to edit it. The magnifier appears in a top corner of the
+  video while your finger is down.
+- **Wide screens (760px+):** video on the left, controls on the right, with the step
+  list at the top of the panel doubling as the summary.
+- **Step 4:** the last rep's speed and set RPE come first, then a velocity strip and
+  the rep list (the only part that scrolls). *Export ▾* holds CSV and video; it turns
+  into *Stop recording* while a video export runs. Velocity anchors and filming tips
+  live behind ⚙. The play button on the video replays with the bar path.
+- **Scale:** press and drag across the plate to draw the whole line; tapping twice
+  still works, and the end dots can be dragged afterwards.
+- **Inside Spotter:** one-line header (details behind ⓘ), and the frame is sized to
+  the rest of the window, so there's one scroll area at most.
 
 ## Offline
 

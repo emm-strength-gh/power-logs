@@ -1126,7 +1126,7 @@
   var STORE_ADDOPEN  = "spotter.dmAddOpen.v2";   // v2: default flipped to open, so the panel is findable
   // Shown at the bottom of Manage program. Bump when power-logs.html changes, so
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
-  var APP_BUILD = "14";
+  var APP_BUILD = "15";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -4817,7 +4817,7 @@
   // ──────────────── Velocity Tracker (embedded tool) ────────────────
   // Its own file (VBT.html), shown in an iframe; we only talk to it over
   // postMessage to keep its palette matched to the app's.
-  var VBT_BUILD = "6";
+  var VBT_BUILD = "7";
   function loadVbtFrame() {
     var f = $("vbtFrame"); if (!f) return;
     var want = "VBT.html?embed=1&theme=" + currentThemeName() + "&v=" + VBT_BUILD;

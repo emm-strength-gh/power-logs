@@ -33,6 +33,22 @@ button{font:inherit;color:inherit;cursor:pointer}
 :focus-visible{outline:2px solid var(--signal);outline-offset:2px}
 
 /* ---------- sticky hood: trail + video + scrub ---------- */
+/* Step 1 trim controls can float. They act on the playhead (Start/End here read
+   vid.currentTime), and the preview sits in a sticky hood, so pinning them to the
+   bottom puts the frame and the controls on screen together — scrub and tap with
+   no scrolling. Only floats while it's actually useful: step 1, clip loaded,
+   preview open. In flow otherwise, which is also the desktop/collapsed case. */
+#trimBox.floating{
+  position:fixed; left:0; right:0; bottom:0; z-index:30;
+  margin:0 !important; padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+  background:var(--paper); border-top:1px solid var(--ink-14);
+  box-shadow:0 -6px 18px rgba(0,0,0,.10);
+}
+#trimBox.floating .f{display:block; margin-bottom:6px; font-size:10px}
+#trimBox.floating .row{gap:8px}
+#trimBox.floating .stat{margin-top:6px}
+/* keeps the Done button reachable above the floating bar */
+#s1.trim-floating .act{padding-bottom:132px}
 .hood{
   position:sticky;top:0;z-index:20;background:var(--ground);
   padding-top:env(safe-area-inset-top);
@@ -564,8 +580,20 @@ function setFold(folded){
     sizeOverlay();
     setTimeout(sizeOverlay,60);
   }
+  syncTrimFloat();
 }
 $("foldBtn").addEventListener("click", function(){ setFold(!S.folded); });
+
+/* Float the trim controls only when all three are true: we're on step 1, a clip is
+   loaded, and the preview is open to scrub against. Any other time they sit in the
+   normal flow where they read as part of "Load the clip". */
+function syncTrimFloat(){
+  var box=$("trimBox"), s1=$("s1");
+  if(!box||!s1) return;
+  var useful = S.step===1 && !box.classList.contains("hid") && !S.folded;
+  box.classList.toggle("floating", useful);
+  s1.classList.toggle("trim-floating", useful);
+}
 
 function stepReady(n){
   if(n===1) return !!S.vw;
@@ -618,6 +646,7 @@ function goStep(n){
 
   S.touchMode = (n===2) ? "cal" : (n===3 ? "seed" : null);
   S.drag=null;
+  syncTrimFloat();
 
   if(n===1) hint(S.vw ? "Scrub to a frame where the plate is clearly visible" : null);
   else if(n===2) hint("Drag a line across the plate, through its centre \u2014 then nudge the end dots");
@@ -709,6 +738,7 @@ function resetAll(){
   $("stage").classList.add("empty"); $("stageEmpty").classList.remove("hid");
   $("scrubRow").classList.add("hid");
   $("trimBox").classList.add("hid"); $("vidStat").classList.add("hid");
+  syncTrimFloat();
   $("replaceBtn").classList.add("hid");
   $("pickBtn").classList.remove("hid");
   $("ejectBtn").classList.add("hid");
@@ -755,6 +785,7 @@ async function loadVideo(file){
   $("stage").classList.remove("empty"); $("stageEmpty").classList.add("hid");
   $("scrubRow").classList.remove("hid");
   $("trimBox").classList.remove("hid");
+  syncTrimFloat();
   $("replaceBtn").classList.remove("hid");
   $("pickBtn").classList.add("hid");
   $("ejectBtn").classList.remove("hid");
@@ -2113,7 +2144,7 @@ if("serviceWorker" in navigator){
   });
   applyHostTheme(qp("theme"));   // honour the URL so there's no wrong-palette flash
 
-  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-6" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-7" }, "*"); } catch (e) {}
 })();
 </script>
 

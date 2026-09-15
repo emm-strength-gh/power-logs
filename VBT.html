@@ -424,20 +424,33 @@ details.help li{margin-bottom:6px}
 /* Velocity anchors per RPE, in m/s.
    Sumo shares conventional's RPE 10 anchor but runs roughly 10-14% slower at every
    effort below maximal: Kasovic et al. 2019 (JSCR 33:12) found no difference in mean
-   concentric velocity at 1RM (0.25 vs 0.25 m/s) yet sumo significantly slower at
-   80-89%, 70-79% and 40-49% 1RM. The sumo curve is flatter, not shifted, so the
-   whole table changes while the top anchor holds. */
+   concentric velocity at 1RM yet sumo significantly slower at 80-89%, 70-79% and
+   40-49% 1RM. The sumo curve is flatter, not shifted, so the whole table differs
+   while the top anchor matches conventional's.
+
+   All four tables are calibrated to this lifter rather than left at population
+   defaults, because measured values kept coming in slower than generic tables:
+     bench    0.22 = RPE 6, 0.17 = RPE 7, 0.11 = RPE 9.5, 0.10 = RPE 10
+     squat    0.27 = RPE 8.5
+     deadlift RPE 10 anchor 0.10, both stances
+   Squat and both deadlift curves are the published shapes shifted down 0.09 m/s,
+   which is exactly what the app does when a lifter sets a personal anchor, so the
+   relative spacing between efforts is preserved. Bench needed its own shape, not
+   just a shift. Bench RPE 9 is 0.12 rather than a rounder number because that is
+   what puts 0.11 exactly halfway between 9 and 10 under the linear interpolation
+   in rpeFor(). Anyone else using this can still override any table from its RPE 10
+   anchor, which shifts that whole curve. */
 var ANCHORS = {
-  "squat":    {4:0.70,5:0.62,6:0.54,7:0.46,8:0.39,9:0.33,10:0.28},
-  "bench":    {4:0.55,5:0.47,6:0.39,7:0.32,8:0.26,9:0.21,10:0.16},
-  "dl-conv":  {4:0.59,5:0.51,6:0.43,7:0.36,8:0.30,9:0.24,10:0.19},
-  "dl-sumo":  {4:0.51,5:0.44,6:0.38,7:0.32,8:0.27,9:0.23,10:0.19}
+  "squat":    {4:0.61,5:0.53,6:0.45,7:0.37,8:0.30,9:0.24,10:0.19},
+  "bench":    {4:0.34,5:0.275,6:0.22,7:0.17,8:0.145,9:0.12,10:0.10},
+  "dl-conv":  {4:0.50,5:0.42,6:0.34,7:0.27,8:0.21,9:0.15,10:0.10},
+  "dl-sumo":  {4:0.42,5:0.35,6:0.29,7:0.23,8:0.18,9:0.14,10:0.10}
 };
 var LIFTNAME = {"squat":"Squat","bench":"Bench","dl-conv":"Deadlift, conventional","dl-sumo":"Deadlift, sumo"};
 var SHORTNAME = {"squat":"squat","bench":"bench","dl-conv":"conventional","dl-sumo":"sumo"};
 /* Sumo bar travel is 20-25% shorter than conventional, so the rep-height filter
    has to come down with it or real sumo reps get discarded. */
-var DEFAULT_ROM = {"squat":0.25,"bench":0.12,"dl-conv":0.30,"dl-sumo":0.22};
+var DEFAULT_ROM = {"squat":0.25,"bench":0.09,"dl-conv":0.30,"dl-sumo":0.22};
 var WORKW = 640;
 var VTH = 0.06;
 var MIN_DUR = 0.15;
@@ -1545,9 +1558,29 @@ function runAnalysis(){
   if(inRun) runs.push([s0,N-1]);
 
   var gapN=Math.max(1,Math.round(0.09/dt)), merged=[];
+  /* A grinding rep stalls at the sticking point until velocity falls back through
+     VTH, which splits one press into two runs and reports it as two reps at
+     inflated speed. A real second rep has to be preceded by the bar coming back
+     down, so a gap only counts as a rep boundary when there is an actual eccentric
+     in it. No descent means the lifter ground through a sticking point, and both
+     runs belong to the same rep — which is the whole point, because the stall then
+     drags the mean concentric velocity down and the RPE up, as it should. */
+  var STALL_MAX = 2.5;                                  // s, longest stall bridged
+  var stallDrop = Math.max(0.03, minRom * 0.25);        // m of descent that means a new rep
   runs.forEach(function(rr){
-    if(merged.length && rr[0]-merged[merged.length-1][1]<=gapN) merged[merged.length-1][1]=rr[1];
-    else merged.push(rr.slice());
+    if(!merged.length){ merged.push(rr.slice()); return; }
+    var prev = merged[merged.length-1], gapF = rr[0]-prev[1];
+    if(gapF <= gapN){ prev[1]=rr[1]; return; }          // momentary tracking dropout
+    if(gapF*dt <= STALL_MAX){
+      var lowest = sp[prev[1]];
+      for(var gi=prev[1]; gi<=rr[0]; gi++) if(sp[gi]<lowest) lowest=sp[gi];
+      if(sp[prev[1]]-lowest <= stallDrop){
+        prev[2] = (prev[2]||0) + gapF*dt;   // remember how long it hung there
+        prev[1] = rr[1];
+        return;
+      }
+    }
+    merged.push(rr.slice());
   });
 
   // drop runs too small to be a rep before extending, so noise in a pause cannot
@@ -1573,7 +1606,7 @@ function runAnalysis(){
     if(rom<minRom||dur<MIN_DUR) return;
     var pk=0;
     for(var z=a3;z<=b3;z++) if(vel[z]>pk) pk=vel[z];
-    found.push({i0:a3,i1:b3,rom:rom,dur:dur,mcv:rom/dur,pv:pk,t0:T[a3],t1:T[b3]});
+    found.push({i0:a3,i1:b3,rom:rom,dur:dur,mcv:rom/dur,pv:pk,t0:T[a3],t1:T[b3],stall:rr[2]||0});
   });
 
   // two runs inside one rep both extend to the same turnaround, so drop overlaps
@@ -1600,6 +1633,16 @@ function rpeFor(v,lift){
     if(v<=a.v && v>=b.v) return a.r + ((a.v-v)/Math.max(1e-9,(a.v-b.v)))*(b.r-a.r);
   }
   return null;
+}
+/* A rep that stalls at the sticking point is at the lifter's limit for that load
+   by definition — it nearly failed. Averaged over the whole press the stall pulls
+   mean velocity down but rarely all the way to the RPE 10 anchor, so velocity
+   alone under-rates a grind. Any rep that hung for STALL_RPE10 or longer without
+   descending is reported as 10, and the reps table and the CSV say why. */
+var STALL_RPE10 = 0.30;   // s
+function rpeForRep(r,lift){
+  if(r && r.stall >= STALL_RPE10) return 10;
+  return rpeFor(r.mcv,lift);
 }
 function rpeLabel(r){
   if(r===null||r===undefined) return "\u2014";
@@ -1628,14 +1671,15 @@ function renderReps(){
     var li=document.createElement("li");
     li.className="rep";
     if(S.drop[i]) li.style.opacity=".34";
-    var rp=rpeFor(r.mcv,lift);
+    var rp=rpeForRep(r,lift);
     var cls=(rp===null)?"":(rp>=9?"hard":(rp<=6?"easy":""));
     var loss=(bestV && !S.drop[i]) ? (1-r.mcv/bestV)*100 : null;
     li.innerHTML=
       '<span class="n">'+(i+1)+'</span>'+
       '<span class="v">'+fmt(r.mcv,2)+'<small>m/s</small></span>'+
       '<span class="meta">peak '+fmt(r.pv,2)+' \u00b7 '+fmt(r.rom*100,0)+' cm \u00b7 '+fmt(r.dur,2)+' s'+
-        (loss!==null && loss>0.5 ? ' \u00b7 \u2212'+fmt(loss,0)+'%' : '')+'</span>'+
+        (loss!==null && loss>0.5 ? ' \u00b7 \u2212'+fmt(loss,0)+'%' : '')+
+        (r.stall>=STALL_RPE10 ? ' \u00b7 stalled '+fmt(r.stall,1)+' s' : '')+'</span>'+
       '<span class="rpe '+cls+'"><b>'+rpeLabel(rp)+'</b><span>RPE</span></span>';
     var x=document.createElement("button");
     x.className="x"; x.type="button";
@@ -1651,7 +1695,7 @@ function renderReps(){
     setBig(null,"Every rep discarded.");
     return;
   }
-  var last=keep[keep.length-1], lastRpe=rpeFor(last.mcv,lift);
+  var last=keep[keep.length-1], lastRpe=rpeForRep(last,lift);
   setBig(last.mcv, "Last rep \u00b7 RPE "+rpeLabel(lastRpe)+" \u00b7 "+keep.length+(keep.length===1?" rep":" reps"));
 
   var lossTotal=(1-last.mcv/bestV)*100;
@@ -1786,8 +1830,16 @@ function drawExportChips(t){
   var g=expx, lift=profileKey(), K=keptReps();
   if(!K.length) return;
   var pad=Math.round(EW*0.022);
+  // Each pill carries the rep's mean concentric velocity as well as its RPE, so
+  // the exported clip shows the number the RPE was derived from, not just the
+  // verdict. Wider labels mean the row collapses to the active rep sooner, which
+  // the fallback below already handles.
+  function pillLabel(i, r){
+    return (i+1)+"   "+r.mcv.toFixed(2)+" m/s   RPE "+rpeLabel(rpeForRep(r,lift))
+           + (r.stall>=STALL_RPE10 ? "  stall" : "");
+  }
   var f=Math.max(9, Math.round(EW/44)), labels=K.map(function(o){
-    return (o.i+1)+"   RPE "+rpeLabel(rpeFor(o.r.mcv,lift));
+    return pillLabel(o.i, o.r);
   });
   var widths=[], total=0;
   for(;;){
@@ -1800,7 +1852,7 @@ function drawExportChips(t){
   var ri=repAt(t);
   if(total>EW-pad*2){                       // too many reps to show them all
     if(ri<0) return;
-    labels=[(ri+1)+"   RPE "+rpeLabel(rpeFor(S.A.reps[ri].mcv,lift))];
+    labels=[pillLabel(ri, S.A.reps[ri])];
     K=[{i:ri}];
     f=Math.max(11,Math.round(EW/34));
     g.font="600 "+f+"px -apple-system,sans-serif";
@@ -1825,7 +1877,7 @@ function drawExportBar(t){
   var v=velAt(t), ri=repAt(t), left;
   if(ri>=0){
     var r=S.A.reps[ri];
-    left="Rep "+(ri+1)+"     "+r.mcv.toFixed(2)+" m/s     RPE "+rpeLabel(rpeFor(r.mcv,lift));
+    left="Rep "+(ri+1)+"     "+r.mcv.toFixed(2)+" m/s     RPE "+rpeLabel(rpeForRep(r,lift))+(r.stall>=STALL_RPE10?"     stall":"");
   } else {
     left=(v===null) ? "" : ((v<-0.05?"descending     ":"")+v.toFixed(2)+" m/s");
   }
@@ -1982,12 +2034,13 @@ $("csvBtn").addEventListener("click", function(){
     "# rpe10_anchor_mps,"+mvtFor(lift).toFixed(3),
     "# scale_mm_per_px,"+(mPerPx()*1000).toFixed(4),
     "# fps,"+S.A.fps.toFixed(1),
-    "Rep,MeanConcentricVelocity (m/s),PeakVelocity (m/s),ROM (m),Duration (s),VelocityLoss (%),EstimatedRPE"
+    "Rep,MeanConcentricVelocity (m/s),PeakVelocity (m/s),ROM (m),Duration (s),VelocityLoss (%),StallDuration (s),EstimatedRPE"
   ];
   keep.forEach(function(r,i){
-    var rp=rpeFor(r.mcv,lift);
+    var rp=rpeForRep(r,lift);
     rows.push([i+1,r.mcv.toFixed(3),r.pv.toFixed(3),r.rom.toFixed(3),r.dur.toFixed(3),
       (best?((1-r.mcv/best)*100).toFixed(1):"0.0"),
+      (r.stall||0).toFixed(2),
       (rp===null?"":(Math.round(rp*2)/2).toFixed(1))].join(","));
   });
   saveFile(new Blob([rows.join("\n")],{type:"text/csv"}),
@@ -2060,7 +2113,7 @@ if("serviceWorker" in navigator){
   });
   applyHostTheme(qp("theme"));   // honour the URL so there's no wrong-palette flash
 
-  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-1" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-6" }, "*"); } catch (e) {}
 })();
 </script>
 

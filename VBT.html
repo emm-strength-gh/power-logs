@@ -2364,67 +2364,116 @@ function keptReps(){
   for(var i=0;i<S.A.reps.length;i++) if(!S.drop[i]) out.push({i:i, r:S.A.reps[i]});
   return out;
 }
+/* Text on the exported clip is sized from the frame's SHORT side, so a portrait
+   phone clip (720 wide) gets the same readable size as a landscape one — sizing
+   from the width alone made portrait text tiny. */
+function expUnit(){ return Math.min(EW,EH); }
+/* Greedy line-wrap of pill widths into rows no wider than maxW. */
+function packRows(widths, maxW, gap){
+  var rows=[[]], w=0;
+  for(var i=0;i<widths.length;i++){
+    var need = rows[rows.length-1].length ? gap+widths[i] : widths[i];
+    if(rows[rows.length-1].length && w+need>maxW){ rows.push([]); w=0; need=widths[i]; }
+    rows[rows.length-1].push(i); w+=need;
+  }
+  return rows;
+}
+var EXP_MAX_ROWS=3;
 function drawExportChips(t){
   var g=expx, lift=profileKey(), K=keptReps();
   if(!K.length) return;
-  var pad=Math.round(EW*0.022);
+  var U=expUnit(), pad=Math.round(U*0.03), maxW=EW-pad*2;
   // Each pill carries the rep's mean concentric velocity as well as its RPE, so
-  // the exported clip shows the number the RPE was derived from, not just the
-  // verdict. Wider labels mean the row collapses to the active rep sooner, which
-  // the fallback below already handles.
-  function pillLabel(i, r){
-    return (i+1)+"   "+r.mcv.toFixed(2)+" m/s   RPE "+rpeLabel(rpeForRep(r,lift))
-           + (r.stall>=STALL_RPE10 ? "  stall" : "");
+  // the clip shows the number the RPE was derived from, not just the verdict.
+  // Compact form drops the "m/s" (the bottom bar still shows it) so long sets
+  // can stay large instead of shrinking further.
+  function pillLabel(i, r, compact){
+    var sep = compact ? "   " : "  \u00b7  ";
+    return (i+1)+sep+r.mcv.toFixed(2)+(compact?"":" m/s")+sep+"RPE "+rpeLabel(rpeForRep(r,lift))
+           + (r.stall>=STALL_RPE10 ? sep+"stall" : "");
   }
-  var f=Math.max(9, Math.round(EW/44)), labels=K.map(function(o){
-    return pillLabel(o.i, o.r);
-  });
-  var widths=[], total=0;
-  for(;;){
+  var fMax=Math.max(14, Math.round(U/25)), fMid=Math.max(13, Math.round(U/30)), fMin=Math.max(12, Math.round(U/38));
+  var compact=false;
+  var all=K.map(function(o){ return pillLabel(o.i, o.r, false); });
+  var ri=repAt(t);
+  var measure=function(list,f){
     g.font="600 "+f+"px -apple-system,sans-serif";
-    widths=labels.map(function(L){ return g.measureText(L).width+f*1.5; });
-    total=widths.reduce(function(a,b){return a+b;},0)+Math.round(f*0.5)*(labels.length-1);
-    if(total<=EW-pad*2 || f<=9) break;
+    return list.map(function(L){ return g.measureText(L).width+f*1.6; });
+  };
+
+  // Largest font at which every rep fits in up to three rows.
+  var f=fMax, widths, rows, idx=K.map(function(_,j){ return j; });
+  for(;;){
+    widths=measure(all,f);
+    rows=packRows(widths,maxW,Math.round(f*0.45));
+    if(rows.length<=EXP_MAX_ROWS || f<=fMin) break;
+    if(!compact && f<=fMid){
+      compact=true; f=fMax+1;
+      all=K.map(function(o){ return pillLabel(o.i, o.r, true); });
+    }
     f--;
   }
-  var ri=repAt(t);
-  if(total>EW-pad*2){                       // too many reps to show them all
-    if(ri<0) return;
-    labels=[pillLabel(ri, S.A.reps[ri])];
-    K=[{i:ri}];
-    f=Math.max(11,Math.round(EW/34));
-    g.font="600 "+f+"px -apple-system,sans-serif";
-    widths=[g.measureText(labels[0]).width+f*1.5];
+  // Long sets that still don't fit: show the biggest run of consecutive reps
+  // that fits in three rows, slid along so the rep being lifted is in it.
+  if(rows.length>EXP_MAX_ROWS){
+    var act=-1;
+    for(var q=0;q<K.length;q++) if(K[q].i===ri) act=q;
+    var n=K.length, best=null;
+    for(var k=n-1;k>=1 && !best;k--){
+      var start = act<0 ? Math.max(0,n-k) : clamp(act-Math.floor(k/2),0,n-k);
+      var sub=widths.slice(start,start+k);
+      if(packRows(sub,maxW,Math.round(f*0.45)).length<=EXP_MAX_ROWS) best={s:start,k:k};
+    }
+    if(!best) best={s:Math.max(0,act),k:1};
+    idx=[]; for(var z=best.s;z<best.s+best.k;z++) idx.push(z);
+    widths=idx.map(function(j){ return widths[j]; });
+    rows=packRows(widths,maxW,Math.round(f*0.45));
   }
-  var h=Math.round(f*2), gap=Math.round(f*0.5), x=pad, y=pad;
+
+  var h=Math.round(f*2.05), gap=Math.round(f*0.45), rowGap=Math.round(f*0.4), y=pad;
   g.textAlign="center"; g.textBaseline="middle";
-  for(var j=0;j<labels.length;j++){
-    var on=(K[j].i===ri);
-    roundRect(g,x,y,widths[j],h,h/2);
-    g.fillStyle=on?"#2340D8":"rgba(14,17,18,.64)"; g.fill();
-    g.font="600 "+f+"px -apple-system,sans-serif";
-    g.fillStyle=on?"#FFFFFF":"rgba(237,239,235,.82)";
-    g.fillText(labels[j], x+widths[j]/2, y+h/2+1);
-    x+=widths[j]+gap;
-  }
+  g.font="600 "+f+"px -apple-system,sans-serif";
+  rows.forEach(function(row){
+    var x=pad;
+    row.forEach(function(p){
+      var j=idx[p], on=(K[j].i===ri);
+      roundRect(g,x,y,widths[p],h,h/2);
+      g.fillStyle=on?"#2340D8":"rgba(14,17,18,.72)"; g.fill();
+      g.fillStyle=on?"#FFFFFF":"rgba(237,239,235,.9)";
+      g.fillText(all[j], x+widths[p]/2, y+h/2+1);
+      x+=widths[p]+gap;
+    });
+    y+=h+rowGap;
+  });
 }
 function drawExportBar(t){
-  var g=expx, lift=profileKey();
-  var f=Math.max(11, Math.round(EW/29)), h=Math.round(f*2.4), y=EH-h;
-  g.fillStyle="rgba(14,17,18,.74)"; g.fillRect(0,y,EW,h);
+  var g=expx, lift=profileKey(), U=expUnit();
+  var side=Math.round(U*0.03);
+  var f=Math.max(14, Math.round(U/22)), h=Math.round(f*2.3), y=EH-h;
+  g.fillStyle="rgba(14,17,18,.78)"; g.fillRect(0,y,EW,h);
   var v=velAt(t), ri=repAt(t), left;
   if(ri>=0){
     var r=S.A.reps[ri];
-    left="Rep "+(ri+1)+"     "+r.mcv.toFixed(2)+" m/s     RPE "+rpeLabel(rpeForRep(r,lift))+(r.stall>=STALL_RPE10?"     stall":"");
+    left="Rep "+(ri+1)+"   "+r.mcv.toFixed(2)+" m/s   RPE "+rpeLabel(rpeForRep(r,lift))+(r.stall>=STALL_RPE10?"   stall":"");
   } else {
-    left=(v===null) ? "" : ((v<-0.05?"descending     ":"")+v.toFixed(2)+" m/s");
+    left=(v===null) ? "" : ((v<-0.05?"descending   ":"")+v.toFixed(2)+" m/s");
   }
+  var name=LIFTNAME[lift], fs=Math.round(f*0.62);
   g.textBaseline="middle";
-  g.fillStyle="#F2F3F0"; g.font="600 "+f+"px -apple-system,sans-serif"; g.textAlign="left";
-  g.fillText(left, Math.round(EW*0.022), y+h/2);
-  g.fillStyle="rgba(237,239,235,.68)"; g.font="500 "+Math.round(f*0.7)+"px -apple-system,sans-serif";
+  g.font="500 "+fs+"px -apple-system,sans-serif";
+  var nameW=g.measureText(name).width;
+  // shrink the main line if it would run into the lift name
+  var fl=f;
+  for(;;){
+    g.font="700 "+fl+"px -apple-system,sans-serif";
+    if(g.measureText(left).width <= EW-side*3-nameW || fl<=12) break;
+    fl--;
+  }
+  g.fillStyle="#F2F3F0"; g.textAlign="left";
+  g.fillText(left, side, y+h/2);
+  g.fillStyle="rgba(237,239,235,.7)"; g.font="500 "+fs+"px -apple-system,sans-serif";
   g.textAlign="right";
-  g.fillText(LIFTNAME[lift], EW-Math.round(EW*0.022), y+h/2);
+  g.fillText(name, EW-side, y+h/2);
 }
 function drawExportFrame(t){
   var g=expx, sc=EW/S.W;
@@ -2705,7 +2754,7 @@ if("serviceWorker" in navigator){
   });
   applyHostTheme(qp("theme"));   // honour the URL so there's no wrong-palette flash
 
-  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-11" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-12" }, "*"); } catch (e) {}
 })();
 </script>
 

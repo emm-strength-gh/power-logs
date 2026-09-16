@@ -135,6 +135,19 @@ The tracker is built to fit the screen with no page scroll:
 - **Inside Spotter:** one-line header (details behind ⓘ), and the frame is sized to
   the rest of the window, so there's one scroll area at most.
 
+## Stalls (grinds) in the Velocity Tracker
+
+A stall is the bar almost stopping (under 0.05 m/s) while it's between 15% and 90% of
+that rep's range, for at least 0.3 s (0.4 s on deadlifts). Setup at the floor, a pause
+on the chest and the lockout hold sit outside that band, so they never count, and a
+small bar movement at the floor before a pull can no longer be mistaken for the start
+of the rep. Counted stalls show as a rust segment on the velocity chart and a
+**hitch** tag on the rep; tap the tag to un-count it. Settings (⚙) picks the rule:
+
+- **RPE 10 only if slow** (default): a stalled rep is 10 when its speed already reads
+  8.5 or harder; otherwise the stall adds one RPE.
+- **Always RPE 10**: any counted stall is 10.
+
 ## Offline
 
 Chart.js is pinned at `4.4.1` on cdnjs and is **precached on install**, not just on

@@ -246,6 +246,11 @@ input[type=range].rng{width:100%;accent-color:var(--ink);min-height:30px;margin:
 .rep .rpe span{display:block;font-size:10px;color:var(--ink-38)}
 .rep .rpe.hard b{color:var(--rust)}
 .rep .rpe.easy b{color:var(--signal)}
+.hitch{
+  font:inherit;font-size:11px;font-weight:600;color:var(--rust);background:rgba(158,59,35,.08);
+  border:1px solid rgba(158,59,35,.3);border-radius:999px;padding:1px 7px;margin:0;line-height:1.4;
+}
+.hitch.off{color:var(--ink-38);background:transparent;border-color:var(--ink-14);text-decoration:line-through}
 .rep .x{border:0;background:transparent;color:var(--ink-38);font-size:18px;padding:4px 0 4px 6px;line-height:1}
 .summary{margin:10px 0 4px}
 .summary dl{margin:0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -528,7 +533,7 @@ input[type=range].rng{width:100%;accent-color:var(--ink);min-height:30px;margin:
         <div class="phead">
           <div class="row1">
             <h1 id="s4title">Results</h1>
-            <button type="button" class="gear" id="gearBtn" aria-label="Velocity anchors and tips">
+            <button type="button" class="gear" id="gearBtn" aria-label="Settings: velocity anchors, stalls and tips">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             </button>
           </div>
@@ -576,10 +581,11 @@ input[type=range].rng{width:100%;accent-color:var(--ink);min-height:30px;margin:
   <div class="sheet hid" id="setSheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
     <div class="sheetin">
       <div class="row nowrap" style="justify-content:space-between">
-        <h2 id="setTitle">Velocity anchors</h2>
+        <h2 id="setTitle">Settings</h2>
         <button class="btn ghost sm" id="setClose" style="flex:0 0 auto">Done</button>
       </div>
-      <p class="sub" style="margin-top:6px">The speed of a true grinding single is personal but stable. Set it per lift and every RPE shifts with it.</p>
+      <h3>Velocity anchors</h3>
+      <p class="sub">The speed of a true grinding single is personal but stable. Set it per lift and every RPE shifts with it.</p>
       <div class="grid2">
         <div>
           <label class="f" for="mvt">RPE 10 speed, this lift (m/s)</label>
@@ -591,6 +597,14 @@ input[type=range].rng{width:100%;accent-color:var(--ink);min-height:30px;margin:
         </div>
       </div>
       <p class="note" id="mvtNote" style="margin-top:8px"></p>
+
+      <h3>Stalls</h3>
+      <p class="sub">A stall is the bar almost stopping mid-lift (between 15% and 90% of the way up) for 0.3&nbsp;s or more — 0.4&nbsp;s on deadlifts. Setup at the floor and the lockout hold never count. Tap a rep's <b>hitch</b> tag to un-count it.</p>
+      <div class="seg" id="stallSeg" style="margin-bottom:6px">
+        <button id="stSlow" aria-pressed="true">RPE 10 only if slow</button>
+        <button id="stAlways" aria-pressed="false">Always RPE 10</button>
+      </div>
+      <p class="note">“Only if slow”: a stalled rep is RPE 10 when its speed already reads 8.5 or harder; on a faster rep the stall adds one RPE instead.</p>
 
       <h3>Getting numbers you can trust</h3>
       <ul>
@@ -657,7 +671,7 @@ var S = {
   cal:{a:null,b:null,mm:450},
   seed:null, mode:"marker", marker:null, tpl:null,
   areaShape:"square", areaSize:TPL,
-  path:[], A:null, drop:{},
+  path:[], A:null, drop:{}, nostall:{}, stallMode:"slow",
   t0:null, t1:null,
   touchMode:null, drag:null, tracking:false,
   step:1, reached:1,
@@ -729,6 +743,7 @@ function loadPrefs(){
     if(p.mode) setMode(p.mode, true);
     if(p.refMm){ $("refMm").value=p.refMm; S.cal.mm=+p.refMm; syncRefSel(); }
     if(p.tol){ $("tol").value=p.tol; }
+    if(p.stallMode==="always"||p.stallMode==="slow") setStallMode(p.stallMode, true);
     if(p.areaShape==="square"||p.areaShape==="circle") setAreaShape(p.areaShape, true);
     if(p.areaSize){ S.areaSize=clamp(+p.areaSize,11,41); $("areaSize").value=S.areaSize; $("areaSizev").textContent=S.areaSize+" px"; }
   }catch(e){}
@@ -737,7 +752,7 @@ function savePrefs(){
   try{
     localStorage.setItem("barspeed.prefs", JSON.stringify({
       mvt:S.mvt, lift:$("lift").value, stance:S.stance, mode:S.mode, refMm:$("refMm").value, tol:$("tol").value,
-      areaShape:S.areaShape, areaSize:S.areaSize
+      areaShape:S.areaShape, areaSize:S.areaSize, stallMode:S.stallMode
     }));
   }catch(e){}
 }
@@ -970,7 +985,7 @@ function resetAll(){
   vid.removeAttribute("src"); vid.load();
   S.vw=0; S.vh=0; S.dur=0;
   S.cal={a:null,b:null,mm:+$("refMm").value||450};
-  S.seed=null; S.marker=null; S.tpl=null; S.path=[]; S.A=null; S.drop={};
+  S.seed=null; S.marker=null; S.tpl=null; S.path=[]; S.A=null; S.drop={}; S.nostall={};
   S.t0=null; S.t1=null; S.touchMode=null; S.drag=null;
   S.step=1; S.reached=1;
   $("vwrap").classList.add("hid");
@@ -1815,7 +1830,7 @@ async function track(){
   if(exporting) stopExport();
   closeMenu();
   S.tracking=true;
-  S.A=null; S.drop={};
+  S.A=null; S.drop={}; S.nostall={};
   $("resultsBox").classList.add("hid");
   $("readyRow").classList.add("hid"); $("vidExpNote").textContent="";
   $("reviewBtn").classList.add("hid"); $("replaySpeed").classList.add("hid");
@@ -2069,20 +2084,24 @@ function runAnalysis(){
      in it. No descent means the lifter ground through a sticking point, and both
      runs belong to the same rep — which is the whole point, because the stall then
      drags the mean concentric velocity down and the RPE up, as it should. */
+  /* ...but only once the bar is genuinely on its way up. A deadlift sits on the
+     floor between reps, and taking the slack out or the plates settling lifts the
+     bar a centimetre or two and stops. That blip is a "run" too, and with no
+     descent after it the whole setup pause used to be bridged into the next pull
+     and reported as a stall on every rep. A run now has to have risen a real
+     distance before a pause after it can join it. */
   var STALL_MAX = 2.5;                                  // s, longest stall bridged
   var stallDrop = Math.max(0.03, minRom * 0.25);        // m of descent that means a new rep
+  var riseMin = Math.max(0.03, minRom * 0.30);          // m the bar must already have risen
   runs.forEach(function(rr){
     if(!merged.length){ merged.push(rr.slice()); return; }
     var prev = merged[merged.length-1], gapF = rr[0]-prev[1];
     if(gapF <= gapN){ prev[1]=rr[1]; return; }          // momentary tracking dropout
-    if(gapF*dt <= STALL_MAX){
+    var risen = sp[prev[1]] - sp[prev[0]];
+    if(gapF*dt <= STALL_MAX && risen >= riseMin){
       var lowest = sp[prev[1]];
       for(var gi=prev[1]; gi<=rr[0]; gi++) if(sp[gi]<lowest) lowest=sp[gi];
-      if(sp[prev[1]]-lowest <= stallDrop){
-        prev[2] = (prev[2]||0) + gapF*dt;   // remember how long it hung there
-        prev[1] = rr[1];
-        return;
-      }
+      if(sp[prev[1]]-lowest <= stallDrop){ prev[1] = rr[1]; return; }
     }
     merged.push(rr.slice());
   });
@@ -2110,7 +2129,8 @@ function runAnalysis(){
     if(rom<minRom||dur<MIN_DUR) return;
     var pk=0;
     for(var z=a3;z<=b3;z++) if(vel[z]>pk) pk=vel[z];
-    found.push({i0:a3,i1:b3,rom:rom,dur:dur,mcv:rom/dur,pv:pk,t0:T[a3],t1:T[b3],stall:rr[2]||0});
+    var st=measureStall(sp,vel,dt,a3,b3);
+    found.push({i0:a3,i1:b3,rom:rom,dur:dur,mcv:rom/dur,pv:pk,t0:T[a3],t1:T[b3],stall:st.total,spans:st.spans});
   });
 
   // two runs inside one rep both extend to the same turnaround, so drop overlaps
@@ -2121,6 +2141,7 @@ function runAnalysis(){
     reps.push(rp);
   });
 
+  reps.forEach(function(rp,k){ rp.n=k; });
   S.A={T:T,pos:sp,vel:vel,dt:dt,fps:fps,reps:reps};
   drawChart(); renderReps();
 }
@@ -2138,15 +2159,54 @@ function rpeFor(v,lift){
   }
   return null;
 }
+/* A stall is measured from speed, not from how runs were stitched together:
+   time inside the rep where the bar is almost stationary while it is clearly
+   off the bottom and short of lockout (15-90% of that rep's range). Setup at the
+   floor, a pause at the chest, and the lockout hold all fall outside that band,
+   so they can never count. Brief dips are ignored; spans are kept for the chart. */
+var STALL_V = 0.05;          // m/s, "almost stationary"
+var STALL_BLIP = 0.08;       // s, shorter than this is noise, not a hitch
+function measureStall(sp,vel,dt,i0,i1){
+  var base=sp[i0], rom=sp[i1]-sp[i0], spans=[], total=0, s0=-1;
+  if(rom<=0) return {total:0,spans:[]};
+  var lo=base+rom*0.15, hi=base+rom*0.90;
+  var close=function(end){
+    if(s0<0) return;
+    var d=(end-s0+1)*dt;
+    if(d>=STALL_BLIP){ spans.push([s0,end]); total+=d; }
+    s0=-1;
+  };
+  for(var i=i0;i<=i1;i++){
+    var inBand = sp[i]>=lo && sp[i]<=hi;
+    if(inBand && vel[i]<STALL_V){ if(s0<0) s0=i; }
+    else close(i-1);
+  }
+  close(i1);
+  return {total:total, spans:spans};
+}
+/* Deadlifts often slow near the knees without a true grind, so they need a
+   slightly longer pause before it counts. */
+function stallMinFor(lift){ return (lift==="dl-conv"||lift==="dl-sumo") ? 0.40 : 0.30; }
+function isStalled(r,lift){
+  return !!(r && r.stall >= stallMinFor(lift||profileKey()) && !S.nostall[r.n]);
+}
 /* A rep that stalls at the sticking point is at the lifter's limit for that load
    by definition — it nearly failed. Averaged over the whole press the stall pulls
    mean velocity down but rarely all the way to the RPE 10 anchor, so velocity
    alone under-rates a grind. Any rep that hung for STALL_RPE10 or longer without
    descending is reported as 10, and the reps table and the CSV say why. */
-var STALL_RPE10 = 0.30;   // s
+/* Two policies, picked in settings:
+   "always" - any counted stall is RPE 10 (a hitch means the load nearly won).
+   "slow"   - a stall forces 10 only when the rep was also slow (speed alone
+              already reads 8.5 or harder); on a quick rep it adds one RPE,
+              since a 0.4 m/s pull with a brief hitch was not a max effort. */
+var STALL_SLOW_RPE = 8.5;
 function rpeForRep(r,lift){
-  if(r && r.stall >= STALL_RPE10) return 10;
-  return rpeFor(r.mcv,lift);
+  var base=rpeFor(r.mcv,lift);
+  if(!isStalled(r,lift)) return base;
+  if(S.stallMode==="always") return 10;
+  if(base===null) return 10;
+  return base>=STALL_SLOW_RPE ? 10 : Math.min(10, base+1);
 }
 function rpeLabel(r){
   if(r===null||r===undefined) return "\u2014";
@@ -2161,6 +2221,33 @@ function activeReps(){
   if(!S.A) return [];
   return S.A.reps.filter(function(_,i){ return !S.drop[i]; });
 }
+/* Rep list tag: a tappable "hitch 0.5 s" when a stall counts, struck through
+   when you've told it that one wasn't a stall. */
+function stallTag(r,i,lift){
+  if(!r || r.stall < stallMinFor(lift)) return "";
+  var off=!!S.nostall[i];
+  return ' \u00b7 <button type="button" class="hitch'+(off?' off':'')+'" data-rep="'+i+'" aria-pressed="'+(off?'false':'true')+'"'
+    + ' title="'+(off?'Counted as no stall \u2014 tap to count it again':'Tap if this wasn\'t a real stall')+'">'
+    + 'hitch '+fmt(r.stall,1)+' s</button>';
+}
+$("repList").addEventListener("click", function(e){
+  var b=e.target.closest ? e.target.closest(".hitch") : null;
+  if(!b) return;
+  var i=+b.getAttribute("data-rep");
+  S.nostall[i]=!S.nostall[i];
+  renderReps(); drawChart();
+});
+function setStallMode(m, quiet){
+  S.stallMode = (m==="always") ? "always" : "slow";
+  $("stAlways").setAttribute("aria-pressed", S.stallMode==="always"?"true":"false");
+  $("stSlow").setAttribute("aria-pressed", S.stallMode==="slow"?"true":"false");
+  if(quiet) return;
+  savePrefs();
+  if(S.A) renderReps();
+}
+$("stAlways").addEventListener("click", function(){ setStallMode("always"); });
+$("stSlow").addEventListener("click", function(){ setStallMode("slow"); });
+
 function renderReps(){
   var list=$("repList"); list.innerHTML="";
   var lift=profileKey();
@@ -2185,7 +2272,7 @@ function renderReps(){
       '<span class="v">'+fmt(r.mcv,2)+'<small>m/s</small></span>'+
       '<span class="meta">peak '+fmt(r.pv,2)+' \u00b7 '+fmt(r.rom*100,0)+' cm \u00b7 '+fmt(r.dur,2)+' s'+
         (loss!==null && loss>0.5 ? ' \u00b7 \u2212'+fmt(loss,0)+'%' : '')+
-        (r.stall>=STALL_RPE10 ? ' \u00b7 stalled '+fmt(r.stall,1)+' s' : '')+'</span>'+
+        stallTag(r,i,lift)+'</span>'+
       '<span class="rpe '+cls+'"><b>'+rpeLabel(rp)+'</b><span>RPE</span></span>';
     var x=document.createElement("button");
     x.className="x"; x.type="button";
@@ -2298,6 +2385,17 @@ function drawChart(){
     for(var k=r.i0;k<=r.i1;k++){ var xx=X(k), y2=Yv(V[k]); if(k===r.i0) g.moveTo(xx,y2); else g.lineTo(xx,y2); }
     g.stroke();
   });
+  // counted stalls: rust segments on the trace, so you can see what was flagged
+  var liftK=profileKey();
+  S.A.reps.forEach(function(r,ri){
+    if(S.drop[ri] || !isStalled(r,liftK) || !r.spans) return;
+    g.strokeStyle="#9E3B23"; g.lineWidth=3;
+    r.spans.forEach(function(sp2){
+      g.beginPath();
+      for(var k=sp2[0];k<=sp2[1];k++){ var xx=X(k), y2=Yv(V[k]); if(k===sp2[0]) g.moveTo(xx,y2); else g.lineTo(xx,y2); }
+      g.stroke();
+    });
+  });
   g.fillStyle="rgba(21,25,26,.42)"; g.font="10px -apple-system,sans-serif";
   g.textAlign="right"; g.fillText(fmt(T[N-1]-T[0],1)+" s", w-padR, h-3);
 }
@@ -2390,7 +2488,7 @@ function drawExportChips(t){
   function pillLabel(i, r, compact){
     var sep = compact ? "   " : "  \u00b7  ";
     return (i+1)+sep+r.mcv.toFixed(2)+(compact?"":" m/s")+sep+"RPE "+rpeLabel(rpeForRep(r,lift))
-           + (r.stall>=STALL_RPE10 ? sep+"stall" : "");
+           + (isStalled(r,lift) ? sep+"stall" : "");
   }
   var fMax=Math.max(14, Math.round(U/25)), fMid=Math.max(13, Math.round(U/30)), fMin=Math.max(12, Math.round(U/38));
   var compact=false;
@@ -2454,7 +2552,7 @@ function drawExportBar(t){
   var v=velAt(t), ri=repAt(t), left;
   if(ri>=0){
     var r=S.A.reps[ri];
-    left="Rep "+(ri+1)+"   "+r.mcv.toFixed(2)+" m/s   RPE "+rpeLabel(rpeForRep(r,lift))+(r.stall>=STALL_RPE10?"   stall":"");
+    left="Rep "+(ri+1)+"   "+r.mcv.toFixed(2)+" m/s   RPE "+rpeLabel(rpeForRep(r,lift))+(isStalled(r,lift)?"   stall":"");
   } else {
     left=(v===null) ? "" : ((v<-0.05?"descending   ":"")+v.toFixed(2)+" m/s");
   }
@@ -2672,13 +2770,15 @@ $("csvBtn").addEventListener("click", function(){
     "# rpe10_anchor_mps,"+mvtFor(lift).toFixed(3),
     "# scale_mm_per_px,"+(mPerPx()*1000).toFixed(4),
     "# fps,"+S.A.fps.toFixed(1),
-    "Rep,MeanConcentricVelocity (m/s),PeakVelocity (m/s),ROM (m),Duration (s),VelocityLoss (%),StallDuration (s),EstimatedRPE"
+    "# stall_rule,"+(S.stallMode==="always"?"always RPE 10":"RPE 10 only if slow, else +1")+" (min "+stallMinFor(lift).toFixed(2)+" s)",
+    "Rep,MeanConcentricVelocity (m/s),PeakVelocity (m/s),ROM (m),Duration (s),VelocityLoss (%),StallDuration (s),StallCounted,EstimatedRPE"
   ];
   keep.forEach(function(r,i){
     var rp=rpeForRep(r,lift);
     rows.push([i+1,r.mcv.toFixed(3),r.pv.toFixed(3),r.rom.toFixed(3),r.dur.toFixed(3),
       (best?((1-r.mcv/best)*100).toFixed(1):"0.0"),
       (r.stall||0).toFixed(2),
+      (isStalled(r,lift)?"yes":"no"),
       (rp===null?"":(Math.round(rp*2)/2).toFixed(1))].join(","));
   });
   saveFile(new Blob([rows.join("\n")],{type:"text/csv"}),
@@ -2754,7 +2854,7 @@ if("serviceWorker" in navigator){
   });
   applyHostTheme(qp("theme"));   // honour the URL so there's no wrong-palette flash
 
-  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-12" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-13" }, "*"); } catch (e) {}
 })();
 </script>
 

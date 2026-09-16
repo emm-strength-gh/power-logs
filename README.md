@@ -135,6 +135,17 @@ The tracker is built to fit the screen with no page scroll:
 - **Inside Spotter:** one-line header (details behind ⓘ), and the frame is sized to
   the rest of the window, so there's one scroll area at most.
 
+## Tracking and defaults
+
+- **Live readout:** while the bar is being tracked, the big number shows the bar's
+  current speed (negative on the way down) with the peak so far, and the velocity
+  chart draws as it goes.
+- **New clip = clean slate:** loading another video clears the previous reps, RPE,
+  chart, export and calibration.
+- **Bench defaults:** RPE 10 anchor 0.12 m/s (the whole bench curve sits 0.02 m/s
+  higher than before), minimum rep height 0.14 m. Anchors you've saved yourself in ⚙
+  still win.
+
 ## Stalls (grinds) in the Velocity Tracker
 
 A stall is the bar almost stopping (under 0.05 m/s) while it's between 15% and 90% of
@@ -153,8 +164,13 @@ of the rep. Counted stalls show as a rust segment on the velocity chart and a
 *Export video* draws every frame of the tracked window and encodes it with WebCodecs
 (H.264 + AAC on iPhone, VP9 + Opus in Chromium), then writes the MP4 in the page
 (`mp4Mux` in `VBT.html`). Because nothing is recorded in real time, a busy phone
-makes the export take longer instead of freezing frames. The original audio is read
-straight from the file and trimmed to the same window.
+makes the export take longer instead of freezing frames.
+
+The original sound comes along. For MP4/MOV clips (what an iPhone records) the AAC
+audio packets are copied straight out of the file and trimmed to the tracked window,
+with no decoding, so it works even where the browser can't decode the clip's audio.
+Other files are decoded and re-encoded instead. The ready line says *with the original
+audio*, or why the video is silent.
 
 Browsers without WebCodecs, or without an audio encoder when the clip has sound
 (Safari before 26), fall back to the older real-time recorder, which keeps the audio

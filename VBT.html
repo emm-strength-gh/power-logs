@@ -2401,6 +2401,176 @@ function drawChart(){
 }
 window.addEventListener("resize", drawChart);
 
+/* ---- MP4MUX-BEGIN ---- */
+/* Minimal MP4 writer for WebCodecs output: one video track (H.264 "avc1" or
+   VP9 "vp09") and optionally one audio track (AAC "mp4a" or Opus "Opus").
+   Samples arrive in decode order with presentation timestamps (microseconds),
+   exactly as EncodedVideoChunk / EncodedAudioChunk deliver them. Decode times
+   are derived from the sorted presentation times; if the encoder reordered
+   frames (B-frames), a ctts box and an edit list keep playback starting at 0.
+   moov is written before mdat so the file plays progressively. */
+function mp4Mux(opt){
+  var u8=function(n){ return new Uint8Array(n); };
+  var ascii=function(s){ var a=u8(s.length); for(var i=0;i<s.length;i++) a[i]=s.charCodeAt(i); return a; };
+  function cat(parts){
+    var n=0,i; for(i=0;i<parts.length;i++) n+=parts[i].length;
+    var o=u8(n), p=0; for(i=0;i<parts.length;i++){ o.set(parts[i],p); p+=parts[i].length; }
+    return o;
+  }
+  function be(n,bytes){ var a=u8(bytes); for(var i=bytes-1;i>=0;i--){ a[i]=n&255; n=Math.floor(n/256); } return a; }
+  function sbe32(n){ return be(n<0 ? n+4294967296 : n, 4); }
+  function box(type){ var kids=cat(Array.prototype.slice.call(arguments,1)); return cat([be(8+kids.length,4), ascii(type), kids]); }
+  function full(type,ver,flags){ var kids=cat(Array.prototype.slice.call(arguments,3)); return box(type, u8([ver]), be(flags,3), kids); }
+  var MATRIX=cat([be(0x10000,4),be(0,4),be(0,4), be(0,4),be(0x10000,4),be(0,4), be(0,4),be(0,4),be(0x40000000,4)]);
+
+  /* ---- per-track timing tables ---- */
+  function prepare(tr, timescale){
+    var s=tr.samples, n=s.length, i;
+    var pts=s.map(function(x){ return Math.round(x.pts*timescale/1e6); });
+    var sorted=pts.slice().sort(function(a,b){ return a-b; });
+    var base=sorted[0];
+    // Encoders that need priming (AAC) mark it with negative timestamps; those
+    // samples are stored but skipped at playback through the edit list.
+    var prime = base<0 ? -base : 0;
+    var dts=sorted.map(function(v){ return v-base; });
+    var ptsz=pts.map(function(v){ return v-base; });
+    var cts=ptsz.map(function(v,k){ return v-dts[k]; });
+    var reordered=cts.some(function(c){ return c!==0; });
+    var minC=Math.min.apply(null,cts.concat([0]));
+    var shift=-minC;                     // make every composition offset >= 0
+    var durs=[];
+    for(i=0;i<n;i++) durs.push(i+1<n ? dts[i+1]-dts[i] : 0);
+    var med=durs.slice(0,Math.max(1,n-1)).sort(function(a,b){ return a-b; })[Math.floor(Math.max(0,n-2)/2)]||1;
+    if(tr.lastDur) durs[n-1]=Math.max(1,Math.round(tr.lastDur*timescale/1e6)); else durs[n-1]=med;
+    for(i=0;i<n;i++) if(durs[i]<=0) durs[i]=1;
+    var total=0; for(i=0;i<n;i++) total+=durs[i];
+    return {ts:timescale, durs:durs, cts:cts.map(function(c){ return c+shift; }), reordered:reordered,
+            shift:shift+prime, total:total, shown:total-prime};
+  }
+  function stts(durs){
+    var runs=[], i;
+    for(i=0;i<durs.length;i++){
+      if(runs.length && runs[runs.length-1][1]===durs[i]) runs[runs.length-1][0]++;
+      else runs.push([1,durs[i]]);
+    }
+    return full("stts",0,0, be(runs.length,4), cat(runs.map(function(r){ return cat([be(r[0],4),be(r[1],4)]); })));
+  }
+  function ctts(cts){
+    var runs=[], i;
+    for(i=0;i<cts.length;i++){
+      if(runs.length && runs[runs.length-1][1]===cts[i]) runs[runs.length-1][0]++;
+      else runs.push([1,cts[i]]);
+    }
+    return full("ctts",0,0, be(runs.length,4), cat(runs.map(function(r){ return cat([be(r[0],4),be(r[1],4)]); })));
+  }
+  function stsz(samples){ return full("stsz",0,0, be(0,4), be(samples.length,4), cat(samples.map(function(x){ return be(x.data.length,4); }))); }
+  function stsc(){ return full("stsc",0,0, be(1,4), be(1,4), be(1,4), be(1,4)); }   // one sample per chunk
+  function stco(offsets){ return full("stco",0,0, be(offsets.length,4), cat(offsets.map(function(o){ return be(o,4); }))); }
+  function stss(samples){
+    var keys=[]; samples.forEach(function(x,i){ if(x.key) keys.push(i+1); });
+    if(keys.length===samples.length) return u8(0);          // all sync: box omitted
+    return full("stss",0,0, be(keys.length,4), cat(keys.map(function(k){ return be(k,4); })));
+  }
+  function dinf(){ return box("dinf", full("dref",0,0, be(1,4), full("url ",0,1))); }
+  function elst(movieDur, mediaTime){
+    return box("edts", full("elst",0,0, be(1,4), be(movieDur,4), sbe32(mediaTime), be(1,2), be(0,2)));
+  }
+
+  /* ---- sample entries ---- */
+  function visualEntry(v){
+    var head=cat([u8(6), be(1,2), u8(16), be(v.width,2), be(v.height,2),
+      be(0x480000,4), be(0x480000,4), be(0,4), be(1,2), u8(32), be(0x18,2), be(0xffff,2)]);
+    if(/^avc1/.test(v.codec)) return box("avc1", head, box("avcC", v.description));
+    if(/^vp09/.test(v.codec)){
+      var p=v.codec.split("."), prof=+p[1]||0, lvl=+p[2]||10, depth=+p[3]||8;
+      var vpcC=full("vpcC",1,0, u8([prof, lvl, (depth<<4)|(1<<1)|0, 1, 1, 1]), be(0,2));
+      return box("vp09", head, vpcC);
+    }
+    throw new Error("unsupported video codec "+v.codec);
+  }
+  function descLen(n){ return u8([0x80|((n>>21)&127), 0x80|((n>>14)&127), 0x80|((n>>7)&127), n&127]); }
+  function desc(tag, body){ return cat([u8([tag]), descLen(body.length), body]); }
+  function aacASC(a){
+    var rates=[96000,88200,64000,48000,44100,32000,24000,22050,16000,12000,11025,8000,7350];
+    var fi=rates.indexOf(a.sampleRate); if(fi<0) fi=4;
+    var v=(2<<11)|(fi<<7)|(a.channels<<3);
+    return u8([v>>8, v&255]);
+  }
+  function audioEntry(a){
+    var head=cat([u8(6), be(1,2), u8(8), be(a.channels,2), be(16,2), be(0,2), be(0,2),
+      be((a.codec==="opus"?48000:a.sampleRate)*65536 % 4294967296,4)]);
+    if(/^mp4a/.test(a.codec)){
+      var asc=(a.description && a.description.length) ? a.description : aacASC(a);
+      var dcd=cat([u8([0x40, 0x15]), be(0,3), be(a.bitrate||128000,4), be(a.bitrate||128000,4), desc(0x05, asc)]);
+      var es=cat([be(2,2), u8([0]), desc(0x04, dcd), desc(0x06, u8([2]))]);
+      return box("mp4a", head, full("esds",0,0, desc(0x03, es)));
+    }
+    if(a.codec==="opus"){
+      var pre=312, inRate=a.sampleRate;
+      var d=a.description;
+      if(d && d.length>=19 && String.fromCharCode.apply(null,d.subarray(0,8))==="OpusHead"){
+        pre=d[10]|(d[11]<<8); inRate=(d[12]|(d[13]<<8)|(d[14]<<16)|(d[15]<<24))>>>0;
+      }
+      var dOps=box("dOps", u8([0, a.channels]), be(pre,2), be(inRate,4), be(0,2), u8([0]));
+      return box("Opus", head, dOps);
+    }
+    throw new Error("unsupported audio codec "+a.codec);
+  }
+
+  /* ---- assemble ---- */
+  var tracks=[], MOVIE_TS=1000;
+  var v=opt.video;
+  tracks.push({kind:"vide", t:v, tm:prepare(v, 90000)});
+  if(opt.audio && opt.audio.samples.length){
+    var a=opt.audio;
+    tracks.push({kind:"soun", t:a, tm:prepare(a, a.codec==="opus"?48000:a.sampleRate)});
+  }
+
+  function trak(tr, id, offsets){
+    var t=tr.t, tm=tr.tm, isV=tr.kind==="vide";
+    var movieDur=Math.round(tm.shown*MOVIE_TS/tm.ts);
+    var tkhd=full("tkhd",0,3, be(0,4), be(0,4), be(id,4), be(0,4), be(movieDur,4), u8(8),
+      be(0,2), be(isV?0:1,2), be(isV?0:0x100,2), be(0,2), MATRIX,
+      be(isV?t.width*65536:0,4), be(isV?t.height*65536:0,4));
+    var mdhd=full("mdhd",0,0, be(0,4), be(0,4), be(tm.ts,4), be(tm.total,4), be(0x55c4,2), be(0,2));
+    var hdlr=full("hdlr",0,0, be(0,4), ascii(tr.kind), u8(12), ascii(isV?"VideoHandler":"SoundHandler"), u8([0]));
+    var mhd=isV ? full("vmhd",0,1, u8(8)) : full("smhd",0,0, u8(4));
+    var stbl=box("stbl",
+      full("stsd",0,0, be(1,4), isV?visualEntry(t):audioEntry(t)),
+      stts(tm.durs),
+      tm.reordered ? ctts(tm.cts) : u8(0),
+      isV ? stss(t.samples) : u8(0),
+      stsc(), stsz(t.samples), stco(offsets));
+    var edts = tm.shift ? elst(movieDur, tm.shift) : u8(0);
+    return box("trak", tkhd, edts, box("mdia", mdhd, hdlr, box("minf", mhd, dinf(), stbl)));
+  }
+  function moov(offsetsPerTrack){
+    var maxDur=0;
+    tracks.forEach(function(tr){ maxDur=Math.max(maxDur, Math.round(tr.tm.shown*MOVIE_TS/tr.tm.ts)); });
+    var mvhd=full("mvhd",0,0, be(0,4), be(0,4), be(MOVIE_TS,4), be(maxDur,4), be(0x10000,4), be(0x100,2), u8(10),
+      MATRIX, u8(24), be(tracks.length+1,4));
+    return box("moov", mvhd, cat(tracks.map(function(tr,k){ return trak(tr, k+1, offsetsPerTrack[k]); })));
+  }
+
+  var ftyp=box("ftyp", ascii("isom"), be(0x200,4), ascii("isom"), ascii("iso2"), ascii(/^avc1/.test(v.codec)?"avc1":"iso6"), ascii("mp41"));
+  // interleave samples by time so a player never has to seek far between tracks
+  var order=[];
+  tracks.forEach(function(tr,k){ tr.t.samples.forEach(function(s,i){ order.push({k:k,i:i,t:s.pts}); }); });
+  order.sort(function(x,y){ return x.t-y.t || x.k-y.k; });
+  var dataLen=0; order.forEach(function(o){ dataLen+=tracks[o.k].t.samples[o.i].data.length; });
+  var dummy=tracks.map(function(tr){ return tr.t.samples.map(function(){ return 0; }); });
+  var moovLen=moov(dummy).length;
+  var mdatHead=8, pos=ftyp.length+moovLen+mdatHead;
+  var offs=tracks.map(function(tr){ return new Array(tr.t.samples.length); });
+  order.forEach(function(o){ offs[o.k][o.i]=pos; pos+=tracks[o.k].t.samples[o.i].data.length; });
+  if(pos>4294967295) throw new Error("export too large");
+  var moovBox=moov(offs);
+  var parts=[ftyp, moovBox, be(mdatHead+dataLen,4), ascii("mdat")];
+  order.forEach(function(o){ parts.push(tracks[o.k].t.samples[o.i].data); });
+  return new Blob(parts, {type:"video/mp4"});
+}
+/* ---- MP4MUX-END ---- */
+
 /* ============================ video export ============================ */
 
 /* Renders the clip plus the bar path and per-rep RPE to a canvas and records that
@@ -2476,7 +2646,7 @@ function packRows(widths, maxW, gap){
   }
   return rows;
 }
-var EXP_MAX_ROWS=3;
+var EXP_MAX_ROWS=3, chipCache={key:null};
 function drawExportChips(t){
   var g=expx, lift=profileKey(), K=keptReps();
   if(!K.length) return;
@@ -2490,42 +2660,54 @@ function drawExportChips(t){
     return (i+1)+sep+r.mcv.toFixed(2)+(compact?"":" m/s")+sep+"RPE "+rpeLabel(rpeForRep(r,lift))
            + (isStalled(r,lift) ? sep+"stall" : "");
   }
-  var fMax=Math.max(14, Math.round(U/25)), fMid=Math.max(13, Math.round(U/30)), fMin=Math.max(12, Math.round(U/38));
-  var compact=false;
-  var all=K.map(function(o){ return pillLabel(o.i, o.r, false); });
   var ri=repAt(t);
-  var measure=function(list,f){
-    g.font="600 "+f+"px -apple-system,sans-serif";
-    return list.map(function(L){ return g.measureText(L).width+f*1.6; });
-  };
+  /* The layout (font size, rows, which reps show) only changes when the active
+     rep or the numbers change, so it's measured once and reused for every
+     frame in between — measuring text each frame was a real cost on a phone. */
+  var key=[EW,EH,ri,lift,S.stallMode,mvtFor(lift),
+    K.map(function(o){ return o.i+(S.nostall[o.i]?"x":""); }).join(",")].join("|");
+  var f, widths, rows, idx, all;
+  if(chipCache.key===key){
+    f=chipCache.f; widths=chipCache.widths; rows=chipCache.rows; idx=chipCache.idx; all=chipCache.all;
+  } else {
+    var fMax=Math.max(14, Math.round(U/25)), fMid=Math.max(13, Math.round(U/30)), fMin=Math.max(12, Math.round(U/38));
+    var compact=false;
+    var all=K.map(function(o){ return pillLabel(o.i, o.r, false); });
+    var measure=function(list,f){
+      g.font="600 "+f+"px -apple-system,sans-serif";
+      return list.map(function(L){ return g.measureText(L).width+f*1.6; });
+    };
 
-  // Largest font at which every rep fits in up to three rows.
-  var f=fMax, widths, rows, idx=K.map(function(_,j){ return j; });
-  for(;;){
-    widths=measure(all,f);
-    rows=packRows(widths,maxW,Math.round(f*0.45));
-    if(rows.length<=EXP_MAX_ROWS || f<=fMin) break;
-    if(!compact && f<=fMid){
-      compact=true; f=fMax+1;
-      all=K.map(function(o){ return pillLabel(o.i, o.r, true); });
+    // Largest font at which every rep fits in up to three rows.
+    f=fMax; idx=K.map(function(_,j){ return j; });
+    for(;;){
+      widths=measure(all,f);
+      rows=packRows(widths,maxW,Math.round(f*0.45));
+      if(rows.length<=EXP_MAX_ROWS || f<=fMin) break;
+      if(!compact && f<=fMid){
+        compact=true; f=fMax+1;
+        all=K.map(function(o){ return pillLabel(o.i, o.r, true); });
+      }
+      f--;
     }
-    f--;
-  }
-  // Long sets that still don't fit: show the biggest run of consecutive reps
-  // that fits in three rows, slid along so the rep being lifted is in it.
-  if(rows.length>EXP_MAX_ROWS){
-    var act=-1;
-    for(var q=0;q<K.length;q++) if(K[q].i===ri) act=q;
-    var n=K.length, best=null;
-    for(var k=n-1;k>=1 && !best;k--){
-      var start = act<0 ? Math.max(0,n-k) : clamp(act-Math.floor(k/2),0,n-k);
-      var sub=widths.slice(start,start+k);
-      if(packRows(sub,maxW,Math.round(f*0.45)).length<=EXP_MAX_ROWS) best={s:start,k:k};
+    // Long sets that still don't fit: show the biggest run of consecutive reps
+    // that fits in three rows, slid along so the rep being lifted is in it.
+    if(rows.length>EXP_MAX_ROWS){
+      var act=-1;
+      for(var q=0;q<K.length;q++) if(K[q].i===ri) act=q;
+      var n=K.length, best=null;
+      for(var k=n-1;k>=1 && !best;k--){
+        var start = act<0 ? Math.max(0,n-k) : clamp(act-Math.floor(k/2),0,n-k);
+        var sub=widths.slice(start,start+k);
+        if(packRows(sub,maxW,Math.round(f*0.45)).length<=EXP_MAX_ROWS) best={s:start,k:k};
+      }
+      if(!best) best={s:Math.max(0,act),k:1};
+      idx=[]; for(var z=best.s;z<best.s+best.k;z++) idx.push(z);
+      widths=idx.map(function(j){ return widths[j]; });
+      rows=packRows(widths,maxW,Math.round(f*0.45));
     }
-    if(!best) best={s:Math.max(0,act),k:1};
-    idx=[]; for(var z=best.s;z<best.s+best.k;z++) idx.push(z);
-    widths=idx.map(function(j){ return widths[j]; });
-    rows=packRows(widths,maxW,Math.round(f*0.45));
+
+    chipCache={key:key, f:f, widths:widths, rows:rows, idx:idx, all:all};
   }
 
   var h=Math.round(f*2.05), gap=Math.round(f*0.45), rowGap=Math.round(f*0.4), y=pad;
@@ -2609,29 +2791,19 @@ function stopExport(){
 /* While recording, the Export button itself becomes Stop, so the control is
    on screen without opening the menu. */
 function setVidBtnLabel(rec){
-  $("vidBtn").innerHTML = rec ? 'Stop recording' : 'Export video <span>with overlay + audio</span>';
+  $("vidBtn").innerHTML = rec ? 'Stop export' : 'Export video <span>with overlay + audio</span>';
   $("vidBtn").classList.toggle("stop", !!rec);
-  $("expToggle").textContent = rec ? "Stop recording" : "Export \u25be";
+  $("expToggle").textContent = rec ? "Stop export" : "Export \u25be";
   $("expToggle").classList.toggle("stop", !!rec);
   $("runBtn").disabled = !!rec || !(stepReady(2) && stepReady(3));
   syncPlayBtn();
 }
-async function exportVideo(){
-  if(exporting){ stopExport(); return; }
-  if(!S.A || !S.path.length){ return; }
-
+async function exportRealtime(){
   var mime=pickVideoMime();
   if(mime===null){
     $("vidExpNote").textContent="This browser cannot record video. Open the app in Safari and try again.";
     return;
   }
-  if(replaying) stopReplay(false);
-  if(previewing) stopPreview(true);
-  closeMenu();
-
-  expBlob=null; expChunks=[];
-  $("readyRow").classList.add("hid"); $("savePcBtn").classList.add("hid");
-
   // Tap the clip's own audio before anything else, still inside the click's
   // user-activation window — AudioContext.resume() needs that on iOS. Unmuting
   // only matters if the tap actually worked; nothing plays out loud either way
@@ -2676,9 +2848,7 @@ async function exportVideo(){
     // does nothing there (see saveFile below), so Save video's share sheet is
     // the only route in that context and this button would look broken.
     $("savePcBtn").classList.toggle("hid", isStandalonePWA());
-    $("vidExpNote").textContent="Ready \u2014 "+(expBlob.size/1048576).toFixed(1)+" MB "
-      + expExt.toUpperCase()+", "+(expHasAudio?"with the original audio":"silent \u2014 this browser can't capture audio")
-      +", "+EW+"\u00d7"+EH+".";
+    showExportReady("silent \u2014 this browser can't capture audio");
   };
 
   var start=S.path[0].t, end=S.path[S.path.length-1].t;
@@ -2698,9 +2868,13 @@ async function exportVideo(){
     if(!exporting) return;
     var t=meta?meta.mediaTime:vid.currentTime;
     drawExportFrame(t);
-    paintOverlay(); gauge(t); syncScrubTo(t);
-    $("vidExpNote").textContent="Recording \u2014 "
-      + clamp(Math.round((t-start)/Math.max(0.001,end-start)*100),0,100)+"%";
+    // keep the main thread free for drawing: the on-screen mirror and progress
+    // text only refresh a few times a second
+    if(uiDue()){
+      paintOverlay(); gauge(t); syncScrubTo(t);
+      $("vidExpNote").textContent="Recording \u2014 "
+        + clamp(Math.round((t-start)/Math.max(0.001,end-start)*100),0,100)+"%";
+    }
     if(t>=end-0.001 || vid.ended){ stopExport(); return; }
     if(hasRVFC) vid.requestVideoFrameCallback(step);
     else requestAnimationFrame(function(n){ step(n,null); });
@@ -2713,6 +2887,244 @@ async function exportVideo(){
     stopExport();
     $("vidExpNote").textContent="The clip would not start playing. Tap Export video again.";
   }
+}
+/* ---------- export entry point ----------
+   Preferred path renders the clip frame by frame and encodes it with
+   WebCodecs, so every frame is drawn no matter how slow the phone is — the
+   export just takes longer. The old path (canvas + MediaRecorder in real time)
+   drops and repeats frames whenever drawing falls behind the playing video,
+   which is what showed up as frozen stretches. It remains only as a fallback
+   for browsers without WebCodecs, or without an audio encoder when the clip
+   has sound (Safari before 26). */
+var lastUi=0;
+function uiDue(){ var n=Date.now(); if(n-lastUi<250) return false; lastUi=n; return true; }
+function showExportReady(silentWhy){
+  $("readyRow").classList.remove("hid");
+  // Only useful outside an installed home-screen app: <a download> silently
+  // does nothing there (see saveFile below), so Save video's share sheet is
+  // the only route in that context and this button would look broken.
+  $("savePcBtn").classList.toggle("hid", isStandalonePWA());
+  $("vidExpNote").textContent="Ready — "+(expBlob.size/1048576).toFixed(1)+" MB "
+    + expExt.toUpperCase()+", "+(expHasAudio?"with the original audio":silentWhy)
+    +", "+EW+"×"+EH+".";
+}
+function exportSize(){
+  var LONG=1280, sc=Math.min(1, LONG/Math.max(S.vw,S.vh));
+  EW=Math.round(S.vw*sc/2)*2; EH=Math.round(S.vh*sc/2)*2;   // even dimensions for H.264
+  exp.width=EW; exp.height=EH;
+}
+async function exportVideo(){
+  if(exporting){ stopExport(); return; }
+  if(!S.A || !S.path.length){ return; }
+  if(replaying) stopReplay(false);
+  if(previewing) stopPreview(true);
+  closeMenu();
+  expBlob=null; expChunks=[];
+  $("readyRow").classList.add("hid"); $("savePcBtn").classList.add("hid");
+  exportSize();
+
+  // No WebCodecs at all: straight to the real-time recorder, synchronously,
+  // so its audio tap still runs inside the tap's user-activation window.
+  if(typeof VideoEncoder!=="function" || typeof VideoFrame!=="function") return exportRealtime();
+
+  exporting=true;
+  setVidBtnLabel(true);
+  $("vidExpNote").textContent="Preparing…";
+  var plan;
+  try{ plan=await planOffline(); }catch(e){ plan=null; }
+  if(!exporting) return;                           // cancelled while preparing
+  if(!plan){
+    exporting=false; setVidBtnLabel(false);
+    return exportRealtime();
+  }
+  try{ await exportOffline(plan); }
+  catch(e){
+    exporting=false; setVidBtnLabel(false); renderReps();
+    $("vidExpNote").textContent="Export failed ("+(e && e.message || e)+"). Tap Export video to try again.";
+  }
+}
+function toU8(x){
+  if(!x) return null;
+  if(x instanceof ArrayBuffer) return new Uint8Array(x.slice(0));
+  return new Uint8Array(x.buffer.slice(x.byteOffset, x.byteOffset+x.byteLength));
+}
+function decodeClipAudio(){
+  return fetch(S.url).then(function(r){ return r.arrayBuffer(); }).then(function(ab){
+    if(!window.OfflineAudioContext && !window.webkitOfflineAudioContext) return null;
+    // decodes, and resamples to 48 kHz
+    var ctx=new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(2, 1, 48000);
+    return new Promise(function(res){
+      var p;
+      try{ p=ctx.decodeAudioData(ab, res, function(){ res(null); }); }catch(e){ res(null); }
+      if(p && p.then) p.then(res, function(){ res(null); });
+    });
+  }).catch(function(){ return null; });
+}
+function hasSound(buf){
+  if(!buf || !buf.length) return false;
+  for(var c=0;c<buf.numberOfChannels;c++){
+    var d=buf.getChannelData(c);
+    for(var i=0;i<d.length;i+=97) if(d[i]>1e-4 || d[i]<-1e-4) return true;
+  }
+  return false;
+}
+async function planOffline(){
+  var fps=(S.A.fps>0)?Math.min(60,Math.max(24,Math.round(S.A.fps))):30;
+  var bitrate=Math.round(Math.min(12e6, Math.max(2e6, EW*EH*fps*0.1)));
+  var vcodec=null, list=["avc1.640028","avc1.4d0028","avc1.42e028","vp09.00.10.08"];
+  for(var i=0;i<list.length && !vcodec;i++){
+    var c=list[i], cfg={codec:c, width:EW, height:EH, bitrate:bitrate, framerate:fps};
+    if(c.indexOf("avc1")===0) cfg.avc={format:"avc"};
+    try{ if((await VideoEncoder.isConfigSupported(cfg)).supported) vcodec=cfg; }catch(e){}
+  }
+  if(!vcodec) return null;
+  var buf=await decodeClipAudio();
+  var sound=hasSound(buf), acodec=null;
+  if(sound && typeof AudioEncoder==="function" && typeof AudioData==="function"){
+    var ch=Math.min(2, buf.numberOfChannels);
+    var alist=["mp4a.40.2","opus"];
+    for(var k=0;k<alist.length && !acodec;k++){
+      var acfg={codec:alist[k], sampleRate:48000, numberOfChannels:ch, bitrate:128000};
+      try{ if((await AudioEncoder.isConfigSupported(acfg)).supported) acodec=acfg; }catch(e){}
+    }
+  }
+  // A clip with sound but no way to encode it: the real-time path keeps the
+  // audio, so prefer it over a smooth but silent file.
+  if(sound && !acodec) return null;
+  return {v:vcodec, fps:fps, audio: sound ? {cfg:acodec, buf:buf} : null};
+}
+function waitMs(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+async function exportOffline(plan){
+  var start=S.path[0].t, end=S.path[S.path.length-1].t;
+  var srcDt=(S.A && S.A.dt>0) ? S.A.dt : 1/30;
+  var outDt=Math.max(srcDt, 1/60);                  // never more than 60 fps out
+  var minGap=outDt*0.6;
+  var vs=[], vdesc=null, failed=null, n=0, lastTs=-1;
+  var kInt=Math.max(1, Math.round(1/outDt));        // a keyframe every second
+
+  var enc=new VideoEncoder({
+    output:function(chunk, meta){
+      if(meta && meta.decoderConfig && meta.decoderConfig.description) vdesc=toU8(meta.decoderConfig.description);
+      var d=new Uint8Array(chunk.byteLength); chunk.copyTo(d);
+      vs.push({pts:chunk.timestamp, key:chunk.type==="key", data:d});
+    },
+    error:function(e){ failed=e; }
+  });
+  enc.configure(plan.v);
+
+  var encodeAt=function(t){
+    var ts=Math.round((t-start)*1e6);
+    if(ts<=lastTs) return;
+    drawExportFrame(t);
+    var f=new VideoFrame(exp, {timestamp:ts, duration:Math.round(outDt*1e6)});
+    enc.encode(f, {keyFrame: n%kInt===0});
+    f.close(); n++; lastTs=ts;
+  };
+  var drain=async function(){ while(enc.encodeQueueSize>2 && !failed && exporting) await waitMs(8); };
+  var progress=function(t, extra){
+    if(!uiDue()) return;
+    paintOverlay(); gauge(t); syncScrubTo(t);
+    $("vidExpNote").textContent="Rendering — "
+      + clamp(Math.round((t-start)/Math.max(0.001,end-start)*100),0,99)+"%"+(extra||"")
+      + " · every frame is drawn, so this can take longer than the clip";
+  };
+
+  // First frame, then play the clip and draw each frame as it's presented. If the decoder still skips one, go back and seek to it so the
+  // output never holds a stale frame.
+  await seek(start);
+  encodeAt(start);
+  // start at normal speed; each time the decoder skips a frame, slow down
+  var last=start, rate=1, filled=0;
+  await new Promise(function(resolve){
+    var busy=false, finished=false;
+    var finish=function(){ if(finished) return; finished=true; try{ vid.pause(); }catch(e){} resolve(); };
+    var onFrame=async function(now, meta){
+      if(finished) return;
+      if(!exporting || failed){ finish(); return; }
+      var t=meta ? meta.mediaTime : vid.currentTime;
+      if(busy){ vid.requestVideoFrameCallback(onFrame); return; }
+      busy=true;
+      try{
+        if(t>end+1e-3 || vid.ended){ finish(); return; }
+        if(t-last >= minGap){
+          if(t-last > outDt*1.6){
+            // gap: pause, fill the missing frames by seeking, carry on slower
+            vid.pause();
+            for(var m=last+outDt; m<t-outDt*0.4 && exporting; m+=outDt){
+              await seek(m); encodeAt(m); filled++; await drain();
+            }
+            rate=Math.max(0.15, rate*0.75);
+            await seek(t);
+            encodeAt(t); last=t;
+            await drain();
+            vid.playbackRate=rate;
+            vid.requestVideoFrameCallback(onFrame);
+            try{ await vid.play(); }catch(e){ finish(); }
+            return;
+          }
+          encodeAt(t); last=t;
+          if(enc.encodeQueueSize>2){ vid.pause(); await drain(); vid.requestVideoFrameCallback(onFrame); try{ await vid.play(); }catch(e){ finish(); } return; }
+        }
+        progress(t);
+        vid.requestVideoFrameCallback(onFrame);
+      } finally { busy=false; }
+    };
+    vid.addEventListener("ended", function(){ finish(); }, {once:true});
+    vid.playbackRate=rate;
+    vid.requestVideoFrameCallback(onFrame);
+    vid.play().catch(function(){ finish(); });
+  });
+  try{ vid.playbackRate=1; }catch(e){}
+  if(!exporting){ try{ enc.close(); }catch(e){} $("vidExpNote").textContent="Export stopped."; return; }
+  if(last < end-outDt*0.5){ await seek(end); encodeAt(end); }
+  await enc.flush();
+  enc.close();
+  if(failed) throw failed;
+  if(!vs.length) throw new Error("no frames were encoded");
+
+  // audio: straight from the file, trimmed to the same window
+  var track=null;
+  if(plan.audio){
+    $("vidExpNote").textContent="Adding the original audio…";
+    var buf=plan.audio.buf, cfg=plan.audio.cfg, sr=48000, ch=cfg.numberOfChannels;
+    var from=Math.max(0, Math.floor(start*sr)), to=Math.min(buf.length, Math.ceil((end+outDt)*sr));
+    var as=[], adesc=null, afail=null;
+    var ae=new AudioEncoder({
+      output:function(chunk, meta){
+        if(meta && meta.decoderConfig && meta.decoderConfig.description) adesc=toU8(meta.decoderConfig.description);
+        var d=new Uint8Array(chunk.byteLength); chunk.copyTo(d);
+        as.push({pts:chunk.timestamp, key:true, data:d});
+      },
+      error:function(e){ afail=e; }
+    });
+    ae.configure(cfg);
+    var BLOCK=4096;
+    for(var pos=from; pos<to && !afail; pos+=BLOCK){
+      var cnt=Math.min(BLOCK, to-pos), data=new Float32Array(cnt*ch);
+      for(var c=0;c<ch;c++) data.set(buf.getChannelData(c).subarray(pos,pos+cnt), c*cnt);
+      var ad=new AudioData({format:"f32-planar", sampleRate:sr, numberOfFrames:cnt, numberOfChannels:ch,
+                            timestamp:Math.round((pos-from)/sr*1e6), data:data});
+      ae.encode(ad); ad.close();
+      if(ae.encodeQueueSize>8) await waitMs(4);
+    }
+    await ae.flush(); ae.close();
+    if(!afail && as.length){
+      track={codec:cfg.codec, sampleRate:sr, channels:ch, bitrate:cfg.bitrate, description:adesc, samples:as};
+    }
+  }
+
+  $("vidExpNote").textContent="Writing the file…";
+  expBlob=mp4Mux({
+    video:{codec:plan.v.codec, width:EW, height:EH, description:vdesc, lastDur:Math.round(outDt*1e6), samples:vs},
+    audio:track
+  });
+  expExt="mp4";
+  expHasAudio=!!track;
+  exporting=false;
+  setVidBtnLabel(false);
+  renderReps();
+  syncScrubTo(end);
+  showExportReady(plan.audio ? "silent — the audio couldn't be encoded" : "silent — the clip has no sound");
 }
 $("vidBtn").addEventListener("click", function(){ closeMenu(); exportVideo(); });
 
@@ -2854,7 +3266,7 @@ if("serviceWorker" in navigator){
   });
   applyHostTheme(qp("theme"));   // honour the URL so there's no wrong-palette flash
 
-  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-13" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-14" }, "*"); } catch (e) {}
 })();
 </script>
 

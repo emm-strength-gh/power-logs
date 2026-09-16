@@ -128,7 +128,7 @@ The tracker is built to fit the screen with no page scroll:
   list at the top of the panel doubling as the summary.
 - **Step 4:** the last rep's speed and set RPE come first, then a velocity strip and
   the rep list (the only part that scrolls). *Export ▾* holds CSV and video; it turns
-  into *Stop recording* while a video export runs. Velocity anchors and filming tips
+  into *Stop export* while a video export runs. Velocity anchors and filming tips
   live behind ⚙. The play button on the video replays with the bar path.
 - **Scale:** press and drag across the plate to draw the whole line; tapping twice
   still works, and the end dots can be dragged afterwards.
@@ -147,6 +147,18 @@ of the rep. Counted stalls show as a rust segment on the velocity chart and a
 - **RPE 10 only if slow** (default): a stalled rep is 10 when its speed already reads
   8.5 or harder; otherwise the stall adds one RPE.
 - **Always RPE 10**: any counted stall is 10.
+
+## Video export
+
+*Export video* draws every frame of the tracked window and encodes it with WebCodecs
+(H.264 + AAC on iPhone, VP9 + Opus in Chromium), then writes the MP4 in the page
+(`mp4Mux` in `VBT.html`). Because nothing is recorded in real time, a busy phone
+makes the export take longer instead of freezing frames. The original audio is read
+straight from the file and trimmed to the same window.
+
+Browsers without WebCodecs, or without an audio encoder when the clip has sound
+(Safari before 26), fall back to the older real-time recorder, which keeps the audio
+but can still stutter on a slow device.
 
 ## Offline
 

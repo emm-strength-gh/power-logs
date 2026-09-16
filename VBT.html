@@ -636,19 +636,18 @@ input[type=range].rng{width:100%;accent-color:var(--ink);min-height:30px;margin:
 
    All four tables are calibrated to this lifter rather than left at population
    defaults, because measured values kept coming in slower than generic tables:
-     bench    0.22 = RPE 6, 0.17 = RPE 7, 0.11 = RPE 9.5, 0.10 = RPE 10
+     bench    RPE 10 = 0.12 (the whole bench curve below was moved up 0.02 m/s
+              from the earlier 0.10 anchor, exactly as a personal anchor would)
      squat    0.27 = RPE 8.5
      deadlift RPE 10 anchor 0.10, both stances
    Squat and both deadlift curves are the published shapes shifted down 0.09 m/s,
    which is exactly what the app does when a lifter sets a personal anchor, so the
    relative spacing between efforts is preserved. Bench needed its own shape, not
-   just a shift. Bench RPE 9 is 0.12 rather than a rounder number because that is
-   what puts 0.11 exactly halfway between 9 and 10 under the linear interpolation
-   in rpeFor(). Anyone else using this can still override any table from its RPE 10
+   just a shift. Anyone else using this can still override any table from its RPE 10
    anchor, which shifts that whole curve. */
 var ANCHORS = {
   "squat":    {4:0.61,5:0.53,6:0.45,7:0.37,8:0.30,9:0.24,10:0.19},
-  "bench":    {4:0.34,5:0.275,6:0.22,7:0.17,8:0.145,9:0.12,10:0.10},
+  "bench":    {4:0.36,5:0.295,6:0.24,7:0.19,8:0.165,9:0.14,10:0.12},
   "dl-conv":  {4:0.50,5:0.42,6:0.34,7:0.27,8:0.21,9:0.15,10:0.10},
   "dl-sumo":  {4:0.42,5:0.35,6:0.29,7:0.23,8:0.18,9:0.14,10:0.10}
 };
@@ -656,7 +655,7 @@ var LIFTNAME = {"squat":"Squat","bench":"Bench","dl-conv":"Deadlift, conventiona
 var SHORTNAME = {"squat":"squat","bench":"bench","dl-conv":"conventional","dl-sumo":"sumo"};
 /* Sumo bar travel is 20-25% shorter than conventional, so the rep-height filter
    has to come down with it or real sumo reps get discarded. */
-var DEFAULT_ROM = {"squat":0.25,"bench":0.09,"dl-conv":0.30,"dl-sumo":0.22};
+var DEFAULT_ROM = {"squat":0.25,"bench":0.14,"dl-conv":0.30,"dl-sumo":0.22};
 var WORKW = 640;
 var VTH = 0.06;
 var MIN_DUR = 0.15;
@@ -986,6 +985,12 @@ function resetAll(){
   S.vw=0; S.vh=0; S.dur=0;
   S.cal={a:null,b:null,mm:+$("refMm").value||450};
   S.seed=null; S.marker=null; S.tpl=null; S.path=[]; S.A=null; S.drop={}; S.nostall={};
+  // nothing from the previous clip may leak into the next one: the export
+  // overlay's cached labels, the last rendered frame, the results heading
+  chipCache={key:null}; S.file=null; S.live=null;
+  try{ expx.setTransform(1,0,0,1,0,0); expx.clearRect(0,0,exp.width,exp.height); }catch(e){}
+  $("s4title").textContent="Results";
+  setBigRpe(null);
   S.t0=null; S.t1=null; S.touchMode=null; S.drag=null;
   S.step=1; S.reached=1;
   $("vwrap").classList.add("hid");
@@ -1016,6 +1021,7 @@ function resetAll(){
 async function loadVideo(file){
   resetAll();
   S.url=URL.createObjectURL(file);
+  S.file=file;
   vid.src=S.url;
   $("vidStat").classList.remove("hid");
   setStat("vidStat","Decoding\u2026");
@@ -1843,6 +1849,12 @@ async function track(){
   await seek(start);
 
   S.path=[];
+  // live readout: speed + velocity trace drawn as the bar is tracked
+  S.live={t0:start, t1:end, T:[], V:[], mpp:mPerPx(), ema:null, peak:0};
+  $("repList").innerHTML=""; $("sum").classList.add("hid");
+  $("resultsBox").classList.remove("hid");
+  drawChart();
+  var lastLiveUi=0;
   var tol=+$("tol").value;
   var cur={x:S.seed.x,y:S.seed.y}, prev=null;
   var lost=0, seen=0, lastT=-1;
@@ -1852,11 +1864,13 @@ async function track(){
   var finish=function(){
     if(finished) return; finished=true;
     S.tracking=false; vid.pause();
+    S.live=null;
     syncPlayBtn();
     var lostPct=S.path.length ? lost/S.path.length : 1;
     if(S.path.length<8){
       $("runNote").textContent="Only "+S.path.length+" frames captured. If the clip did not play, tap Track the bar again \u2014 iOS sometimes needs a second tap.";
       S.path=[]; setRunBtn(); refreshStep(); setBig(null,"No reading yet \u2014 track the bar to get numbers.");
+      $("resultsBox").classList.add("hid"); drawChart();
       return;
     }
     if(lostPct>0.35){
@@ -1896,13 +1910,22 @@ async function track(){
     var hitp=(S.mode==="marker")?findMarker(pred,tol):findTemplate(pred);
     if(!hitp && S.mode==="marker") hitp=findMarker(cur,Math.min(60,tol+12));
 
-    if(hitp){ prev=cur; cur={x:hitp.x,y:hitp.y}; S.path.push({t:t,x:hitp.x,y:hitp.y,q:hitp.q}); seen++; }
+    if(hitp){ prev=cur; cur={x:hitp.x,y:hitp.y}; S.path.push({t:t,x:hitp.x,y:hitp.y,q:hitp.q}); seen++; liveSample(t); }
     else { S.path.push({t:t,x:cur.x,y:cur.y,q:0}); lost++; }
 
     if(seen%4===0||!hitp) liveOverlay(cur,hitp);
-    syncScrubTo(t);
-    $("runNote").textContent="Tracking \u2014 "+clamp(Math.round((t-start)/Math.max(0.001,end-start)*100),0,100)+"%"
-      + (lost?("  \u00b7 "+lost+" frames lost"):"");
+    var nowMs=Date.now();
+    if(nowMs-lastLiveUi>=100){           // ~10 updates a second keeps tracking fast
+      lastLiveUi=nowMs;
+      syncScrubTo(t);
+      var pct=clamp(Math.round((t-start)/Math.max(0.001,end-start)*100),0,100);
+      $("runNote").textContent="Tracking \u2014 "+pct+"%"+(lost?("  \u00b7 "+lost+" frames lost"):"");
+      if(S.live && S.live.T.length){
+        var lv=S.live.V[S.live.V.length-1];
+        setBig(lv, (lv<-0.05?"Descending":"Live bar speed")+" \u00b7 peak so far "+fmt(S.live.peak,2)+" m/s");
+      }
+      drawChart();
+    }
 
     if(vid.ended){ finish(); return; }
     queue();
@@ -2340,6 +2363,7 @@ function drawChart(){
   var g=c.getContext("2d");
   g.setTransform(dpr,0,0,dpr,0,0);
   g.clearRect(0,0,w,h);
+  if(!S.A && S.live && S.live.T.length){ drawLiveChart(g,w,h); return; }
   if(!S.A){
     g.fillStyle="rgba(21,25,26,.32)"; g.font="13px -apple-system,sans-serif";
     g.textAlign="center"; g.fillText("Velocity over time appears here", w/2, h/2+4);
@@ -2400,6 +2424,58 @@ function drawChart(){
   g.textAlign="right"; g.fillText(fmt(T[N-1]-T[0],1)+" s", w-padR, h-3);
 }
 window.addEventListener("resize", drawChart);
+
+/* Live speed while tracking: slope of a least-squares line through the last
+   ~120 ms of tracked positions, lightly smoothed. It's a preview — the final
+   numbers come from the full analysis once tracking ends. */
+function liveSample(t){
+  var L=S.live; if(!L || !L.mpp) return;
+  var P=S.path, xs=[], ys=[];
+  for(var i=P.length-1;i>=0 && t-P[i].t<=0.12;i--){
+    if(P[i].q>0){ xs.push(P[i].t); ys.push(-P[i].y*L.mpp); }   // up is positive
+  }
+  if(xs.length<3) return;
+  var n=xs.length, mx=0, my=0, sxx=0, sxy=0, k;
+  for(k=0;k<n;k++){ mx+=xs[k]; my+=ys[k]; }
+  mx/=n; my/=n;
+  for(k=0;k<n;k++){ sxx+=(xs[k]-mx)*(xs[k]-mx); sxy+=(xs[k]-mx)*(ys[k]-my); }
+  if(sxx<=0) return;
+  var v=sxy/sxx;
+  L.ema = (L.ema===null) ? v : L.ema*0.5 + v*0.5;
+  L.T.push(t); L.V.push(L.ema);
+  if(L.ema>L.peak) L.peak=L.ema;
+}
+function drawLiveChart(g,w,h){
+  var L=S.live, T=L.T, V=L.V, N=V.length;
+  var vmax=0.5;
+  for(var i=0;i<N;i++){ var a=Math.abs(V[i]); if(a*1.15>vmax) vmax=a*1.15; }
+  var vmin=-vmax;
+  var padL=30, padR=8, padT=6, padB=14, pw=w-padL-padR, ph=h-padT-padB;
+  var span=Math.max(0.001, L.t1-L.t0);
+  var X=function(t){ return padL+clamp((t-L.t0)/span,0,1)*pw; };
+  var Y=function(v){ return padT+(vmax-v)/(vmax-vmin)*ph; };
+  var stepv=0.25;
+  [0.25,0.5,1,2,4].some(function(st){ stepv=st; return (vmax-vmin)/st<=4; });
+  g.strokeStyle="rgba(21,25,26,.08)"; g.lineWidth=1;
+  g.fillStyle="rgba(21,25,26,.42)"; g.font="10px -apple-system,sans-serif"; g.textAlign="right";
+  for(var v2=Math.ceil(vmin/stepv)*stepv; v2<=vmax; v2+=stepv){
+    var yy=Y(v2);
+    g.beginPath(); g.moveTo(padL,yy); g.lineTo(w-padR,yy); g.stroke();
+    g.fillText(v2.toFixed(2).replace(/0$/,""), padL-5, yy+3);
+  }
+  g.strokeStyle="rgba(21,25,26,.34)";
+  g.beginPath(); g.moveTo(padL,Y(0)); g.lineTo(w-padR,Y(0)); g.stroke();
+  // trace: blue while the bar is going up, grey otherwise
+  g.lineWidth=2; g.lineJoin="round";
+  for(var j=1;j<N;j++){
+    g.strokeStyle = V[j]>VTH ? "#2340D8" : "rgba(21,25,26,.35)";
+    g.beginPath(); g.moveTo(X(T[j-1]),Y(V[j-1])); g.lineTo(X(T[j]),Y(V[j])); g.stroke();
+  }
+  var lx=X(T[N-1]), ly=Y(V[N-1]);
+  g.fillStyle="#2340D8"; g.beginPath(); g.arc(lx,ly,3.5,0,6.2832); g.fill();
+  g.fillStyle="rgba(21,25,26,.42)"; g.textAlign="right";
+  g.fillText("live", w-padR, h-3);
+}
 
 /* ---- MP4MUX-BEGIN ---- */
 /* Minimal MP4 writer for WebCodecs output: one video track (H.264 "avc1" or
@@ -2523,7 +2599,7 @@ function mp4Mux(opt){
   tracks.push({kind:"vide", t:v, tm:prepare(v, 90000)});
   if(opt.audio && opt.audio.samples.length){
     var a=opt.audio;
-    tracks.push({kind:"soun", t:a, tm:prepare(a, a.codec==="opus"?48000:a.sampleRate)});
+    tracks.push({kind:"soun", t:a, tm:prepare(a, a.codec==="opus"?48000:(a.timescale||a.sampleRate))});
   }
 
   function trak(tr, id, offsets){
@@ -2570,6 +2646,146 @@ function mp4Mux(opt){
   return new Blob(parts, {type:"video/mp4"});
 }
 /* ---- MP4MUX-END ---- */
+/* ---- MP4DEMUX-BEGIN ---- */
+/* Reads the AAC audio track out of an MP4 / MOV file (what iPhones record)
+   without decoding it: the compressed packets are copied as they are, trimmed
+   to [t0, t1] seconds of presentation time, with timestamps rebased so t0 is
+   0. Packets that start before t0 keep negative timestamps; mp4Mux turns those
+   into an edit list, so the decoder gets its pre-roll but playback starts
+   exactly at t0. Only the moov box and the needed chunks are read from the
+   file, so a large 4K clip isn't pulled into memory. Returns null when there
+   is no AAC track (or the file isn't MP4/MOV), and the caller falls back. */
+async function readAacTrack(file, t0, t1){
+  var rd=function(a,b){ return file.slice(a,b).arrayBuffer().then(function(x){ return new DataView(x); }); };
+  var size=file.size, off=0, moov=null;
+  while(off+8<=size){
+    var h=await rd(off, Math.min(size, off+16));
+    var bs=h.getUint32(0), type=String.fromCharCode(h.getUint8(4),h.getUint8(5),h.getUint8(6),h.getUint8(7)), hdr=8;
+    if(bs===1){ bs=h.getUint32(8)*4294967296+h.getUint32(12); hdr=16; }
+    else if(bs===0) bs=size-off;
+    if(bs<hdr) return null;
+    if(type==="moov"){ moov={v:await rd(off+hdr, off+bs)}; break; }
+    off+=bs;
+  }
+  if(!moov) return null;
+  var v=moov.v;
+  var fcc=function(o){ return String.fromCharCode(v.getUint8(o),v.getUint8(o+1),v.getUint8(o+2),v.getUint8(o+3)); };
+  function kids(s,e){
+    var out=[];
+    while(s+8<=e){
+      var n=v.getUint32(s), t=fcc(s+4), h=8;
+      if(n===1){ n=v.getUint32(s+8)*4294967296+v.getUint32(s+12); h=16; }
+      else if(n===0) n=e-s;
+      if(n<h || s+n>e) break;
+      out.push({t:t, s:s+h, e:s+n});
+      s+=n;
+    }
+    return out;
+  }
+  function find(s,e,path){
+    var k=kids(s,e);
+    for(var i=0;i<k.length;i++) if(k[i].t===path[0]) return path.length===1 ? k[i] : find(k[i].s,k[i].e,path.slice(1));
+    return null;
+  }
+  function deep(s,e,type,depth){           // esds can sit inside a QuickTime 'wave' box
+    var k=kids(s,e);
+    for(var i=0;i<k.length;i++){
+      if(k[i].t===type) return k[i];
+      if(depth<3 && (k[i].t==="wave")){ var r=deep(k[i].s,k[i].e,type,depth+1); if(r) return r; }
+    }
+    return null;
+  }
+  var traks=kids(0, v.byteLength).filter(function(b){ return b.t==="trak"; });
+  for(var ti=0;ti<traks.length;ti++){
+    var tr=traks[ti];
+    var hdlr=find(tr.s,tr.e,["mdia","hdlr"]);
+    if(!hdlr || fcc(hdlr.s+8)!=="soun") continue;
+    var mdhd=find(tr.s,tr.e,["mdia","mdhd"]);
+    var ts=v.getUint32(mdhd.s + (v.getUint8(mdhd.s)===1 ? 20 : 12));
+    var stbl=find(tr.s,tr.e,["mdia","minf","stbl"]);
+    var stsd=find(stbl.s,stbl.e,["stsd"]);
+    var es=stsd.s+8, esz=v.getUint32(es);
+    if(fcc(es+4)!=="mp4a") continue;
+    var ver=v.getUint16(es+16);
+    var chStart=es+36+(ver===1?16:(ver===2?36:0));
+    var esds=deep(chStart, es+esz, "esds", 0);
+    if(!esds) continue;
+    // esds: ES descriptor -> DecoderConfig (must be AAC, 0x40) -> DecoderSpecificInfo = ASC
+    var p=esds.s+4, end=esds.e, asc=null, oti=0;
+    var dlen=function(){ var n=0, c, k=0; do{ c=v.getUint8(p++); n=(n<<7)|(c&127); }while((c&128) && ++k<4); return n; };
+    while(p<end){
+      var tag=v.getUint8(p++), len=dlen();
+      if(tag===3){ var fl=v.getUint8(p+2); p+=3; if(fl&128) p+=2; if(fl&64){ p+=1+v.getUint8(p); } if(fl&32) p+=2; continue; }
+      if(tag===4){ oti=v.getUint8(p); p+=13; continue; }
+      if(tag===5){ asc=new Uint8Array(v.buffer, v.byteOffset+p, len).slice(); break; }
+      p+=len;
+    }
+    if(oti!==0x40 || !asc || asc.length<2) continue;
+    // sample rate and channel count from the AudioSpecificConfig
+    var rates=[96000,88200,64000,48000,44100,32000,24000,22050,16000,12000,11025,8000,7350];
+    var aot=asc[0]>>3, bit=5;
+    var getb=function(n){ var r=0; for(var i=0;i<n;i++){ r=(r<<1)|((asc[(bit>>3)]>>(7-(bit&7)))&1); bit++; } return r; };
+    if(aot===31) getb(6);
+    var fi=getb(4), rate=fi===15 ? getb(24) : rates[fi];
+    var chc=getb(4);
+    var channels=chc || v.getUint16(es+24) || 2;
+    // timing
+    var stts=find(stbl.s,stbl.e,["stts"]), deltas=[];
+    for(var i=0,n=v.getUint32(stts.s+4);i<n;i++){
+      var c=v.getUint32(stts.s+8+i*8), d=v.getUint32(stts.s+12+i*8);
+      for(var j=0;j<c;j++) deltas.push(d);
+    }
+    var mediaTime=0, elst=find(tr.s,tr.e,["edts","elst"]);
+    if(elst){
+      var ev=v.getUint8(elst.s), cnt=v.getUint32(elst.s+4), q=elst.s+8;
+      for(var k2=0;k2<cnt;k2++){
+        var mt = ev===1 ? v.getInt32(q+8)*4294967296+v.getUint32(q+12) : v.getInt32(q+4);
+        if(mt!==-1){ mediaTime=mt; break; }
+        q += ev===1 ? 20 : 12;
+      }
+    }
+    var stsz=find(stbl.s,stbl.e,["stsz"]), fixed=v.getUint32(stsz.s+4), count=v.getUint32(stsz.s+8);
+    var sizes=[]; for(i=0;i<count;i++) sizes.push(fixed || v.getUint32(stsz.s+12+i*4));
+    var stsc=find(stbl.s,stbl.e,["stsc"]), runs=[];
+    for(i=0,n=v.getUint32(stsc.s+4);i<n;i++) runs.push([v.getUint32(stsc.s+8+i*12), v.getUint32(stsc.s+12+i*12)]);
+    var co=find(stbl.s,stbl.e,["stco"]), wide=false;
+    if(!co){ co=find(stbl.s,stbl.e,["co64"]); wide=true; }
+    if(!co || !runs.length) continue;
+    var nch=v.getUint32(co.s+4), chunks=[];
+    for(i=0;i<nch;i++) chunks.push(wide ? v.getUint32(co.s+8+i*8)*4294967296+v.getUint32(co.s+12+i*8) : v.getUint32(co.s+8+i*4));
+    // walk chunks, keep packets overlapping the window (plus two before it as pre-roll)
+    var pick=[], pre=[], si=0, dts=0, ri=0;
+    for(var ci=0; ci<nch && si<count; ci++){
+      while(ri+1<runs.length && runs[ri+1][0]<=ci+1) ri++;
+      var o=chunks[ci];
+      for(var m=0;m<runs[ri][1] && si<count;m++){
+        var dur=deltas[si]||deltas[deltas.length-1]||1024;
+        var st=(dts-mediaTime)/ts, en=(dts-mediaTime+dur)/ts;
+        if(en>t0 && st<t1) pick.push({o:o, n:sizes[si], st:st, d:dur});
+        else if(en<=t0){ pre.push({o:o, n:sizes[si], st:st, d:dur}); if(pre.length>2) pre.shift(); }
+        o+=sizes[si]; dts+=dur; si++;
+      }
+      if((dts-mediaTime)/ts>=t1) break;
+    }
+    if(!pick.length) return null;
+    pick=pre.concat(pick);
+    // read the bytes, one slice per contiguous run
+    var samples=[], a=0;
+    while(a<pick.length){
+      var b=a; while(b+1<pick.length && pick[b+1].o===pick[b].o+pick[b].n) b++;
+      var buf=new Uint8Array(await file.slice(pick[a].o, pick[b].o+pick[b].n).arrayBuffer());
+      for(var z=a; z<=b; z++){
+        var rel=pick[z].o-pick[a].o;
+        samples.push({pts:Math.round((pick[z].st-t0)*1e6), key:true, data:buf.slice(rel, rel+pick[z].n)});
+      }
+      a=b+1;
+    }
+    return {codec:"mp4a.40."+aot, sampleRate:rate || ts, channels:channels, description:asc,
+            lastDur:Math.round((pick[pick.length-1].d/ts)*1e6), samples:samples, timescale:ts};
+  }
+  return null;
+}
+/* ---- MP4DEMUX-END ---- */
 
 /* ============================ video export ============================ */
 
@@ -2665,7 +2881,7 @@ function drawExportChips(t){
      rep or the numbers change, so it's measured once and reused for every
      frame in between — measuring text each frame was a real cost on a phone. */
   var key=[EW,EH,ri,lift,S.stallMode,mvtFor(lift),
-    K.map(function(o){ return o.i+(S.nostall[o.i]?"x":""); }).join(",")].join("|");
+    K.map(function(o){ return o.i+":"+o.r.mcv.toFixed(3)+":"+o.r.stall.toFixed(2)+(S.nostall[o.i]?"x":""); }).join(",")].join("|");
   var f, widths, rows, idx, all;
   if(chipCache.key===key){
     f=chipCache.f; widths=chipCache.widths; rows=chipCache.rows; idx=chipCache.idx; all=chipCache.all;
@@ -2978,6 +3194,13 @@ async function planOffline(){
     try{ if((await VideoEncoder.isConfigSupported(cfg)).supported) vcodec=cfg; }catch(e){}
   }
   if(!vcodec) return null;
+  // 1) copy the clip's own AAC packets (iPhone MOV/MP4): no decoding, no
+  //    re-encoding, works on any Safari with WebCodecs video
+  var start=S.path[0].t, end=S.path[S.path.length-1].t;
+  var copy=null;
+  try{ if(S.file) copy=await readAacTrack(S.file, start, end); }catch(e){ copy=null; }
+  if(copy && copy.samples.length) return {v:vcodec, fps:fps, audio:{copy:copy}};
+  // 2) otherwise decode the audio and encode it again
   var buf=await decodeClipAudio();
   var sound=hasSound(buf), acodec=null;
   if(sound && typeof AudioEncoder==="function" && typeof AudioData==="function"){
@@ -2991,6 +3214,8 @@ async function planOffline(){
   // A clip with sound but no way to encode it: the real-time path keeps the
   // audio, so prefer it over a smooth but silent file.
   if(sound && !acodec) return null;
+  // 3) nothing readable: say so rather than calling the clip silent
+  if(!buf) return {v:vcodec, fps:fps, audio:null, unreadable:true};
   return {v:vcodec, fps:fps, audio: sound ? {cfg:acodec, buf:buf} : null};
 }
 function waitMs(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
@@ -3084,7 +3309,9 @@ async function exportOffline(plan){
 
   // audio: straight from the file, trimmed to the same window
   var track=null;
-  if(plan.audio){
+  if(plan.audio && plan.audio.copy){
+    track=plan.audio.copy;
+  } else if(plan.audio){
     $("vidExpNote").textContent="Adding the original audio…";
     var buf=plan.audio.buf, cfg=plan.audio.cfg, sr=48000, ch=cfg.numberOfChannels;
     var from=Math.max(0, Math.floor(start*sr)), to=Math.min(buf.length, Math.ceil((end+outDt)*sr));
@@ -3124,7 +3351,8 @@ async function exportOffline(plan){
   setVidBtnLabel(false);
   renderReps();
   syncScrubTo(end);
-  showExportReady(plan.audio ? "silent — the audio couldn't be encoded" : "silent — the clip has no sound");
+  showExportReady(plan.audio ? "silent — the audio couldn't be encoded"
+    : (plan.unreadable ? "silent — this browser couldn't read the clip's audio" : "silent — the clip has no sound"));
 }
 $("vidBtn").addEventListener("click", function(){ closeMenu(); exportVideo(); });
 
@@ -3266,7 +3494,7 @@ if("serviceWorker" in navigator){
   });
   applyHostTheme(qp("theme"));   // honour the URL so there's no wrong-palette flash
 
-  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-14" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-15" }, "*"); } catch (e) {}
 })();
 </script>
 

@@ -1155,7 +1155,7 @@
   var STORE_ADDOPEN  = "spotter.dmAddOpen.v2";   // v2: default flipped to open, so the panel is findable
   // Shown at the bottom of Manage program. Bump when power-logs.html changes, so
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
-  var APP_BUILD = "16";
+  var APP_BUILD = "17";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -4805,7 +4805,7 @@
   // HUB_BUILD is bumped whenever program-hub.html changes; it rides along in the
   // query string purely to defeat the browser's HTTP cache, which will otherwise
   // happily serve a previously deployed copy of the file.
-  var HUB_BUILD = "2";
+  var HUB_BUILD = "3";
   var hubReadyFeatures = null;
   function loadHubFrame() {
     var f = $("hubFrame"); if (!f) return;

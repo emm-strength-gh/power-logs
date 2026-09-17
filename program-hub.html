@@ -273,6 +273,58 @@
     .grid{grid-template-columns:1fr}
   }
 
+  /* ---- built-view layout: sticky collapsed setup + action bar + two-pane ----
+     Keeps the 1RM inputs reachable once a program is built. Standalone only:
+     embedded in Spotter the iframe is sized to its full content and the host
+     page owns the scroll, so sticky/fixed here can't pin to the viewport —
+     every rule below is gated behind :root:not([data-embedded]). */
+  #ctxbar{
+    display:none; align-items:center; gap:10px 14px; flex-wrap:wrap;
+    margin-top:22px; padding:12px 15px; border:1px solid var(--hair);
+    border-radius:12px; background:var(--panel);
+  }
+  #ctxbar .cb-name{font-family:var(--disp); font-weight:700; text-transform:uppercase;
+    letter-spacing:.01em; font-size:20px; line-height:1}
+  #ctxbar .cb-chips{display:flex; gap:6px; flex-wrap:wrap}
+  #ctxbar .cb-chip{font-family:var(--mono); font-size:11px; letter-spacing:.03em;
+    color:var(--ink); background:var(--panel-2); border:1px solid var(--hair);
+    border-radius:7px; padding:5px 8px; white-space:nowrap}
+  #ctxbar .cb-chip small{color:var(--muted-2); font-size:9px; letter-spacing:.1em}
+  #ctxbar .cb-edit{margin-left:auto; padding:8px 14px; font-size:13px}
+
+  #actionbar{
+    display:none; position:fixed; left:0; right:0; bottom:0; z-index:60;
+    gap:10px; align-items:center; background:var(--panel);
+    border-top:1px solid var(--hair);
+    padding:10px calc(16px + env(safe-area-inset-right))
+            calc(10px + env(safe-area-inset-bottom))
+            calc(16px + env(safe-area-inset-left));
+  }
+  #actionbar .btn-primary, #actionbar .btn-ghost{flex:1; text-align:center; padding:13px 16px}
+
+  /* Phones: collapse the full Setup card into the sticky bar, float an action bar. */
+  @media (max-width:899px){
+    :root:not([data-embedded]) .wrap.built:not(.editing) .view.active > .card{display:none}
+    :root:not([data-embedded]) .wrap.built:not(.editing) #ctxbar{
+      display:flex; position:sticky; top:0; z-index:50;
+      box-shadow:0 6px 16px -12px rgba(0,0,0,.7);
+    }
+    :root:not([data-embedded]) .wrap.built #actionbar{display:flex}
+    :root:not([data-embedded]) .wrap.built #preview-wrap{padding-bottom:74px}
+  }
+
+  /* Desktop: two-pane — Setup card sticky on the left, results scroll on the right. */
+  @media (min-width:900px){
+    :root:not([data-embedded]) .wrap.built{
+      display:grid; grid-template-columns:minmax(320px,380px) 1fr;
+      gap:34px; align-items:start;
+    }
+    :root:not([data-embedded]) .wrap.built .view.active{position:sticky; top:16px}
+    :root:not([data-embedded]) .wrap.built #preview-wrap{min-width:0}
+    :root:not([data-embedded]) .wrap.built #ctxbar,
+    :root:not([data-embedded]) .wrap.built #actionbar{display:none}
+  }
+
   /* ---- hub + view routing ---- */
   .view{display:none}
   .view.active{display:block}
@@ -951,6 +1003,13 @@
 
   <!-- ===================== SHARED PREVIEW ===================== -->
   <div id="preview-wrap" style="display:none">
+    <!-- Collapsed Setup bar (phones only, standalone). Populated from ctx.meta;
+         "Edit maxes" re-expands the full input card. -->
+    <div id="ctxbar">
+      <span class="cb-name" id="setupbar-name"></span>
+      <span class="cb-chips" id="setupbar-chips"></span>
+      <button class="btn-ghost cb-edit" id="setupbar-edit" type="button">Edit maxes</button>
+    </div>
     <div class="empty" id="empty">
       <div class="big">Nothing built yet</div>
       Fill in the details above, then build the program.
@@ -1001,6 +1060,12 @@
         </table>
       </div>
     </section>
+  </div>
+
+  <!-- Sticky action bar (phones only, standalone): Rebuild + Export in thumb reach. -->
+  <div id="actionbar">
+    <button class="btn-primary" id="ab-rebuild" type="button">Rebuild</button>
+    <button class="btn-ghost" id="ab-export" type="button">Export CSV</button>
   </div>
 </div>
 
@@ -4726,7 +4791,40 @@ function mountCtx(newCtx, scroll){
   buildSummary(); buildRibbon(); buildSeg(); renderPreview(); syncRibbon();
   $("empty").style.display = "none";
   $("results").style.display = "block";
-  if(scroll) $("results").scrollIntoView({ behavior:"smooth", block:"start" });
+  contentWrap().classList.remove("editing");   // leave edit mode on a fresh build
+  syncBuildUI();
+  /* Deliberately no scrollIntoView — the collapsed Setup bar keeps the maxes in
+     reach, so we stay put instead of jumping the viewport down to the table. */
+}
+
+/* Reflect "a program is built" into the layout: collapse the Setup card into the
+   sticky bar, show the action bar, switch desktop to two-pane. Cheap and
+   idempotent, so it can run on an interval to catch builds, resets and nav
+   without threading a call through all 15 builder/reset functions. */
+function abbrevMax(label){
+  const A = {squat:"SQ", bench:"BN", deadlift:"DL", press:"OHP", "overhead press":"OHP"};
+  const key = String(label||"").toLowerCase().replace(/1rm/g,"").replace(/\s+/g," ").trim();
+  return A[key] || key.replace(/[^a-z ]/g,"").slice(0,3).toUpperCase() || "—";
+}
+/* The page has two .wrap elements (header + content); the built-state layout
+   belongs on the content one that actually holds the views and the preview. */
+function contentWrap(){ return $("preview-wrap").closest(".wrap"); }
+function syncBuildUI(){
+  const wrap = contentWrap();
+  const built = !!ctx && $("results").style.display !== "none"
+             && $("preview-wrap").style.display !== "none";
+  wrap.classList.toggle("built", built);
+  if(!built){ wrap.classList.remove("editing"); return; }
+  const meta = ctx.meta || {};
+  $("setupbar-name").textContent = meta.name || "Program";
+  const chips = $("setupbar-chips");
+  chips.textContent = "";
+  (meta.maxLines || []).forEach(m => {
+    const c = document.createElement("span");
+    c.className = "cb-chip";
+    c.innerHTML = `<small>${abbrevMax(m.label)}</small> ${m.val}`;
+    chips.appendChild(c);
+  });
 }
 /* Installed home-screen app? (iOS reports navigator.standalone, others report display-mode) */
 function isStandalonePWA(){
@@ -4788,7 +4886,7 @@ function showView(name){
   document.querySelectorAll(".view").forEach(v=> v.classList.remove("active"));
   const el = $("view-" + name); if(el) el.classList.add("active");
   window.scrollTo({ top:0, behavior:"smooth" });
-  if(name === "hub"){ $("preview-wrap").style.display = "none"; ctx = null; return; }
+  if(name === "hub"){ $("preview-wrap").style.display = "none"; ctx = null; syncBuildUI(); return; }
   $("preview-wrap").style.display = "block";
   const saved = CTX[name];
   if(saved){ mountCtx(saved, false); }
@@ -4797,6 +4895,7 @@ function showView(name){
     $("results").style.display = "none";
     $("empty").style.display = "block";
     $("empty").innerHTML = `<div class="big">${EMPTY_TXT[name].big}</div>${EMPTY_TXT[name].sub}`;
+    syncBuildUI();
   }
 }
 
@@ -5542,6 +5641,26 @@ $("ls-reset").onclick     = lillieSBDReset;
 $("lb-generate").onclick  = buildLilliebridge;
 $("lb-reset").onclick     = lilliebridgeReset;
 $("btn-export").onclick   = exportActive;
+
+/* Collapsed Setup bar + sticky action bar (standalone; see #ctxbar CSS). */
+$("setupbar-edit").onclick = ()=>{
+  contentWrap().classList.add("editing");              // re-expands the full Setup card
+  const card = document.querySelector(".view.active > .card");
+  if(card){
+    card.scrollIntoView({ behavior:"smooth", block:"start" });
+    const first = card.querySelector("input");
+    if(first) setTimeout(()=> first.focus(), 250);
+  }
+};
+/* Rebuild / Export just drive the active builder's own controls, so every
+   builder is covered without a per-program dispatch table. */
+$("ab-rebuild").onclick = ()=>{
+  const btn = document.querySelector(".view.active .btn-primary");
+  if(btn) btn.click();
+};
+$("ab-export").onclick = exportActive;
+setInterval(syncBuildUI, 300);   // keeps the built-state layout in sync after resets/nav
+
 $("chip-all").onclick     = ()=>{ if(!ctx) return; ctx.week=null; syncRibbon(); renderPreview(); };
 $("wk-range").addEventListener("input", ()=>{ if(ctx) syncExportScope(); });
 $("wk-range").addEventListener("keydown", e=>{
@@ -5719,7 +5838,7 @@ if("serviceWorker" in navigator){
   setInterval(postHeight, 700);   // catches anything the above miss (async renders)
   postHeight();
 
-  try { parent.postMessage({ type: "spotter-hub-ready", features: ["send", "height", "theme"], build: "hub-2" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-hub-ready", features: ["send", "height", "theme"], build: "hub-3" }, "*"); } catch (e) {}
 
   // ---- Send the built program straight into Manage Program's donor slot ----
   // Reuses the page's own export pipeline: syncExportScope() parses and validates

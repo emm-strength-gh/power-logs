@@ -1155,7 +1155,7 @@
   var STORE_ADDOPEN  = "spotter.dmAddOpen.v2";   // v2: default flipped to open, so the panel is findable
   // Shown at the bottom of Manage program. Bump when power-logs.html changes, so
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
-  var APP_BUILD = "17";
+  var APP_BUILD = "19";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -2378,24 +2378,32 @@
   // parses into, so editing here round-trips through export/import untouched.
   // A blank value removes the entry rather than storing an empty one, which is
   // what the NL and intensity analytics check for.
-  function setMax(targetName, lift, value) {
+  // Generalised over which store on the profile is being edited: "maxes" (the
+  // real 1-rep maxes) or "trainingMaxes" (a second, Manage-Program-only record).
+  // Both are the same shape — strings keyed by lift name — so one set of editors
+  // and undo handlers drives either.
+  function setMaxOn(targetName, storeKey, lift, value) {
     var p = PROFILES[targetName]; if (!p) return false;
-    if (!p.maxes) p.maxes = {};
+    if (!p[storeKey]) p[storeKey] = {};
     lift = String(lift || "").trim();
     if (!lift) return false;
     var v = String(value == null ? "" : value).trim();
-    if (v === "") delete p.maxes[lift];
-    else p.maxes[lift] = v;
+    if (v === "") delete p[storeKey][lift];
+    else p[storeKey][lift] = v;
     safeWrite(STORE_PROFILES, PROFILES);
     return true;
   }
-  // Swap the whole maxes object — used by undo so one step restores every field.
-  function setAllMaxes(targetName, maxesClone) {
+  // Swap a whole maxes object — used by undo so one step restores every field.
+  function setAllMaxesOn(targetName, storeKey, maxesClone) {
     var p = PROFILES[targetName]; if (!p) return false;
-    p.maxes = deepClone(maxesClone || {});
+    p[storeKey] = deepClone(maxesClone || {});
     safeWrite(STORE_PROFILES, PROFILES);
     return true;
   }
+  function setMax(targetName, lift, value) { return setMaxOn(targetName, "maxes", lift, value); }
+  function setAllMaxes(targetName, maxesClone) { return setAllMaxesOn(targetName, "maxes", maxesClone); }
+  function setTrainingMax(targetName, lift, value) { return setMaxOn(targetName, "trainingMaxes", lift, value); }
+  function setAllTrainingMaxes(targetName, maxesClone) { return setAllMaxesOn(targetName, "trainingMaxes", maxesClone); }
   // Accepts a plain positive number. Blank is allowed and means "no max on file".
   function normalizeMax(v) {
     v = String(v == null ? "" : v).trim();
@@ -2824,16 +2832,47 @@
     var p = PROFILES[current]; if (!p) { host.style.display = "none"; return; }
     host.style.display = "";
     if (!p.maxes) p.maxes = {};
+    if (!p.trainingMaxes) p.trainingMaxes = {};
+
+    // The real competition 1-rep maxes: feed the analytics below.
+    host.appendChild(buildMaxesCard({
+      storeKey: "maxes",
+      title: "1-rep maxes",
+      noun: "max",
+      collapseKey: "spotter.maxesCollapsed",
+      hint: "Used to work out Number of lifts (reps at \u226550% of 1RM) and average intensity. Leave one blank if you don\u2019t have it \u2014 those lifts are simply left out of those two charts.",
+      setOne: setMax,
+      setAll: setAllMaxes
+    }));
+    // A second, Manage-Program-only record. Editable exactly like the 1-rep
+    // maxes, but kept purely for reference \u2014 it doesn't drive the charts.
+    host.appendChild(buildMaxesCard({
+      storeKey: "trainingMaxes",
+      title: "Training maxes",
+      noun: "training max",
+      collapseKey: "spotter.trainingMaxesCollapsed",
+      hint: "A separate set to program from \u2014 usually a percentage of the true 1-rep max. Recorded here for reference only; it doesn\u2019t change the charts.",
+      setOne: setTrainingMax,
+      setAll: setAllTrainingMaxes
+    }));
+  }
+
+  // Builds one editable maxes card. `cfg.storeKey` picks which store on the
+  // profile it reads and writes ("maxes" or "trainingMaxes"); `cfg.setOne`/
+  // `cfg.setAll` are the matching mutators, so undo restores the right store.
+  function buildMaxesCard(cfg) {
+    var p = PROFILES[current];
+    var store = p[cfg.storeKey] || (p[cfg.storeKey] = {});
 
     var collapsed = false;
-    try { collapsed = localStorage.getItem("spotter.maxesCollapsed") === "1"; } catch (e) {}
+    try { collapsed = localStorage.getItem(cfg.collapseKey) === "1"; } catch (e) {}
     var card = el("div", "pn-card mx-card" + (collapsed ? "" : " open"));
     var toggle = el("button", "pn-toggle");
     var lab = el("span", "pn-labels");
-    lab.appendChild(el("span", "pn-title", "1-rep maxes"));
+    lab.appendChild(el("span", "pn-title", cfg.title));
     var summary = ["Squat", "Bench", "Deadlift"]
-      .filter(function (k) { return p.maxes[k] != null && p.maxes[k] !== ""; })
-      .map(function (k) { return k.charAt(0) + " " + p.maxes[k]; });
+      .filter(function (k) { return store[k] != null && store[k] !== ""; })
+      .map(function (k) { return k.charAt(0) + " " + store[k]; });
     if (summary.length) lab.appendChild(el("span", "pn-sub", summary.join("  \u00b7  ")));
     toggle.appendChild(lab);
     var chev = el("span", "pn-chev");
@@ -2841,112 +2880,107 @@
     toggle.appendChild(chev);
     toggle.onclick = function () {
       card.classList.toggle("open");
-      try { localStorage.setItem("spotter.maxesCollapsed", card.classList.contains("open") ? "0" : "1"); } catch (e) {}
+      try { localStorage.setItem(cfg.collapseKey, card.classList.contains("open") ? "0" : "1"); } catch (e) {}
     };
     card.appendChild(toggle);
 
     var cbody = el("div", "pn-body");
-      // ---- 1-rep maxes (editable) ----
-      // These drive the Number-of-lifts and average-intensity analytics, so being
-      // able to correct them here saves a round-trip through export/re-import.
-      var secMx = cbody;
-      
-      secMx.appendChild(el("p", "dm-blockhint", "Used to work out Number of lifts (reps at \u226550% of 1RM) and average intensity. Leave one blank if you don\u2019t have it \u2014 those lifts are simply left out of those two charts."));
-      var mxRow = el("div", "dm-selrow");
-      var MX_CORE = ["Squat", "Bench", "Deadlift"];
-      var mxExtra = Object.keys(p.maxes || {}).filter(function (k) { return MX_CORE.indexOf(k) === -1; });
+    cbody.appendChild(el("p", "dm-blockhint", cfg.hint));
+    var mxRow = el("div", "dm-selrow");
+    var MX_CORE = ["Squat", "Bench", "Deadlift"];
+    var mxExtra = Object.keys(store).filter(function (k) { return MX_CORE.indexOf(k) === -1; });
 
-      function maxField(lift, removable) {
-        var f = el("span", "add-field mx-field");
-        f.appendChild(el("label", null, lift));
-        var inp = el("input", "add-weight");
-        inp.type = "text"; inp.setAttribute("inputmode", "decimal"); inp.autocomplete = "off";
-        inp.placeholder = "e.g. 180";
-        inp.value = (p.maxes && p.maxes[lift] != null) ? String(p.maxes[lift]) : "";
-        inp.setAttribute("aria-label", lift + " one-rep max in kg");
-        var orig = inp.value;
-        inp.addEventListener("input", function () {
-          // digits and a single dot only
-          var v = inp.value.replace(/[^0-9.]/g, "");
-          var i = v.indexOf(".");
-          if (i !== -1) v = v.slice(0, i + 1) + v.slice(i + 1).replace(/\./g, "");
-          inp.value = v;
-        });
-        var commitMax = function () {
-          var v = normalizeMax(inp.value);
-          if (v === null) {
-            inp.value = orig;                      // put back what was there
-            toast(lift + " max must be a number above 0, or blank.");
-            return;
-          }
-          if (v === orig) { inp.value = v; return; }
-          var beforeMaxes = deepClone(p.maxes || {});
-          setMax(p.name, lift, v);
-          orig = v; inp.value = v;
-          pushUndoAction({
-            label: v ? (lift + " max set to " + v + " kg.") : (lift + " max cleared."),
-            restoredLabel: lift + " max restored.",
-            restore: function () { return setAllMaxes(p.name, beforeMaxes); }
-          });
-          refreshAfterMaxChange();
-        };
-        inp.addEventListener("blur", commitMax);
-        inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
-        f.appendChild(inp);
-        if (removable) {
-          var rm = el("button", "mx-rm", "\u00d7");
-          rm.type = "button"; rm.title = "Remove " + lift; rm.setAttribute("aria-label", "Remove " + lift + " max");
-          rm.onclick = function () {
-            var beforeMaxes = deepClone(p.maxes || {});
-            setMax(p.name, lift, "");
-            pushUndoAction({
-              label: "Removed the " + lift + " max.",
-              restoredLabel: lift + " max restored.",
-              restore: function () { return setAllMaxes(p.name, beforeMaxes); }
-            });
-            refreshAfterMaxChange();
-          };
-          f.appendChild(rm);
+    function maxField(lift, removable) {
+      var f = el("span", "add-field mx-field");
+      f.appendChild(el("label", null, lift));
+      var inp = el("input", "add-weight");
+      inp.type = "text"; inp.setAttribute("inputmode", "decimal"); inp.autocomplete = "off";
+      inp.placeholder = "e.g. 180";
+      inp.value = (store[lift] != null) ? String(store[lift]) : "";
+      inp.setAttribute("aria-label", lift + " " + cfg.noun + " in kg");
+      var orig = inp.value;
+      inp.addEventListener("input", function () {
+        // digits and a single dot only
+        var v = inp.value.replace(/[^0-9.]/g, "");
+        var i = v.indexOf(".");
+        if (i !== -1) v = v.slice(0, i + 1) + v.slice(i + 1).replace(/\./g, "");
+        inp.value = v;
+      });
+      var commitMax = function () {
+        var v = normalizeMax(inp.value);
+        if (v === null) {
+          inp.value = orig;                      // put back what was there
+          toast(lift + " " + cfg.noun + " must be a number above 0, or blank.");
+          return;
         }
-        mxRow.appendChild(f);
-        return inp;
-      }
-      MX_CORE.forEach(function (l) { maxField(l, false); });
-      mxExtra.forEach(function (l) { maxField(l, true); });
-      secMx.appendChild(mxRow);
-
-      // Add a max for a lift outside the big three (e.g. "Squat equipped").
-      var mxAdd = el("div", "dm-addday");
-      mxAdd.appendChild(el("label", null, "Add another lift:"));
-      var mxName = el("input", "add-weight mx-newname");
-      mxName.type = "text"; mxName.placeholder = "Lift name"; mxName.autocomplete = "off";
-      mxName.setAttribute("aria-label", "Name of the lift to add a max for");
-      mxAdd.appendChild(mxName);
-      var mxVal = el("input", "add-weight add-num mx-newval");
-      mxVal.type = "text"; mxVal.setAttribute("inputmode", "decimal"); mxVal.placeholder = "kg"; mxVal.autocomplete = "off";
-      mxVal.setAttribute("aria-label", "One-rep max in kg");
-      mxAdd.appendChild(mxVal);
-      var mxBtn = el("button", "chip sm", "Add max");
-      mxBtn.type = "button";
-      mxBtn.onclick = function () {
-        var lift = mxName.value.trim();
-        if (!lift) { mxName.focus(); toast("Name the lift first."); return; }
-        if (p.maxes && p.maxes[lift] != null) { mxName.focus(); toast("There's already a max for \u201C" + lift + "\u201D."); return; }
-        var v = normalizeMax(mxVal.value);
-        if (v === null || v === "") { mxVal.focus(); toast("Enter a max above 0."); return; }
-        var beforeMaxes = deepClone(p.maxes || {});
-        setMax(p.name, lift, v);
+        if (v === orig) { inp.value = v; return; }
+        var before = deepClone(store);
+        cfg.setOne(p.name, lift, v);
+        orig = v; inp.value = v;
         pushUndoAction({
-          label: "Added a " + lift + " max of " + v + " kg.",
-          restoredLabel: lift + " max removed again.",
-          restore: function () { return setAllMaxes(p.name, beforeMaxes); }
+          label: v ? (lift + " " + cfg.noun + " set to " + v + " kg.") : (lift + " " + cfg.noun + " cleared."),
+          restoredLabel: lift + " " + cfg.noun + " restored.",
+          restore: function () { return cfg.setAll(p.name, before); }
         });
         refreshAfterMaxChange();
       };
-      mxAdd.appendChild(mxBtn);
-      secMx.appendChild(mxAdd);
+      inp.addEventListener("blur", commitMax);
+      inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
+      f.appendChild(inp);
+      if (removable) {
+        var rm = el("button", "mx-rm", "\u00d7");
+        rm.type = "button"; rm.title = "Remove " + lift; rm.setAttribute("aria-label", "Remove " + lift + " " + cfg.noun);
+        rm.onclick = function () {
+          var before = deepClone(store);
+          cfg.setOne(p.name, lift, "");
+          pushUndoAction({
+            label: "Removed the " + lift + " " + cfg.noun + ".",
+            restoredLabel: lift + " " + cfg.noun + " restored.",
+            restore: function () { return cfg.setAll(p.name, before); }
+          });
+          refreshAfterMaxChange();
+        };
+        f.appendChild(rm);
+      }
+      mxRow.appendChild(f);
+      return inp;
+    }
+    MX_CORE.forEach(function (l) { maxField(l, false); });
+    mxExtra.forEach(function (l) { maxField(l, true); });
+    cbody.appendChild(mxRow);
+
+    // Add a value for a lift outside the big three (e.g. "Squat equipped").
+    var mxAdd = el("div", "dm-addday");
+    mxAdd.appendChild(el("label", null, "Add another lift:"));
+    var mxName = el("input", "add-weight mx-newname");
+    mxName.type = "text"; mxName.placeholder = "Lift name"; mxName.autocomplete = "off";
+    mxName.setAttribute("aria-label", "Name of the lift to add a " + cfg.noun + " for");
+    mxAdd.appendChild(mxName);
+    var mxVal = el("input", "add-weight add-num mx-newval");
+    mxVal.type = "text"; mxVal.setAttribute("inputmode", "decimal"); mxVal.placeholder = "kg"; mxVal.autocomplete = "off";
+    mxVal.setAttribute("aria-label", cfg.noun + " in kg");
+    mxAdd.appendChild(mxVal);
+    var mxBtn = el("button", "chip sm", "Add max");
+    mxBtn.type = "button";
+    mxBtn.onclick = function () {
+      var lift = mxName.value.trim();
+      if (!lift) { mxName.focus(); toast("Name the lift first."); return; }
+      if (store[lift] != null) { mxName.focus(); toast("There's already a " + cfg.noun + " for \u201C" + lift + "\u201D."); return; }
+      var v = normalizeMax(mxVal.value);
+      if (v === null || v === "") { mxVal.focus(); toast("Enter a " + cfg.noun + " above 0."); return; }
+      var before = deepClone(store);
+      cfg.setOne(p.name, lift, v);
+      pushUndoAction({
+        label: "Added a " + lift + " " + cfg.noun + " of " + v + " kg.",
+        restoredLabel: lift + " " + cfg.noun + " removed again.",
+        restore: function () { return cfg.setAll(p.name, before); }
+      });
+      refreshAfterMaxChange();
+    };
+    mxAdd.appendChild(mxBtn);
+    cbody.appendChild(mxAdd);
     card.appendChild(cbody);
-    host.appendChild(card);
+    return card;
   }
 
   function renderDayMgr() {
@@ -4847,7 +4881,7 @@
   // ──────────────── Velocity Tracker (embedded tool) ────────────────
   // Its own file (VBT.html), shown in an iframe; we only talk to it over
   // postMessage to keep its palette matched to the app's.
-  var VBT_BUILD = "15";
+  var VBT_BUILD = "16";
   function loadVbtFrame() {
     var f = $("vbtFrame"); if (!f) return;
     var want = "VBT.html?embed=1&theme=" + currentThemeName() + "&v=" + VBT_BUILD;
@@ -5554,6 +5588,7 @@
 
     // Defensive defaults so a hand-edited or partial file can't crash the renderer.
     if (!prof.maxes || typeof prof.maxes !== "object") prof.maxes = {};
+    if (!prof.trainingMaxes || typeof prof.trainingMaxes !== "object") prof.trainingMaxes = {};
     if (!prof.sourceFile) prof.sourceFile = filename || "";   // so a re-export keeps a sensible name
 
     function asMap(v) { return (v && typeof v === "object" && !Array.isArray(v)) ? v : {}; }

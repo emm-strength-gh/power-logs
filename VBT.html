@@ -3033,7 +3033,7 @@ async function exportRealtime(){
   EW=Math.round(S.vw*sc/2)*2; EH=Math.round(S.vh*sc/2)*2;   // even dimensions for H.264
   exp.width=EW; exp.height=EH;
 
-  var fps=(S.A.fps>0)?Math.min(60,Math.max(24,Math.round(S.A.fps))):30;
+  var fps=(S.A.fps>0)?Math.min(60,Math.max(25,Math.round(S.A.fps))):30;
   var stream;
   try{ stream=exp.captureStream(fps); }
   catch(e){ vid.muted=expWasMuted; $("vidExpNote").textContent="This browser cannot capture the canvas, so video export is unavailable here."; return; }
@@ -3185,7 +3185,7 @@ function hasSound(buf){
   return false;
 }
 async function planOffline(){
-  var fps=(S.A.fps>0)?Math.min(60,Math.max(24,Math.round(S.A.fps))):30;
+  var fps=(S.A.fps>0)?Math.min(60,Math.max(25,Math.round(S.A.fps))):30;
   var bitrate=Math.round(Math.min(12e6, Math.max(2e6, EW*EH*fps*0.1)));
   var vcodec=null, list=["avc1.640028","avc1.4d0028","avc1.42e028","vp09.00.10.08"];
   for(var i=0;i<list.length && !vcodec;i++){
@@ -3221,11 +3221,17 @@ async function planOffline(){
 function waitMs(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
 async function exportOffline(plan){
   var start=S.path[0].t, end=S.path[S.path.length-1].t;
-  var srcDt=(S.A && S.A.dt>0) ? S.A.dt : 1/30;
-  var outDt=Math.max(srcDt, 1/60);                  // never more than 60 fps out
+  // Encode a constant frame rate on a fixed grid: output timestamps are n/outFps,
+  // not the clip's own (uneven) presentation times. That guarantees an even,
+  // ≥25 fps file even when frame delivery is jittery or the decoder skips frames
+  // — the variable source cadence is what showed up as a low, laggy frame rate.
+  // outFps matches the rate the encoder was configured with in planOffline.
+  var outFps=(plan && plan.fps) ? plan.fps : 30;
+  var outDt=1/outFps;
+  var frameDurUs=Math.round(outDt*1e6);
   var minGap=outDt*0.6;
-  var vs=[], vdesc=null, failed=null, n=0, lastTs=-1;
-  var kInt=Math.max(1, Math.round(1/outDt));        // a keyframe every second
+  var vs=[], vdesc=null, failed=null, n=0;
+  var kInt=Math.max(1, Math.round(outFps));         // a keyframe every second
 
   var enc=new VideoEncoder({
     output:function(chunk, meta){
@@ -3238,12 +3244,11 @@ async function exportOffline(plan){
   enc.configure(plan.v);
 
   var encodeAt=function(t){
-    var ts=Math.round((t-start)*1e6);
-    if(ts<=lastTs) return;
+    // t only selects which source frame to draw; the output slot is the fixed grid.
     drawExportFrame(t);
-    var f=new VideoFrame(exp, {timestamp:ts, duration:Math.round(outDt*1e6)});
+    var f=new VideoFrame(exp, {timestamp:n*frameDurUs, duration:frameDurUs});
     enc.encode(f, {keyFrame: n%kInt===0});
-    f.close(); n++; lastTs=ts;
+    f.close(); n++;
   };
   var drain=async function(){ while(enc.encodeQueueSize>2 && !failed && exporting) await waitMs(8); };
   var progress=function(t, extra){
@@ -3494,7 +3499,7 @@ if("serviceWorker" in navigator){
   });
   applyHostTheme(qp("theme"));   // honour the URL so there's no wrong-palette flash
 
-  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-15" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-16" }, "*"); } catch (e) {}
 })();
 </script>
 

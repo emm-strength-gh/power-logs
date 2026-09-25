@@ -12,6 +12,10 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 
 <style>
+  /* No double-tap-to-zoom on phones (it also fires on quick repeated taps of
+     buttons). Pinch-zoom still works. Zero specificity, so any element that
+     sets its own touch-action (drag handles, drawing canvases) still wins. */
+  * { touch-action: manipulation; }
 :root{
   --ground:#EFF1F3; --surface:#FFFFFF; --surface-2:#E6E9ED; --surface-3:#DCE0E6;
   --line:#D2D7DE; --line-strong:#B6BDC7;

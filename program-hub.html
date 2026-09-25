@@ -35,6 +35,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  /* No double-tap-to-zoom on phones (it also fires on quick repeated taps of
+     buttons). Pinch-zoom still works. Zero specificity, so any element that
+     sets its own touch-action (drag handles, drawing canvases) still wins. */
+  * { touch-action: manipulation; }
   :root{
     --bg:#0E1014; --panel:#171A21; --panel-2:#1E222B; --hair:#2A2F3A;
     --ink:#E8EAED; --muted:#8A909C; --muted-2:#646A76;
@@ -5838,7 +5842,7 @@ if("serviceWorker" in navigator){
   setInterval(postHeight, 700);   // catches anything the above miss (async renders)
   postHeight();
 
-  try { parent.postMessage({ type: "spotter-hub-ready", features: ["send", "height", "theme"], build: "hub-3" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-hub-ready", features: ["send", "height", "theme"], build: "hub-4" }, "*"); } catch (e) {}
 
   // ---- Send the built program straight into Manage Program's donor slot ----
   // Reuses the page's own export pipeline: syncExportScope() parses and validates

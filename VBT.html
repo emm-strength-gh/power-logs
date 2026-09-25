@@ -14,6 +14,10 @@
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="icon" href="./icons/icon-192.png">
 <style>
+  /* No double-tap-to-zoom on phones (it also fires on quick repeated taps of
+     buttons). Pinch-zoom still works. Zero specificity, so any element that
+     sets its own touch-action (drag handles, drawing canvases) still wins. */
+  * { touch-action: manipulation; }
 :root{
   --ground:#E7E9E5; --paper:#F2F3F0; --ink:#15191A;
   --ink-60:rgba(21,25,26,.60); --ink-38:rgba(21,25,26,.38);
@@ -3499,7 +3503,7 @@ if("serviceWorker" in navigator){
   });
   applyHostTheme(qp("theme"));   // honour the URL so there's no wrong-palette flash
 
-  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-16" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-17" }, "*"); } catch (e) {}
 })();
 </script>
 

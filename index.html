@@ -11,6 +11,10 @@
 <link rel="canonical" href="./power-logs.html" />
 <script>location.replace("./power-logs.html");</script>
 <style>
+  /* No double-tap-to-zoom on phones (it also fires on quick repeated taps of
+     buttons). Pinch-zoom still works. Zero specificity, so any element that
+     sets its own touch-action (drag handles, drawing canvases) still wins. */
+  * { touch-action: manipulation; }
   body { background: #f1f3ee; color: #6b736c; font-family: system-ui, sans-serif;
          display: grid; place-items: center; height: 100vh; margin: 0; }
   a { color: #2e5a4e; }

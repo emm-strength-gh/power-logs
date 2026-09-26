@@ -5,9 +5,10 @@ no framework, no backend — four self-contained HTML files with inline
 `<script>`/`<style>`, deployed as static files to GitHub Pages and installed to
 the iOS home screen via Safari. All data lives in `localStorage` on-device;
 nothing syncs anywhere. This folder is a git repo tracking
-`origin/main` (https://github.com/emm-strength-gh/power-logs) — deploy by
-committing only the files you changed and `git push origin main`; never
-`git add -A` (local-only files and a stale `icons/` folder live here too).
+`origin/main` (https://github.com/emm-strength-gh/power-logs), kept
+byte-for-byte identical to it — deploy by committing the files you changed and
+`git push origin main`. `node_modules/` and `test-assets/` (a personal video)
+are gitignored and must never be published: the repo is public.
 
 Full user-facing/deploy documentation is in [README.md](README.md) — read that
 too, it covers iOS PWA quirks, the update/versioning ritual, and known rough

@@ -133,7 +133,9 @@ The tracker is built to fit the screen with no page scroll:
 - **Scale:** tap the plate to place a circle, drag it onto the plate, and use the
   *Circle size* slider until it touches the plate's top and bottom edges (a plate
   filmed at an angle looks oval, but its height is still the true diameter). The
-  magnifier shows the rim with the circle's edge over it.
+  magnifier follows the circle's centre, with a crosshair for lining it up on the hub.
+- **Bar path:** on the replay and the exported video, the concentric part of each
+  counted rep is drawn in yellow; descents, pauses and un-counted reps stay blue.
 - **Inside Spotter:** one-line header (details behind ⓘ), and the frame is sized to
   the rest of the window, so there's one scroll area at most.
 

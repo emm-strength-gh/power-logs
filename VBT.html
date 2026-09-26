@@ -1341,15 +1341,16 @@ function drawLoupePanel(){
   var col = (S.touchMode==="cal") ? "#6E8AF2" : "#DE7B58";
   var showArea = (S.touchMode==="seed" && S.mode==="point");
   if(S.touchMode==="cal" && S.cal.c){
-    // the magnifier sits on the circle's rim, so draw the rim over the plate's
-    // edge — matching those two is what sets the scale
+    // the magnifier sits on the circle's centre (crosshair below, for lining it
+    // up on the plate's hub); the rim only shows here when the circle is small
     var f=LCSS/span;
     var cx=LCSS/2+(S.cal.c.x-loupe.x)*f, cy=LCSS/2+(S.cal.c.y-loupe.y)*f, rr=S.cal.r*f;
     g.strokeStyle="rgba(14,17,18,.55)"; g.lineWidth=3;
     g.beginPath(); g.arc(cx,cy,rr,0,6.2832); g.stroke();
     g.strokeStyle=col; g.lineWidth=1.6;
     g.beginPath(); g.arc(cx,cy,rr,0,6.2832); g.stroke();
-  } else if(!showArea){
+  }
+  if(!showArea){
     g.strokeStyle="rgba(242,243,240,.9)"; g.lineWidth=1;
     g.beginPath();
     g.moveTo(0,LCSS/2); g.lineTo(LCSS/2-9,LCSS/2);
@@ -1381,7 +1382,7 @@ function drawLoupePanel(){
 function loupeMeta(){
   var e=$("loupeMeta");
   if(!loupe){ e.innerHTML=""; return; }
-  var lbl = (S.touchMode==="cal") ? "Plate rim" : "Target";
+  var lbl = (S.touchMode==="cal") ? "Circle centre" : "Target";
   var body="";
   if(S.touchMode==="cal" && S.cal.c){
     body='<span class="mono">'+fmt(S.cal.r*2,1)+" px across</span>";
@@ -1474,14 +1475,40 @@ function gauge(t){
 }
 function drawPathTrail(){
   if(!S.path.length) return;
-  ovx.save(); ovx.beginPath();
-  for(var i=0;i<S.path.length;i++){
-    var q=toDisp(S.path[i]);
-    if(i===0) ovx.moveTo(q.x,q.y); else ovx.lineTo(q.x,q.y);
-  }
-  ovx.strokeStyle="rgba(242,243,240,.9)"; ovx.lineWidth=3.2; ovx.stroke();
-  ovx.strokeStyle="#2340D8"; ovx.lineWidth=1.6; ovx.stroke();
+  ovx.save();
+  drawBarPath(ovx, toDisp, 3.2, 1.6);
   ovx.restore();
+}
+/* The bar path in runs: the concentric part of each counted rep in yellow,
+   everything else (descents, pauses, dropped reps) in blue. Yellow gets a dark
+   halo rather than the light one, which would wash it out. All halos go down
+   before any colour so a run's halo never paints over its neighbour. */
+var PATH_CONC="#FFC81E", PATH_REST="#2340D8";
+function drawBarPath(g, toXY, wHalo, wLine){
+  var P=S.path;
+  if(P.length<2) return;
+  var runs=[], cur=null;
+  for(var i=1;i<P.length;i++){
+    var conc = repAt((P[i-1].t+P[i].t)/2) >= 0;
+    if(!cur || cur.conc!==conc){ cur={conc:conc, pts:[P[i-1]]}; runs.push(cur); }
+    cur.pts.push(P[i]);
+  }
+  var trace=function(r){
+    g.beginPath();
+    for(var j=0;j<r.pts.length;j++){
+      var q=toXY(r.pts[j]);
+      if(j===0) g.moveTo(q.x,q.y); else g.lineTo(q.x,q.y);
+    }
+  };
+  g.lineJoin="round"; g.lineCap="round";
+  runs.forEach(function(r){
+    trace(r); g.strokeStyle = r.conc ? "rgba(14,17,18,.7)" : "rgba(242,243,240,.9)";
+    g.lineWidth=wHalo; g.stroke();
+  });
+  runs.forEach(function(r){
+    trace(r); g.strokeStyle = r.conc ? PATH_CONC : PATH_REST;
+    g.lineWidth=wLine; g.stroke();
+  });
 }
 
 /* ============================ touch ============================ */
@@ -1515,7 +1542,7 @@ function onDown(ev){
       syncCalSlider();
     }
     S.drag="c";
-    loupe=calRim();
+    loupe=calCentre();
   } else if(S.touchMode==="seed"){
     S.seed=p; S.drag="s";
     loupe=p;
@@ -1526,7 +1553,7 @@ function onMove(ev){
   if(!S.drag) return;
   ev.preventDefault();
   var p=fromEvent(ev);
-  if(S.drag==="c"){ S.cal.c={x:p.x-calOff.x, y:p.y-calOff.y}; loupe=calRim(); }
+  if(S.drag==="c"){ S.cal.c={x:p.x-calOff.x, y:p.y-calOff.y}; loupe=calCentre(); }
   else if(S.drag==="s"){ S.seed=p; loupe=p; }
   showLoupe(true); paintOverlay();
 }
@@ -1557,7 +1584,7 @@ $("calSize").addEventListener("input", function(){
   if(!S.cal.c) S.cal.c={x:S.W/2, y:S.H/2};   // slider first: start in the middle of the frame
   S.cal.r=(+this.value)/2;
   $("calSizev").textContent=fmt(S.cal.r*2,1)+" px";
-  loupe=calRim(); showLoupe(true); paintOverlay();
+  loupe=calCentre(); showLoupe(true); paintOverlay();
   setCalNote(); hint(stepHint());
 });
 $("calSize").addEventListener("change", function(){
@@ -1582,11 +1609,8 @@ function syncRefSel(){
    length in mm. */
 function calDiameterPx(){ return (S.cal.c && S.cal.r) ? S.cal.r*2 : 0; }
 function defaultCalR(){ return Math.round(Math.min(S.W,S.H)*0.18); }
-// Point on the rim the magnifier shows: the top, or the bottom if the top is off-frame.
-function calRim(){
-  var c=S.cal.c;
-  return (c.y-S.cal.r >= 0) ? {x:c.x, y:c.y-S.cal.r} : {x:c.x, y:Math.min(S.H-1, c.y+S.cal.r)};
-}
+// The magnifier follows the circle's centre while it's moved or resized.
+function calCentre(){ return {x:S.cal.c.x, y:S.cal.c.y}; }
 function syncCalSlider(){
   var s=$("calSize");
   if(!S.W) return;
@@ -3025,14 +3049,8 @@ function drawExportFrame(t){
   g.setTransform(1,0,0,1,0,0);
   try{ g.drawImage(vid,0,0,EW,EH); }catch(e){}
   if(S.path.length>1){
-    g.lineJoin="round"; g.lineCap="round";
-    g.beginPath();
-    for(var i=0;i<S.path.length;i++){
-      var x=S.path[i].x*sc, y=S.path[i].y*sc;
-      if(i===0) g.moveTo(x,y); else g.lineTo(x,y);
-    }
-    g.strokeStyle="rgba(242,243,240,.85)"; g.lineWidth=Math.max(2.5,EW/210); g.stroke();
-    g.strokeStyle="#2340D8"; g.lineWidth=Math.max(1.2,EW/500); g.stroke();
+    drawBarPath(g, function(p){ return {x:p.x*sc, y:p.y*sc}; },
+                Math.max(2.5,EW/210), Math.max(1.2,EW/500));
   }
   var p=pathAt(t);
   if(p){
@@ -3548,7 +3566,7 @@ if("serviceWorker" in navigator){
   });
   applyHostTheme(qp("theme"));   // honour the URL so there's no wrong-palette flash
 
-  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-18" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-19" }, "*"); } catch (e) {}
 })();
 </script>
 

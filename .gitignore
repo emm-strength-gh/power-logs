@@ -1,0 +1,10 @@
+# Node test tooling — reinstalled with `npm install`, never committed.
+node_modules/
+npm-debug.log*
+
+# Local sample clips for testing the Velocity Tracker export — never deployed.
+test-assets/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db

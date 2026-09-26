@@ -274,6 +274,17 @@
   .section-head { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 28px; letter-spacing: -.015em; margin: 0 0 4px; display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
   .section-sub { color: var(--muted); font-size: 14px; margin: 6px 0 18px; }
 
+  /* weekly notes: pill on the right of the Week header, card under the subtitle */
+  .wk-headrow { display: flex; align-items: center; gap: 12px; }
+  .wk-headrow .section-head { flex: 1; min-width: 0; margin-bottom: 0; }
+  .wk-notes-btn { flex: none; display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; background: var(--surface); color: var(--muted); border: 1px solid var(--border-strong); }
+  .wk-notes-btn:hover { color: var(--ink); background: var(--bg); }
+  .wk-notes-btn svg { width: 16px; height: 16px; }
+  .wk-notes-btn.has { color: var(--pine); border-color: var(--pine); }
+  .wk-notes { margin: -8px 0 18px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--pine); border-radius: 12px; font-size: 14.5px; line-height: 1.5; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; cursor: pointer; }
+  .wk-notes a { color: var(--pine); text-decoration: underline; text-underline-offset: 2px; }
+  .wk-notes-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; white-space: normal; }
+
   /* day filter */
   .dayfilter { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; }
   .day-chip { padding: 8px 15px; font-size: 13.5px; font-weight: 600; border-radius: 999px; background: var(--surface); color: var(--muted); border: 1px solid var(--border-strong); }
@@ -840,8 +851,15 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
           All weeks
         </button>
-        <h1 class="section-head" id="wkHead">Week</h1>
+        <div class="wk-headrow">
+          <h1 class="section-head" id="wkHead">Week</h1>
+          <button class="wk-notes-btn" id="wkNotesBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
+            <span id="wkNotesBtnTxt">Weekly notes</span>
+          </button>
+        </div>
         <p class="section-sub" id="wkSub"></p>
+        <div class="wk-notes" id="wkNotes" hidden></div>
         <div class="dayfilter" id="dayFilter"></div>
         <div class="panel"><div id="wkList"></div></div>
         <div class="panel addbox">
@@ -1025,6 +1043,23 @@
   </div>
 </div>
 
+<div class="modal-scrim" id="wkNoteScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Weekly notes">
+    <div class="modal-head">
+      <h2>Weekly notes</h2>
+      <button class="icon-x" id="wkNoteClose" aria-label="Close weekly notes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="note-context">For <b id="wkNoteFor"></b></p>
+    <textarea class="note-area" id="wkNoteArea" rows="7" placeholder="Anything for this week — focus, how it went, links to videos…"></textarea>
+    <div class="note-footer">
+      <span class="note-saved" id="wkNoteSaved">Links become tappable</span>
+      <button class="btn-solid" id="wkNoteDone">Done</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-scrim" id="confirmScrim">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
     <div class="modal-head">
@@ -1152,6 +1187,7 @@
   var STORE_DONE     = "spotter.done.v1";
   var STORE_SKIP     = "spotter.skip.v1";
   var STORE_NOTES    = "spotter.notes.v1";
+  var STORE_WKNOTES  = "spotter.weekNotes.v1";
   var STORE_CUSTOM   = "spotter.custom.v1";
   var STORE_THEME    = "spotter.theme";
   var STORE_LAST     = "spotter.lastLifter";
@@ -1159,13 +1195,14 @@
   var STORE_ADDOPEN  = "spotter.dmAddOpen.v2";   // v2: default flipped to open, so the panel is findable
   // Shown at the bottom of Manage program. Bump when power-logs.html changes, so
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
-  var APP_BUILD = "20";
+  var APP_BUILD = "21";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
   var SKIP = {};            // name -> { rid: true }
   var NOTES = {};           // name -> { rid: "user note string" }  (override of the derived RPE+Notes)
   var CUSTOM = {};          // name -> [ { cid, week, day, text } ]  (user-added items)
+  var WKNOTES = {};         // name -> { weekNumber: "free text" }  (Weekly notes)
   var current = null;       // current lifter name
   var currentWeek = null;   // current week number (string/number) when in week view
   var noteCtx = null;       // { name, rid, row } while the Notes editor is open
@@ -1554,6 +1591,34 @@
     if (val === undefined) delete NOTES[name][rid]; else NOTES[name][rid] = val;
     safeWrite(STORE_NOTES, NOTES);
   }
+  // Weekly notes live in their own store keyed by lifter then week number (not
+  // on the profile), so re-importing a program CSV doesn't wipe them.
+  function getWeekNote(name, week) { return (WKNOTES[name] && WKNOTES[name][week]) || ""; }
+  function setWeekNote(name, week, text) {
+    if (!WKNOTES[name]) WKNOTES[name] = {};
+    if (String(text || "").trim() === "") delete WKNOTES[name][week];
+    else WKNOTES[name][week] = String(text);
+    safeWrite(STORE_WKNOTES, WKNOTES);
+  }
+  // Fill `node` with `text`, turning http(s):// and www. addresses into links.
+  // Built from text nodes and <a> elements only, never innerHTML, so pasted
+  // markup can't run. Trailing punctuation is left out of the link.
+  function appendLinkified(node, text) {
+    var re = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi, last = 0, m;
+    while ((m = re.exec(text))) {
+      var url = m[0].replace(/[.,;:!?)\]}'"]+$/, "");
+      if (!url) continue;
+      if (m.index > last) node.appendChild(document.createTextNode(text.slice(last, m.index)));
+      var a = document.createElement("a");
+      a.href = /^www\./i.test(url) ? "https://" + url : url;
+      a.target = "_blank"; a.rel = "noopener noreferrer";
+      a.textContent = url;
+      node.appendChild(a);
+      last = m.index + url.length;
+      re.lastIndex = last;
+    }
+    if (last < text.length) node.appendChild(document.createTextNode(text.slice(last)));
+  }
   function effectiveNote(name, row) {
     var o = getNoteOverride(name, row.rid);
     return o !== undefined ? o : derivedNote(row);
@@ -1845,6 +1910,7 @@
 
     $("wkHead").textContent = "Week " + w.week;
     $("wkSub").textContent = weekSubText(p, w);
+    renderWeekNotes(p, w);
 
     // day filter chips
     var df = $("dayFilter"); clear(df);
@@ -1898,6 +1964,50 @@
 
     renderComposer(p, mv);
     renderSidebar();
+  }
+
+  // ───────────────────────── Weekly notes ─────────────────────────
+  var wkNoteCtx = null;     // { name, week } while the Weekly notes editor is open
+  function renderWeekNotes(p, w) {
+    var text = getWeekNote(p.name, w.week);
+    var box = $("wkNotes"); clear(box);
+    $("wkNotesBtnTxt").textContent = text ? "Edit notes" : "Weekly notes";
+    $("wkNotesBtn").classList.toggle("has", !!text);
+    box.hidden = !text;
+    if (!text) return;
+    box.appendChild(el("span", "wk-notes-label", "Weekly notes"));
+    appendLinkified(box, text);
+  }
+  function openWeekNote() {
+    var p = PROFILES[current]; if (!p || currentWeek === null) return;
+    wkNoteCtx = { name: p.name, week: currentWeek };
+    $("wkNoteFor").textContent = "Week " + currentWeek;
+    $("wkNoteArea").value = getWeekNote(p.name, currentWeek);
+    $("wkNoteSaved").textContent = "Links become tappable";
+    $("wkNoteScrim").classList.add("show");
+    setTimeout(function () { $("wkNoteArea").focus(); }, 30);
+  }
+  function closeWeekNote() {
+    $("wkNoteScrim").classList.remove("show");
+    wkNoteCtx = null;
+    if (currentWeek !== null) renderWeek();
+  }
+  function wireWeekNotes() {
+    var area = $("wkNoteArea");
+    area.addEventListener("input", function () {
+      if (!wkNoteCtx) return;
+      setWeekNote(wkNoteCtx.name, wkNoteCtx.week, area.value);
+      $("wkNoteSaved").textContent = "Saved";
+    });
+    $("wkNotesBtn").onclick = openWeekNote;
+    // Tapping the notes card edits it, but a tap on a link should just follow the link.
+    $("wkNotes").addEventListener("click", function (e) {
+      if (e.target.closest && e.target.closest("a")) return;
+      openWeekNote();
+    });
+    $("wkNoteClose").onclick = closeWeekNote;
+    $("wkNoteDone").onclick = closeWeekNote;
+    $("wkNoteScrim").addEventListener("click", function (e) { if (e.target === $("wkNoteScrim")) closeWeekNote(); });
   }
 
   // Composer: long textbox + day picker to add a free-text item to the week.
@@ -5376,17 +5486,18 @@
       confirmLabel: "Unload everything"
     }).then(function (ok) {
       if (!ok) return;
-      PROFILES = {}; DONE = {}; SKIP = {}; NOTES = {}; CUSTOM = {};
-      current = null; currentWeek = null; dayFilterSel = "all"; noteCtx = null;
+      PROFILES = {}; DONE = {}; SKIP = {}; NOTES = {}; CUSTOM = {}; WKNOTES = {};
+      current = null; currentWeek = null; dayFilterSel = "all"; noteCtx = null; wkNoteCtx = null;
       inDayMgr = false; inAnalytics = false; donor = null; dmSel = { tw: null, td: null, dw: null, dd: null };
       inCompare = false; cmpProfA = null; cmpProfB = null;
       inRpe = false; inVbt = false;
       dmUndoStack = []; dmUndoOwner = null;
       dmUnlocked = false;
-      [STORE_PROFILES, STORE_DONE, STORE_SKIP, STORE_NOTES, STORE_CUSTOM, STORE_LAST].forEach(function (k) {
+      [STORE_PROFILES, STORE_DONE, STORE_SKIP, STORE_NOTES, STORE_CUSTOM, STORE_WKNOTES, STORE_LAST].forEach(function (k) {
         try { localStorage.removeItem(k); } catch (e) {}
       });
       if ($("noteScrim").classList.contains("show")) $("noteScrim").classList.remove("show");
+      if ($("wkNoteScrim").classList.contains("show")) $("wkNoteScrim").classList.remove("show");
       renderPicker();
       renderSidebar();
       closeNav();
@@ -5457,7 +5568,8 @@
       done:   DONE[p.name]   || {},
       skip:   SKIP[p.name]   || {},
       notes:  NOTES[p.name]  || {},     // per-item note overrides (keyed by rid)
-      custom: CUSTOM[p.name] || []      // user-added items
+      custom: CUSTOM[p.name] || [],     // user-added items
+      weekNotes: WKNOTES[p.name] || {}  // Weekly notes, keyed by week number
     };
 
     var base = p.block ? (sanitizeName(p.name) + "_" + sanitizeName(p.block)) : sanitizeName(p.name);
@@ -5601,11 +5713,14 @@
     SKIP[nm]   = asMap(data.skip);
     NOTES[nm]  = asMap(data.notes);
     CUSTOM[nm] = Array.isArray(data.custom) ? data.custom : [];
+    // Older exports predate Weekly notes; keep what's on the device rather than wiping it.
+    if (data.weekNotes !== undefined) WKNOTES[nm] = asMap(data.weekNotes);
 
     safeWrite(STORE_DONE, DONE);
     safeWrite(STORE_SKIP, SKIP);
     safeWrite(STORE_NOTES, NOTES);
     safeWrite(STORE_CUSTOM, CUSTOM);
+    safeWrite(STORE_WKNOTES, WKNOTES);
     return { ok: true, name: nm };
   }
 
@@ -5702,6 +5817,7 @@
     SKIP = safeRead(STORE_SKIP, {}) || {};
     NOTES = safeRead(STORE_NOTES, {}) || {};
     CUSTOM = safeRead(STORE_CUSTOM, {}) || {};
+    WKNOTES = safeRead(STORE_WKNOTES, {}) || {};
     dmAddOpen = safeRead(STORE_ADDOPEN, true) !== false;   // open unless deliberately collapsed
 
     // gym tools: plate calculator + rest timer preferences
@@ -5868,6 +5984,7 @@
     $("saveBtn2").onclick = exportJSON;
     $("unloadBtn").onclick = unloadAll;
     wireNotes();
+    wireWeekNotes();
 
     // ---- Gym tools: plate calculator + rest timer ----
     $("toolsBtn").onclick = openTools;
@@ -5942,6 +6059,7 @@
         else if ($("pinScrim").classList.contains("show")) $("pinCancel").click();
         else if ($("confirmScrim").classList.contains("show")) $("confirmNo").click();
         else if ($("noteScrim").classList.contains("show")) closeNote();
+        else if ($("wkNoteScrim").classList.contains("show")) closeWeekNote();
         else if ($("toolsScrim").classList.contains("show")) closeTools();
         else closeNav();
       }

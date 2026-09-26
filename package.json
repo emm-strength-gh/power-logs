@@ -1,0 +1,15 @@
+{
+  "name": "emmstrength-spotter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EmmStrength Spotter — training-log PWA. This file exists only for the Node smoke tests; the app itself ships as plain static HTML with no build step.",
+  "scripts": {
+    "test": "node test-boot.js && node test-weekrange.js && node test-vbt.js",
+    "test:boot": "node test-boot.js",
+    "test:weekrange": "node test-weekrange.js",
+    "test:vbt": "node test-vbt.js"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.0"
+  }
+}

@@ -446,9 +446,16 @@ input[type=range].rng{width:100%;accent-color:var(--ink);min-height:30px;margin:
       <section class="step hid" id="s2">
         <div class="phead">
           <div class="row1"><h1>Set the scale</h1><span class="of">2 of 4</span></div>
-          <p class="sub">Drag across a plate, through its centre, in the same plane as the bar end you'll track.</p>
+          <p class="sub">Tap a plate to place the circle, drag it on, then use the slider until it touches the plate's top and bottom edges. Use a plate in the same plane as the bar end you'll track.</p>
         </div>
         <div class="pbody">
+          <div class="field">
+            <label class="f" for="calSize">Circle size</label>
+            <div class="rngwrap">
+              <input type="range" class="rng" id="calSize" min="20" max="640" value="220" step="0.5">
+              <span id="calSizev">—</span>
+            </div>
+          </div>
           <div class="grid2 wide field">
             <div>
               <label class="f" for="refSel">Reference</label>
@@ -461,14 +468,14 @@ input[type=range].rng{width:100%;accent-color:var(--ink);min-height:30px;margin:
               </select>
             </div>
             <div>
-              <label class="f" for="refMm">Length, mm</label>
+              <label class="f" for="refMm">Diameter, mm</label>
               <input type="number" id="refMm" value="450" min="10" step="1" inputmode="decimal">
             </div>
           </div>
-          <div class="stat" id="calNote">Drag across the plate on the video.</div>
+          <div class="stat" id="calNote">Tap the plate on the video to place the circle.</div>
         </div>
         <div class="pfoot">
-          <button class="btn ghost icon" id="calClear" aria-label="Clear line" title="Clear line">↺</button>
+          <button class="btn ghost icon" id="calClear" aria-label="Clear circle" title="Clear circle">↺</button>
           <button class="btn grow" id="done2" disabled>Next</button>
         </div>
       </section>
@@ -837,7 +844,7 @@ function stepHint(){
   var n=S.step;
   if(!S.vw) return null;
   if(n===1) return "Scrub to the set, then mark where it starts and ends";
-  if(n===2) return (S.cal.a && S.cal.b) ? "Drag an end dot to fine-tune" : "Drag across the plate, through its centre";
+  if(n===2) return S.cal.c ? "Drag to move the circle · slider sets its size" : "Tap the plate to place the circle";
   if(n===3) return S.mode==="marker" ? "Tap the coloured tape on the bar end" : "Tap and drag to place the patch on the bar end";
   return null;
 }
@@ -852,6 +859,7 @@ function goStep(n){
 
   S.touchMode = (n===2) ? "cal" : (n===3 ? "seed" : null);
   S.drag=null;
+  if(n===2) syncCalSlider();
 
   hint(stepHint());
   loupe=null; showLoupe(false);
@@ -987,7 +995,7 @@ function resetAll(){
   if(S.url){ URL.revokeObjectURL(S.url); S.url=null; }
   vid.removeAttribute("src"); vid.load();
   S.vw=0; S.vh=0; S.dur=0;
-  S.cal={a:null,b:null,mm:+$("refMm").value||450};
+  S.cal={c:null,r:0,mm:+$("refMm").value||450};
   S.seed=null; S.marker=null; S.tpl=null; S.path=[]; S.A=null; S.drop={}; S.nostall={};
   // nothing from the previous clip may leak into the next one: the export
   // overlay's cached labels, the last rendered frame, the results heading
@@ -1011,7 +1019,7 @@ function resetAll(){
   $("repList").innerHTML=""; $("sum").classList.add("hid");
   $("csvBtn").disabled=true;
   $("runNote").textContent="";
-  setStat("calNote","Drag across the plate on the video.");
+  setStat("calNote","Tap the plate on the video to place the circle.");
   setStat("seedNote","Tap the bar on the video.");
   setStat("trimStat","Using the whole clip.");
   setPathBtn(false);
@@ -1236,25 +1244,24 @@ function paintOverlay(){
   ovx.clearRect(0,0,d.w,d.h);
   // the scale line only matters while you're setting it; the target only while
   // you're picking it — later steps get a clean frame
-  if(S.step===2 && S.cal.a) drawCal();
+  if(S.step===2 && S.cal.c) drawCal();
   if(S.step===3 && S.seed) drawSeed();
   if(S.step===4 && S.A && showPath) drawPathTrail();
   if(S.path.length && !S.tracking && S.step===4) drawMarkerAt(vid.currentTime);
 }
 function drawCal(){
-  var a=toDisp(S.cal.a), b=S.cal.b ? toDisp(S.cal.b) : null;
+  var c=toDisp(S.cal.c), r=S.cal.r*(ovDisp().w/(S.W||1));
   ovx.save();
-  if(b){
-    ovx.strokeStyle="#F2F3F0"; ovx.lineWidth=3.4; ovx.lineCap="round";
-    ovx.beginPath(); ovx.moveTo(a.x,a.y); ovx.lineTo(b.x,b.y); ovx.stroke();
-    ovx.strokeStyle="#2340D8"; ovx.lineWidth=1.5;
-    ovx.beginPath(); ovx.moveTo(a.x,a.y); ovx.lineTo(b.x,b.y); ovx.stroke();
-  }
-  (b ? [a,b] : [a]).forEach(function(p){
-    ovx.beginPath(); ovx.arc(p.x,p.y,8,0,6.2832);
-    ovx.fillStyle="rgba(35,64,216,.92)"; ovx.fill();
-    ovx.strokeStyle="#F2F3F0"; ovx.lineWidth=2.2; ovx.stroke();
-  });
+  ovx.lineCap="round";
+  ovx.beginPath(); ovx.arc(c.x,c.y,r,0,6.2832);
+  ovx.strokeStyle="#F2F3F0"; ovx.lineWidth=3.4; ovx.stroke();
+  ovx.strokeStyle="#2340D8"; ovx.lineWidth=1.5; ovx.stroke();
+  // centre cross, so it's clear the circle is moved from anywhere inside it
+  ovx.beginPath();
+  ovx.moveTo(c.x-7,c.y); ovx.lineTo(c.x+7,c.y);
+  ovx.moveTo(c.x,c.y-7); ovx.lineTo(c.x,c.y+7);
+  ovx.strokeStyle="#F2F3F0"; ovx.lineWidth=3.2; ovx.stroke();
+  ovx.strokeStyle="#2340D8"; ovx.lineWidth=1.4; ovx.stroke();
   ovx.restore();
 }
 function drawAreaShape(p,half){
@@ -1333,7 +1340,16 @@ function drawLoupePanel(){
   try{ g.drawImage(hi, loupe.x*k-half, loupe.y*k-half, half*2, half*2, 0,0, LCSS,LCSS); }catch(e){}
   var col = (S.touchMode==="cal") ? "#6E8AF2" : "#DE7B58";
   var showArea = (S.touchMode==="seed" && S.mode==="point");
-  if(!showArea){
+  if(S.touchMode==="cal" && S.cal.c){
+    // the magnifier sits on the circle's rim, so draw the rim over the plate's
+    // edge — matching those two is what sets the scale
+    var f=LCSS/span;
+    var cx=LCSS/2+(S.cal.c.x-loupe.x)*f, cy=LCSS/2+(S.cal.c.y-loupe.y)*f, rr=S.cal.r*f;
+    g.strokeStyle="rgba(14,17,18,.55)"; g.lineWidth=3;
+    g.beginPath(); g.arc(cx,cy,rr,0,6.2832); g.stroke();
+    g.strokeStyle=col; g.lineWidth=1.6;
+    g.beginPath(); g.arc(cx,cy,rr,0,6.2832); g.stroke();
+  } else if(!showArea){
     g.strokeStyle="rgba(242,243,240,.9)"; g.lineWidth=1;
     g.beginPath();
     g.moveTo(0,LCSS/2); g.lineTo(LCSS/2-9,LCSS/2);
@@ -1365,9 +1381,11 @@ function drawLoupePanel(){
 function loupeMeta(){
   var e=$("loupeMeta");
   if(!loupe){ e.innerHTML=""; return; }
-  var lbl = (S.touchMode==="cal") ? ("Scale point "+(S.drag==="a"?"A":"B")) : "Target";
+  var lbl = (S.touchMode==="cal") ? "Plate rim" : "Target";
   var body="";
-  if(S.touchMode==="seed" && S.mode==="marker"){
+  if(S.touchMode==="cal" && S.cal.c){
+    body='<span class="mono">'+fmt(S.cal.r*2,1)+" px across</span>";
+  } else if(S.touchMode==="seed" && S.mode==="marker"){
     try{
       var d=wx.getImageData(clamp(Math.round(loupe.x)-3,0,S.W-7), clamp(Math.round(loupe.y)-3,0,S.H-7),7,7).data;
       var r=0,gg=0,b=0,n=0;
@@ -1478,44 +1496,45 @@ ov.addEventListener("touchcancel", onUp, {passive:false});
 
 function near(p,q,r){ if(!q) return false; var dx=p.x-q.x, dy=p.y-q.y; return dx*dx+dy*dy < r*r; }
 
-/* Scale gestures: press on an end dot to move it; otherwise press-and-drag draws
-   a whole new line from where the finger lands to where it lifts. A plain tap
-   (no real drag) drops just the first end, and the next tap drops the second,
-   so the two-tap habit still works. */
-var calFresh=false;
+/* Scale gestures: a press inside the circle (or just outside its rim) drags it
+   without jumping, keeping the finger's offset from the centre; a press anywhere
+   else moves the circle's centre there. Size comes from the slider only. */
+var calOff={x:0,y:0};
 function onDown(ev){
   if(!S.touchMode || S.tracking) return;
   ev.preventDefault();
   if(previewing) stopPreview();
   var p=fromEvent(ev);
   var grab=24*(S.W/(ovDisp().w||S.W));
-  calFresh=false;
   if(S.touchMode==="cal"){
-    if(near(p,S.cal.a,grab)) S.drag="a";
-    else if(near(p,S.cal.b,grab)) S.drag="b";
-    else if(S.cal.a && !S.cal.b){ S.cal.b=p; S.drag="b"; }
-    else { S.cal.a=p; S.cal.b={x:p.x,y:p.y}; S.drag="b"; calFresh=true; }
+    if(S.cal.c && near(p,S.cal.c,S.cal.r+grab)){
+      calOff={x:p.x-S.cal.c.x, y:p.y-S.cal.c.y};
+    } else {
+      if(!S.cal.r) S.cal.r=defaultCalR();
+      S.cal.c={x:p.x,y:p.y}; calOff={x:0,y:0};
+      syncCalSlider();
+    }
+    S.drag="c";
+    loupe=calRim();
   } else if(S.touchMode==="seed"){
     S.seed=p; S.drag="s";
+    loupe=p;
   }
-  loupe=p; showLoupe(true); paintOverlay();
+  showLoupe(true); paintOverlay();
 }
 function onMove(ev){
   if(!S.drag) return;
   ev.preventDefault();
   var p=fromEvent(ev);
-  if(S.drag==="a") S.cal.a=p;
-  else if(S.drag==="b") S.cal.b=p;
-  else if(S.drag==="s") S.seed=p;
-  loupe=p; showLoupe(true); paintOverlay();
+  if(S.drag==="c"){ S.cal.c={x:p.x-calOff.x, y:p.y-calOff.y}; loupe=calRim(); }
+  else if(S.drag==="s"){ S.seed=p; loupe=p; }
+  showLoupe(true); paintOverlay();
 }
 function onUp(ev){
   if(!S.drag) return;
   if(ev && ev.preventDefault && ev.cancelable) ev.preventDefault();
   S.drag=null;
   if(S.touchMode==="cal"){
-    if(calFresh && calPxLen() < 6*(S.W/(ovDisp().w||S.W))) S.cal.b=null;  // a tap, not a drag
-    calFresh=false;
     finishCal();
     hint(stepHint());
   }
@@ -1529,8 +1548,21 @@ function onUp(ev){
 /* ============================ scale ============================ */
 
 $("calClear").addEventListener("click", function(){
-  S.cal.a=null; S.cal.b=null; loupe=null;
-  finishCal(); showLoupe(false); hint(stepHint()); paintOverlay();
+  S.cal.c=null; S.cal.r=0; loupe=null;
+  syncCalSlider(); finishCal(); showLoupe(false); hint(stepHint()); paintOverlay();
+});
+// Sliding redraws live; the scale (and any re-analysis) is committed on release.
+$("calSize").addEventListener("input", function(){
+  if(!S.vw) return;
+  if(!S.cal.c) S.cal.c={x:S.W/2, y:S.H/2};   // slider first: start in the middle of the frame
+  S.cal.r=(+this.value)/2;
+  $("calSizev").textContent=fmt(S.cal.r*2,1)+" px";
+  loupe=calRim(); showLoupe(true); paintOverlay();
+  setCalNote(); hint(stepHint());
+});
+$("calSize").addEventListener("change", function(){
+  if(!S.vw) return;
+  finishCal(); hideLoupeSoon();
 });
 $("refSel").addEventListener("change", function(){
   var v=+this.value;
@@ -1545,27 +1577,40 @@ function syncRefSel(){
   for(var i=0;i<sel.options.length;i++){ if(sel.options[i].value===v){ sel.value=v; found=true; break; } }
   if(!found) sel.value="0";
 }
-function calPxLen(){
-  if(!S.cal.a||!S.cal.b) return 0;
-  var dx=S.cal.a.x-S.cal.b.x, dy=S.cal.a.y-S.cal.b.y;
-  return Math.sqrt(dx*dx+dy*dy);
+/* The scale reference is a circle (centre S.cal.c, radius S.cal.r, both in
+   tracking pixels) laid over the plate's rim: its diameter is the reference
+   length in mm. */
+function calDiameterPx(){ return (S.cal.c && S.cal.r) ? S.cal.r*2 : 0; }
+function defaultCalR(){ return Math.round(Math.min(S.W,S.H)*0.18); }
+// Point on the rim the magnifier shows: the top, or the bottom if the top is off-frame.
+function calRim(){
+  var c=S.cal.c;
+  return (c.y-S.cal.r >= 0) ? {x:c.x, y:c.y-S.cal.r} : {x:c.x, y:Math.min(S.H-1, c.y+S.cal.r)};
+}
+function syncCalSlider(){
+  var s=$("calSize");
+  if(!S.W) return;
+  s.max=Math.max(40, Math.round(Math.min(S.W,S.H)));
+  s.value = S.cal.r ? S.cal.r*2 : defaultCalR()*2;
+  $("calSizev").textContent = S.cal.r ? fmt(S.cal.r*2,1)+" px" : "\u2014";
 }
 function mPerPx(){
-  var L=calPxLen();
-  if(!L || !S.cal.mm) return 0;
-  return (S.cal.mm/1000)/L;
+  var D=calDiameterPx();
+  if(!D || !S.cal.mm) return 0;
+  return (S.cal.mm/1000)/D;
+}
+function setCalNote(){
+  var mpp=mPerPx();
+  if(!mpp){ setStat("calNote", "Tap the plate on the video to place the circle."); return; }
+  var D=calDiameterPx();
+  var small = D<40;
+  setStat("calNote",
+    "<b>"+fmt(D,1)+" px</b> across = <b>"+S.cal.mm+" mm</b> \u00b7 <b>"+fmt(mpp*1000,2)+" mm</b> per pixel"
+    + (small ? "<br>Small circle \u2014 film closer, or use a bigger reference, for a tighter scale." : ""),
+    small ? "" : "ok");
 }
 function finishCal(){
-  var mpp=mPerPx();
-  if(!mpp) setStat("calNote", S.cal.a ? "Now tap or drag to the other edge of the plate." : "Drag across the plate on the video.");
-  else{
-    var L=calPxLen();
-    var short_ = L<40;
-    setStat("calNote",
-      "<b>"+fmt(L,0)+" px</b> = <b>"+S.cal.mm+" mm</b> \u00b7 <b>"+fmt(mpp*1000,2)+" mm</b> per pixel"
-      + (short_ ? "<br>Short reference line \u2014 drag it longer for a tighter scale." : ""),
-      short_ ? "" : "ok");
-  }
+  setCalNote();
   refreshStep(); renderCrumbs();
   if(S.A) runAnalysis();
 }
@@ -3503,7 +3548,7 @@ if("serviceWorker" in navigator){
   });
   applyHostTheme(qp("theme"));   // honour the URL so there's no wrong-palette flash
 
-  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-17" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-18" }, "*"); } catch (e) {}
 })();
 </script>
 

@@ -130,8 +130,10 @@ The tracker is built to fit the screen with no page scroll:
   the rep list (the only part that scrolls). *Export ▾* holds CSV and video; it turns
   into *Stop export* while a video export runs. Velocity anchors and filming tips
   live behind ⚙. The play button on the video replays with the bar path.
-- **Scale:** press and drag across the plate to draw the whole line; tapping twice
-  still works, and the end dots can be dragged afterwards.
+- **Scale:** tap the plate to place a circle, drag it onto the plate, and use the
+  *Circle size* slider until it touches the plate's top and bottom edges (a plate
+  filmed at an angle looks oval, but its height is still the true diameter). The
+  magnifier shows the rim with the circle's edge over it.
 - **Inside Spotter:** one-line header (details behind ⓘ), and the frame is sized to
   the rest of the window, so there's one scroll area at most.
 

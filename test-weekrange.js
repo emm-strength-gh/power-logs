@@ -1,4 +1,4 @@
-/* Week-range export controls — behaviour + regression across all 14 builders.
+/* Week-range export controls — behaviour + regression across every builder.
  * Run: node test-weekrange.js
  */
 const fs = require("fs");
@@ -100,6 +100,7 @@ const BUILDERS = [
   { view: "fmgd",     fn: "buildFatigueManaged",  weeks: null, f: { "fm-name": "T", "fm-block": "B", "fm-squat": 180, "fm-bench": 130, "fm-dead": 210 } },
   { view: "cvbt",     fn: "buildCvbt",            weeks: 10, f: { "cv-name": "T", "cv-block": "B", "cv-squat": 205, "cv-bench": 165, "cv-dead": 242.5 } },
   { view: "mdl",      fn: "buildMdl",             weeks: 8,  f: { "dm-name": "T", "dm-block": "B", "dm-dead": 242.5, "dm-squat": 205 } },
+  { view: "gpop",     fn: "buildGpop",            weeks: 16, f: { "gp-name": "T", "gp-block": "B", "gp-squat": 205, "gp-bench": 165, "gp-dead": 242.5 } },
 ];
 
 /* rows of a CSV body, keyed by week */

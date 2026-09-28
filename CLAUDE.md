@@ -19,7 +19,7 @@ edges in more depth than this file.
 | File | Role | Standalone? |
 |---|---|---|
 | [power-logs.html](power-logs.html) | **The main app** ("Spotter"). Lifter profiles, weekly program view, done/skip tracking, notes, custom items, Manage Program (day/week editing, PIN-gated), Analytics, Compare, plate calculator, rest timer, warm-up calculator, JSON/CSV import-export. Hosts the other three apps in iframes. | Yes — this is the PWA entry point (`start_url`). |
-| [program-hub.html](program-hub.html) | Program **builders**: Gustav, Wendler, equipped lifting, single-lift (squat/bench/deadlift), combined, Lilliebridge, KSB, CVBT, MDL, fatigue-managed, etc. Generates a CSV program. | Yes, and also opens inside Spotter as the **Program Hub** tab in Manage Program. |
+| [program-hub.html](program-hub.html) | Program **builders**: Meet Peak v2 Gen Pop (balanced 16-week peak, first card), Gustav, Wendler, equipped lifting, single-lift (squat/bench/deadlift), combined, Lilliebridge, KSB, CVBT, MDL, fatigue-managed, etc. Generates a CSV program. | Yes, and also opens inside Spotter as the **Program Hub** tab in Manage Program. |
 | [VBT.html](VBT.html) | **Velocity Tracker**. Loads a video clip, tracks the barbell path frame-by-frame, computes bar speed/RPE per rep, detects stalls/grinds, exports an annotated MP4 (custom `mp4Mux` muxer + WebCodecs) or CSV. | Yes, and opens inside Spotter from the **Velocity Tracker** nav button. |
 | [rpe-estimator.html](rpe-estimator.html) | RPE ↔ %1RM load-chart tool (Chart.js). | Yes, and opens inside Spotter (RPE Estimator in the sidebar). |
 
@@ -69,6 +69,10 @@ the `.vN` suffix if you ever change a stored shape incompatibly.
   RPE+Notes text for a row.
 - `CUSTOM`: `name -> [{ cid, week, day, text, ... }]` — user-added items not
   present in the imported program.
+- `ORDER` (`spotter.lifterOrder.v1`): lifter names in the user's arranged
+  dropdown order. Always enumerate lifters through `lifterNames()`, never
+  `Object.keys(PROFILES)`: it applies this order and appends anything loaded
+  since. It's a separate list because JS forces all-digit object keys first.
 - Plus small scalars: last-selected lifter, theme, tools prefs (plate bar
   weight/collar mode, rest-timer duration/alert pref), Day-Manager
   add-panel-open state.
@@ -115,8 +119,31 @@ built HTML files directly:
 npm install jsdom   # one-time, only needed for test-boot.js
 node test-boot.js       # PWA wiring smoke test (manifest, icons, saveFile routing, sw coverage)
 node test-weekrange.js  # Program Hub week-range export parsing, across all builders
+node test-genpop.js     # Meet Peak v2 Gen Pop: balance, loads, attempts, Clean, real import into power-logs.html
+node test-lifterorder.js # Rearrange lifters: sheet, dropdown entry, persistence, reload, unload
 node test-vbt.js        # Velocity Tracker smoke test
 ```
+
+`npm test` runs all five. Any jsdom script that boots a page must end with
+`process.exit()`: both pages leave intervals running, so node never exits on its own.
+
+## Adding a Program Hub builder
+
+Touch points, in file order: a `--color` var (both themes) + `.btn-*` class + view
+title/checkbox accents; a `.gen-card` in `#view-hub`; the `#view-*` markup; the
+generator + `*CSV()` writer (before the "shared preview engine" block); `CTX` and
+`EMPTY_TXT` entries; `build*()`/`*Reset()`; the click bindings and the `*_FIELDS`
+Enter-key list; a row in test-weekrange.js's `BUILDERS`; then bump `HUB_BUILD` and the
+`hub-N` string together.
+
+- Power Logs only shows **`# ` lines** (hash + space) in its Program notes card;
+  `#Note,...` lines, which several older builders write, are silently ignored. Write
+  `# ` lines raw (not through `csvRow`), and never with user-typed text in them,
+  because a quoted line no longer starts with `#` and the Hub's `splitCSV` drops it.
+- Keep variation names out of the competition-lift charts: `AN_EXCLUDED` in
+  power-logs.html matches by substring ("pause squat", "paused deadlift", "close
+  grip", "larsen", ...). Anything else containing "squat"/"bench"/"deadlift" is
+  counted as that lift, e.g. "Bulgarian split squat" would count as squat volume.
 
 Run the relevant one after touching the corresponding file. There's no CI —
 run these manually before calling a change done.

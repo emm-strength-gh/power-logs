@@ -56,6 +56,7 @@
     --mdl:#C0395A;
     --ksb:#2FA88C;
     --fmgd:#6B87A6;
+    --gpop:#C9824E;
     --build-dim:#28365a; --develop-dim:#54472a; --peak-dim:#54322a;
     --build-ink:#cdd9f4; --develop-ink:#f0dcaf; --peak-ink:#f3c2b8;
     --good:#5FB37A;
@@ -71,7 +72,7 @@
   :root[data-theme="light"]{
     --bg:#F1F2F5; --panel:#FFFFFF; --panel-2:#EAECEF; --hair:#DADDE2;
     --ink:#1B1E24; --muted:#5B626D; --muted-2:#949AA4;
-    --build:#3B6BD0; --develop:#B5791A; --peak:#D2402B; --wend:#2C86A8; --equip:#7E5FC0; --dlpk:#1E8E80; --sqpk:#C04E86; --bnpk:#3F8A52; --sbd:#B0821F; --lilb:#C4552F; --bnpk2:#4E5DC4; --lsbd:#9A3A94; --cvbt:#6B8420; --mdl:#A02C49; --ksb:#227A65; --fmgd:#4F6C8A;
+    --build:#3B6BD0; --develop:#B5791A; --peak:#D2402B; --wend:#2C86A8; --equip:#7E5FC0; --dlpk:#1E8E80; --sqpk:#C04E86; --bnpk:#3F8A52; --sbd:#B0821F; --lilb:#C4552F; --bnpk2:#4E5DC4; --lsbd:#9A3A94; --cvbt:#6B8420; --mdl:#A02C49; --ksb:#227A65; --fmgd:#4F6C8A; --gpop:#A0612E;
     --build-dim:#DCE6FA; --develop-dim:#F5E6C4; --peak-dim:#F7D8D1;
     --build-ink:#274a88; --develop-ink:#6c4c0d; --peak-ink:#8c2c1d;
     --good:#3E9E63;
@@ -379,6 +380,7 @@
   .btn-mdl{background:var(--mdl)}
   .btn-ksb{background:var(--ksb)}
   .btn-fmgd{background:var(--fmgd)}
+  .btn-gpop{background:var(--gpop)}
   #view-lilliebridge .opt input[type=checkbox]{accent-color:var(--lilb)}
   #view-equipped .view-title .slash{color:var(--equip)}
   #view-deadlift .view-title .slash{color:var(--dlpk)}
@@ -394,6 +396,8 @@
   #view-cvbt .view-title .slash{color:var(--cvbt)}
   #view-mdl .view-title .slash{color:var(--mdl)}
   #view-fmgd .opt input[type=radio]{accent-color:var(--fmgd)}
+  #view-gpop .view-title .slash{color:var(--gpop)}
+  #view-gpop .opt input[type=checkbox]{accent-color:var(--gpop)}
 
   /* ===================== iOS / PWA standalone ===================== */
   /* Keeps content clear of the notch, Dynamic Island and home indicator.
@@ -436,6 +440,13 @@
   <div class="view active" id="view-hub">
     <p class="view-sub hub-intro">Pick a methodology, enter the lifter's competition maxes, and generate a dashboard-ready CSV you can preview, filter by week, and export. More builders coming.</p>
     <div class="hub-grid">
+      <button class="gen-card" data-go="gpop">
+        <span class="accent" style="background:linear-gradient(90deg,var(--gpop),var(--peak))"></span>
+        <span class="gc-tag">Squat + Bench + Deadlift · 16 weeks · classic</span>
+        <h3>Meet Peak v2 · Gen Pop</h3>
+        <p>A balanced 16-week meet peak for any set of maxes &mdash; no lift is prioritised. Percentages set the loads and RPE caps govern them, a week-10 calibration re-sets the peak, and the attempts follow the elite 9-for-9 pattern with a PR on every third. Includes a Clean export that hides the percentages.</p>
+        <span class="btn-primary gc-go btn-gpop">Open builder</span>
+      </button>
       <button class="gen-card" data-go="gustav">
         <span class="accent" style="background:linear-gradient(90deg,var(--build),var(--develop),var(--peak))"></span>
         <span class="gc-tag">Hedlund · 16 weeks</span>
@@ -1001,6 +1012,50 @@
         <button class="btn-primary btn-mdl" id="dm-generate">Build the block</button>
         <button class="btn-ghost" id="dm-reset" style="display:none">Clear</button>
         <span class="msg" id="dm-msg"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MEET PEAK v2 · GEN POP ===================== -->
+  <div class="view" id="view-gpop">
+    <button class="backlink" data-go="hub">&larr; All builders</button>
+    <h2 class="view-title">Meet Peak v2 <span class="slash">/</span> Gen Pop</h2>
+    <p class="view-sub">A 16-week classic (raw) meet peak for any lifter, four days a week &mdash; e.g. Monday, Tuesday, Thursday, Saturday &mdash; with the meet on week 16, day 4. It is the general version of the 16-week peak, so <strong>no lift is prioritised</strong>. Squat and deadlift mirror each other: a heavy day (top set + back-offs) and a secondary day (a paused variation to week 9, the competition lift from week 10) on the same percentages and set counts. Bench trains three times a week &mdash; heavy, a variation, and volume. Only the run-in differs: the last pull is 7 days out, the last squat 5 and the last bench 4, which is when strength athletes typically stop each lift.</p>
+    <p class="view-sub" style="margin-top:-6px"><strong>Percentages set the load; RPE caps govern it.</strong> The same percentage can leave one lifter six reps in the tank and another two, so every main-lift row carries an RPE target and a cap, and the program notes say how to adjust. <strong>Week 10 is a calibration week</strong>: one single at 87.5% per lift, and its RPE decides whether weeks 11&ndash;16 are rebuilt heavier or lighter &mdash; set <strong>Weeks</strong> to 11-16 below and export or send just those. The third attempt is set as a PR, with the opener and second at about 91% and 96% of it &mdash; the pattern elite classic lifters use to go 9 for 9. The <strong>Clean</strong> version hides the percentages.</p>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--build)"></i>Accumulation · wk 1&ndash;4</span>
+      <span><i class="dot" style="background:var(--deload-badge)"></i>Pivot · wk 5 &amp; 10</span>
+      <span><i class="dot" style="background:var(--develop)"></i>Strength · wk 6&ndash;9</span>
+      <span><i class="dot" style="background:var(--peak)"></i>Overreach &amp; intensify · wk 11&ndash;14</span>
+      <span><i class="dot" style="background:var(--peak)"></i>Taper &amp; meet · wk 15&ndash;16</span>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <div class="card-head">
+        <h2>Lifter &amp; competition 1RMs</h2>
+        <span class="hint">kg · weights = % × 1RM</span>
+      </div>
+      <div class="grid">
+        <div class="field span"><label>Name</label><input id="gp-name" type="text" placeholder="e.g. Emm"></div>
+        <div class="field"><label>Block</label><input id="gp-block" type="text" placeholder="e.g. Nationals peak"></div>
+        <div class="field"><label>Class</label><input id="gp-class" type="text" placeholder="e.g. 74kg"></div>
+        <div class="field"><label>Squat 1RM <span class="unit">kg</span></label><input id="gp-squat" class="maxin" type="number" inputmode="decimal" placeholder="200"></div>
+        <div class="field"><label>Bench 1RM <span class="unit">kg</span></label><input id="gp-bench" class="maxin" type="number" inputmode="decimal" placeholder="140"></div>
+        <div class="field"><label>Deadlift 1RM <span class="unit">kg</span></label><input id="gp-dead" class="maxin" type="number" inputmode="decimal" placeholder="230"></div>
+      </div>
+      <div class="opts">
+        <label class="opt"><span>Third attempts</span>
+          <select id="gp-bump">
+            <option value="1">+1% &mdash; experienced or 40+</option>
+            <option value="2.5" selected>+2.5% &mdash; standard</option>
+            <option value="4">+4% &mdash; early-career</option>
+          </select>
+        </label>
+        <label class="opt check"><input type="checkbox" id="gp-acc" checked><span style="font-size:13px;color:var(--muted)">Accessory work <span style="color:var(--muted-2)">· leg work to week 9, upper back to week 15</span></span></label>
+      </div>
+      <div class="row-actions">
+        <button class="btn-primary btn-gpop" id="gp-generate">Build the program</button>
+        <button class="btn-ghost" id="gp-reset" style="display:none">Clear</button>
+        <span class="msg" id="gp-msg"></span>
       </div>
     </div>
   </div>
@@ -4536,12 +4591,313 @@ function lilbCSV(opts, rows){
   return out;
 }
 
+/* ===================== Meet Peak v2 · Gen Pop (16 weeks) =====================
+   The 16-week meet peak rebuilt as a general template. v1 was fitted to one
+   lifter's ratios (a squat lagging the deadlift got the extra work); here no
+   lift is prioritised, so any set of maxes can run it:
+   · Squat and deadlift mirror each other — a heavy day (top set + back-offs)
+     and a secondary day (paused variation to week 9, the competition lift from
+     week 10) on identical percentages and set counts. Equal-volume squat,
+     bench and deadlift sessions recover on the same time course (Belcher et
+     al. 2019), so the deadlift isn't rationed. Only the run-in differs: last
+     pull 7 days out, last squat 5, last bench 4, matching when strength
+     athletes stop each lift (Travis et al. 2020).
+   · Bench trains three times a week: heavy, a variation, and volume.
+   · Percentages set the load and the RPE cap governs it — reps at a given %1RM
+     vary widely between lifters (6-26 at 70% in the squat; Cooke et al. 2019).
+   · Attempts follow elite classic lifters who went 9/9: opener ~91% and second
+     ~96% of the third (Travis et al. 2021), with the third set as a PR.
+   Weight = pct% of that lift's 1RM, rounded to 2.5kg and never under the 20kg
+   bar. Notes are built from parts so Clean can withhold the percentages. */
+const GPOP_PHASE = {1:"Accumulation",2:"Accumulation",3:"Accumulation",4:"Accumulation",5:"Pivot",
+                    6:"Strength",7:"Strength",8:"Strength",9:"Strength",10:"Pivot + calibration",
+                    11:"Overreach",12:"Overreach",13:"Intensify",14:"Intensify",15:"Taper",16:"Meet week"};
+// Heavy day, shared by squat (D1), bench (D1) and deadlift (D2).
+// top:[pct, reps, rpe] · bo:[pct, sets, reps, rpe]
+const GPOP_HEAVY = {
+  1:{top:[72.5,6,7],    bo:[67.5,3,6,6.5]},  2:{top:[75,6,7.5],   bo:[70,3,6,7]},
+  3:{top:[77.5,5,7.5],  bo:[72.5,4,5,7]},    4:{top:[80,5,8],     bo:[75,4,5,7.5]},
+  6:{top:[82.5,4,7.5],  bo:[75,3,4,7]},      7:{top:[85,3,8],     bo:[77.5,4,3,7]},
+  8:{top:[87.5,3,8.5],  bo:[80,4,3,7.5]},    9:{top:[90,2,8.5],   bo:[80,3,3,7.5]},
+  11:{top:[87.5,3,8],   bo:[80,4,4,8]},      12:{top:[90,2,8.5],  bo:[82.5,4,3,8]},
+  13:{top:[92.5,1,8.5], bo:[85,3,2,8]},
+};
+// Secondary day, the same for squat (D3) and deadlift (D4): [pct, sets, reps, rpe]
+const GPOP_SECOND = {
+  1:[62.5,3,5,6.5], 2:[62.5,4,5,7],   3:[67.5,4,4,7],   4:[70,4,4,7.5], 5:[62.5,2,4,6],
+  6:[72.5,4,3,7],   7:[75,4,3,7.5],   8:[77.5,3,3,7.5], 9:[77.5,3,2,7],
+  10:[70,3,3,6],    11:[77.5,4,3,7],  12:[80,4,3,7.5],  13:[80,3,2,7],  14:[75,2,2,6],
+};
+// Day 2 bench variation: close grip, with Larsen presses through the strength block
+const GPOP_BENCH2 = {
+  1:["Close grip bench",62.5,3,8,7],   2:["Close grip bench",62.5,4,8,7],  3:["Close grip bench",65,4,7,7.5],
+  4:["Close grip bench",67.5,4,6,7.5], 5:["Close grip bench",62.5,2,6,6],
+  6:["Larsen press",70,4,5,7.5],  7:["Larsen press",72.5,4,5,8], 8:["Larsen press",75,4,4,8],
+  9:["Larsen press",75,3,4,7.5],  10:["Larsen press",67.5,2,4,6],
+  11:["Close grip bench",75,3,5,7.5], 12:["Close grip bench",77.5,3,4,8], 13:["Close grip bench",75,2,4,7],
+  14:["Close grip bench",72.5,2,3,6.5], 15:["Close grip bench",70,2,3,6],
+};
+// Day 4 bench volume: [pct, sets, reps, rpe]
+const GPOP_BENCH4 = {
+  1:[67.5,3,8,6.5], 2:[67.5,4,8,7], 3:[72.5,4,6,7],  4:[75,5,5,7.5],
+  6:[75,4,5,7],     7:[77.5,4,5,7.5], 8:[80,5,3,7.5], 9:[80,4,3,7],
+  11:[82.5,5,3,7.5], 12:[85,5,2,8], 13:[85,4,2,8],
+};
+const GPOP_VAR_TAIL = { "Pause squat":"2s pause in the hole", "Paused deadlift":"1s pause just below the knee",
+                        "Close grip bench":"triceps & lockout", "Larsen press":"feet up, no leg drive" };
+/* Accessories: [day, exercise, sets, reps, rpe, note]. Balanced across knee and
+   hip (leg press + lunges, leg curls + back extensions). Leg work stops after
+   week 9 so the peak runs on fresh legs; upper back and trunk carry on lighter. */
+function gpopAccessories(w){
+  if(w <= 4){
+    const a = w <= 2 ? 3 : 4;
+    return [
+      [1,"Chest-supported row",a,10,8,"upper back"], [1,"Lying leg curl",3,12,8,"hamstrings"], [1,"Ab wheel",3,10,8,"trunk"],
+      [2,"Lat pulldown",a,10,8,"or weighted pull-up"], [2,"Leg press",3,10,8,"quads"], [2,"Triceps pushdown",3,12,8.5,""],
+      [3,"DB incline press",a,10,8,""], [3,"45° back extension",3,10,7,"controlled"], [3,"Face pull",3,15,8,"shoulder health"],
+      [4,"One-arm DB row",3,10,8,"per side"], [4,"DB walking lunge",3,10,8,"steps per leg"], [4,"Side plank",3,"30s","","per side"]];
+  }
+  if(w === 5 || w === 10) return [
+    [1,"Chest-supported row",2,10,7,""], [2,"Lat pulldown",2,10,7,""], [3,"DB incline press",2,10,7,""],
+    [3,"Face pull",2,15,7,""], [4,"One-arm DB row",2,10,7,"per side"]];
+  if(w <= 9) return [
+    [1,"Chest-supported row",3,8,8,"upper back"], [1,"Lying leg curl",3,10,8,""], [1,"Ab wheel",3,10,8,""],
+    [2,"Lat pulldown",3,8,8,"or weighted pull-up"], [2,"Leg press",3,8,8,""], [2,"Triceps pushdown",3,10,8.5,""],
+    [3,"DB incline press",3,8,8,""], [3,"45° back extension",3,8,7,""], [3,"Face pull",3,15,8,""],
+    [4,"One-arm DB row",3,8,8,"per side"], [4,"DB walking lunge",2,8,8,"steps per leg"], [4,"Side plank",2,"30s","","per side"]];
+  if(w <= 12) return [
+    [1,"Chest-supported row",3,8,8,""], [1,"Ab wheel",2,10,7,""], [2,"Lat pulldown",3,8,8,""], [2,"Triceps pushdown",2,10,8,""],
+    [3,"DB incline press",2,8,7.5,""], [3,"Face pull",2,15,7,""], [4,"One-arm DB row",2,8,7.5,"per side"]];
+  if(w <= 14) return [
+    [1,"Chest-supported row",2,8,8,""], [1,"Ab wheel",2,10,7,""], [2,"Lat pulldown",2,8,8,""],
+    [3,"DB incline press",1,8,7.5,""], [3,"Face pull",2,15,7,""]]
+    .concat(w === 13 ? [[4,"One-arm DB row",2,8,7.5,"per side"]] : []);
+  if(w === 15) return [[1,"Chest-supported row",2,8,7,"light pump only"], [3,"Face pull",2,15,6,""]];
+  return [];
+}
+/* Third = a PR: +bump% on the entered max, and always at least one 2.5kg jump
+   above it. Opener and second hang off the third (Travis et al. 2021), then are
+   forced apart so small lifts don't round two attempts onto the same weight. */
+function gpopAttempts(max, bump){
+  const r25 = w => Math.round(w/2.5)*2.5;
+  const third  = Math.max(r25(max*(1 + bump/100)), Math.floor(max/2.5)*2.5 + 2.5);
+  const second = Math.min(r25(third*0.96), third - 2.5);
+  const opener = Math.max(20, Math.min(r25(third*0.91), second - 2.5));
+  return { opener, second, third };
+}
+// Meet warm-ups as fractions of the opener; rungs that round onto the same
+// weight (light lifts) or reach the opener are dropped.
+function gpopWarmups(opener, lift){
+  const r25 = w => Math.round(w/2.5)*2.5;
+  const LADDER = {
+    Squat:    [[0,5],[0.35,5],[0.55,3],[0.7,2],[0.82,1],[0.92,1]],
+    Bench:    [[0,8],[0.4,5],[0.6,3],[0.75,2],[0.85,1],[0.93,1]],
+    Deadlift: [[0.3,5],[0.53,3],[0.7,2],[0.84,1],[0.93,1]],
+  }[lift];
+  const out = []; let last = 0;
+  for(const [f, reps] of LADDER){
+    const w = Math.max(20, r25(opener*f));
+    if(w <= last || w >= opener) continue;
+    out.push(fmtW(w) + "×" + reps); last = w;
+  }
+  return out.join(", ");
+}
+function gpopProgram(maxes, opts){
+  const bump = (opts && opts.bump) || 2.5;
+  const r25 = w => Math.max(20, Math.round(w/2.5)*2.5);
+  const rows = [];
+  const push = (w, d, ex, lift, wt, sets, reps, rpe, cue, pct, tail, tailClean) => rows.push({
+    Week:w, Day:d, Exercise:ex, "Weight (kg)":wt, Sets:sets, Reps:reps,
+    Rpe:(rpe === "" || rpe == null) ? "" : String(rpe),
+    _lift:lift, _cue:cue || "", _pct:pct || "", _tail:tail || "",
+    _tailClean:(tailClean == null ? (tail || "") : tailClean) });
+  // a barbell row loaded at p% of that lift's 1RM
+  const bar = (w, d, ex, lift, p, sets, reps, rpe, cue, tail, tailClean) =>
+    push(w, d, ex, lift, fmtW(r25(maxes[lift]*p/100)), sets, reps, rpe, cue,
+         ex === lift ? p + "%" : p + "% of comp max", tail, tailClean);
+  const PAUSE = "1s pause";
+  const heavy = (w, d, lift, H, extra) => {
+    const [tp, tr, te] = H.top, [bp, bs, br, be] = H.bo;
+    bar(w, d, lift, lift, tp, 1, tr, te, "Top set", ["cap RPE " + Math.min(9, te + 0.5), extra].filter(Boolean).join(" · "));
+    bar(w, d, lift, lift, bp, bs, br, be, "Back-offs", extra);
+  };
+
+  // heavy days: blocks 1-2 and the overreach/intensify run
+  for(const w of [1,2,3,4,6,7,8,9,11,12,13]){
+    heavy(w, 1, "Squat", GPOP_HEAVY[w]);
+    heavy(w, 1, "Bench", GPOP_HEAVY[w], PAUSE);
+    heavy(w, 2, "Deadlift", GPOP_HEAVY[w]);
+  }
+  // secondary squat/deadlift and the two extra bench sessions
+  for(let w = 1; w <= 15; w++){
+    const s = GPOP_SECOND[w];
+    if(s){
+      const comp = w >= 10;
+      bar(w, 3, comp ? "Squat" : "Pause squat", "Squat", s[0], s[1], s[2], s[3], "",
+          comp ? (w === 10 ? "competition squat from here on" : "competition depth & commands") : GPOP_VAR_TAIL["Pause squat"]);
+      bar(w, 4, comp ? "Deadlift" : "Paused deadlift", "Deadlift", s[0], s[1], s[2], s[3], "",
+          comp ? (w === 10 ? "competition deadlift from here on" : "competition setup, every rep crisp") : GPOP_VAR_TAIL["Paused deadlift"]);
+    }
+    const b2 = GPOP_BENCH2[w];
+    if(b2) bar(w, 2, b2[0], "Bench", b2[1], b2[2], b2[3], b2[4], "", GPOP_VAR_TAIL[b2[0]]);
+    const b4 = GPOP_BENCH4[w];
+    if(b4) bar(w, 4, "Bench", "Bench", b4[0], b4[1], b4[2], b4[3], "", "volume · " + PAUSE);
+  }
+
+  // W5 pivot: about half the volume at RPE <=6
+  for(const [d, lift] of [[1,"Squat"],[2,"Deadlift"]]){
+    bar(5, d, lift, lift, 70, 1, 5, 6, "Pivot week", "RPE ≤6 · let fatigue clear");
+    bar(5, d, lift, lift, 65, 2, 5, 5.5, "", "");
+  }
+  bar(5, 1, "Bench", "Bench", 70, 3, 5, 6, "Pivot week", PAUSE);
+  bar(5, 4, "Bench", "Bench", 72.5, 1, 5, 6, "Pivot week", PAUSE);
+  bar(5, 4, "Bench", "Bench", 67.5, 2, 5, 5.5, "", "");
+
+  // W10 pivot + calibration: one single per lift re-sets weeks 11-16
+  const CAL = "RPE ≤6 → rebuild weeks 11-16 with this max +2.5% · RPE ≥8.5 → rebuild with −2.5%";
+  const CAL_CLEAN = "RPE ≤6 → weeks 11-16 go up a notch · RPE ≥8.5 → down a notch";
+  bar(10, 1, "Squat", "Squat", 87.5, 1, 1, 7, "Calibration single", CAL, CAL_CLEAN);
+  bar(10, 1, "Squat", "Squat", 75, 2, 3, 6, "", "crisp");
+  bar(10, 1, "Bench", "Bench", 75, 3, 3, 6, "", PAUSE);
+  bar(10, 2, "Deadlift", "Deadlift", 87.5, 1, 1, 7, "Calibration single", CAL, CAL_CLEAN);
+  bar(10, 2, "Deadlift", "Deadlift", 75, 2, 3, 6, "", "crisp");
+  bar(10, 4, "Bench", "Bench", 87.5, 1, 1, 7, "Calibration single", CAL, CAL_CLEAN);
+  bar(10, 4, "Bench", "Bench", 75, 2, 3, 6, "", PAUSE);
+
+  // W14: the heaviest single of the block, about two weeks out
+  const TOP1 = "stop at RPE 9 · confirms your attempts";
+  bar(14, 1, "Squat", "Squat", 95, 1, 1, 8.5, "Heaviest single of the block", TOP1);
+  bar(14, 1, "Squat", "Squat", 85, 2, 2, 7.5, "Back-offs", "");
+  bar(14, 1, "Bench", "Bench", 87.5, 1, 2, 8, "", PAUSE);
+  bar(14, 1, "Bench", "Bench", 82.5, 2, 2, 7, "", PAUSE);
+  bar(14, 2, "Deadlift", "Deadlift", 95, 1, 1, 8.5, "Heaviest single of the block", TOP1);
+  bar(14, 2, "Deadlift", "Deadlift", 85, 2, 2, 7.5, "Back-offs", "");
+  bar(14, 4, "Bench", "Bench", 95, 1, 1, 8.5, "Heaviest single of the block", TOP1);
+  bar(14, 4, "Bench", "Bench", 85, 1, 2, 7.5, "", PAUSE);
+
+  // Attempts are fixed up front so week 15 can rehearse the real openers.
+  const attempts = {};
+  for(const lift of ["Squat","Bench","Deadlift"]) attempts[lift] = gpopAttempts(maxes[lift], bump);
+
+  // W15 taper: volume about halved, intensity held by rehearsing each planned opener
+  const rehearse = (d, lift, cmds, extra, extraClean) => {
+    const o = attempts[lift].opener;
+    push(15, d, lift, lift, fmtW(o), 1, 1, 7.5, "Opener rehearsal", (Math.round(o/maxes[lift]*1000)/10) + "%",
+         ["your planned opener", cmds, "harder than RPE 7.5 → take 2.5% off it", extra].filter(Boolean).join(" · "),
+         ["your planned opener", cmds, "harder than RPE 7.5 → come down a jump", extraClean].filter(Boolean).join(" · "));
+  };
+  rehearse(1, "Squat", "full commands");
+  bar(15, 1, "Squat", "Squat", 80, 2, 2, 6.5, "", "crisp");
+  bar(15, 1, "Bench", "Bench", 82.5, 3, 2, 7, "", PAUSE);
+  rehearse(2, "Deadlift", "full commands", "last pull over 80% before the meet", "last heavy pull before the meet");
+  bar(15, 2, "Deadlift", "Deadlift", 80, 2, 2, 6.5, "", "crisp");
+  bar(15, 3, "Squat", "Squat", 75, 3, 2, 6, "", "speed · competition depth");
+  rehearse(4, "Bench", "full commands: start, press, rack");
+  bar(15, 4, "Bench", "Bench", 80, 2, 2, 6.5, "", PAUSE);
+  bar(15, 4, "Deadlift", "Deadlift", 70, 2, 2, 5.5, "", "speed · last pull, 7 days out");
+
+  // W16 meet week: singles 5 days out, optional bench 4 days out, rest, meet
+  bar(16, 1, "Squat", "Squat", 80, 3, 1, 6, "Meet week", "singles, fast, stay loose");
+  bar(16, 1, "Bench", "Bench", 80, 3, 1, 6, "Meet week", "singles · " + PAUSE);
+  bar(16, 2, "Bench", "Bench", 70, 2, 2, 5, "Last session, 4 days out", "groove the pause · optional");
+  push(16, 3, "Rest", "", "", "", "", "", "", "", "Rest · walk, mobility, pack your bag, check the kit list");
+  for(const lift of ["Squat","Bench","Deadlift"]){
+    const a = attempts[lift];
+    const slow2 = Math.max(a.opener + 2.5, a.second - 2.5);
+    const slow3 = a.third - 2.5;
+    const tag3 = slow3 > maxes[lift] ? "still a PR" : (slow3 === maxes[lift] ? "ties your best" : "a safe total");
+    push(16, 4, lift + " — opener", lift, fmtW(a.opener), 1, 1, 7, "MEET · opener", "",
+         "warm-ups " + gpopWarmups(a.opener, lift));
+    push(16, 4, lift + " — 2nd attempt", lift, fmtW(a.second), 1, 1, 8.5, "", "",
+         "opener fast → " + fmtW(a.second) + (slow2 < a.second ? " · slow → " + fmtW(slow2) : ""));
+    push(16, 4, lift + " — 3rd attempt", lift, fmtW(a.third), 1, 1, 9.5, "PR", "",
+         "2nd fast → " + fmtW(a.third) + " or " + fmtW(a.third + 2.5) +
+         (slow3 > a.second ? " · 2nd slow → " + fmtW(slow3) + " (" + tag3 + ")" : ""));
+  }
+
+  if(!opts || opts.acc !== false){
+    for(let w = 1; w <= 16; w++)
+      for(const [d, ex, sets, reps, rpe, note] of gpopAccessories(w)) push(w, d, ex, "", "", sets, reps, rpe, "", "", note);
+  }
+
+  // Session order: main lifts in meet order (the day-2 pull goes first), then accessories.
+  // Array sort is stable, so rows keep their written order within a rank.
+  const rank = r => !r._lift ? 9 : (r.Day === 2 ? {Deadlift:0, Bench:1, Squat:2} : {Squat:0, Bench:1, Deadlift:2})[r._lift];
+  rows.sort((a, b) => (a.Week - b.Week) || (a.Day - b.Day) || (rank(a) - rank(b)));
+  return { rows, attempts,
+    maxLines:[ {label:"Squat 1RM", val:fmtW(maxes.Squat)},
+               {label:"Bench 1RM", val:fmtW(maxes.Bench)},
+               {label:"Deadlift 1RM", val:fmtW(maxes.Deadlift)} ],
+    weekCount:16 };
+}
+function gpopRender(rows, opts){
+  const showPct = !(opts && opts.pct === false);
+  return rows.map(r => Object.assign({}, r, {
+    Notes:[r._cue, showPct ? r._pct : "", showPct ? r._tail : r._tailClean].filter(Boolean).join(" · ") }));
+}
+// A class like "74kg" or "74" gives a limit to make; "120+" or blank doesn't.
+function gpopClassLimit(cls){
+  const s = String(cls || "");
+  if(s.indexOf("+") !== -1) return null;
+  const m = s.match(/\d+(?:\.\d+)?/);
+  const v = m ? parseFloat(m[0]) : NaN;
+  return (v >= 30 && v <= 200) ? v : null;
+}
+/* Program notes, written as "# " lines so Power Logs shows them in its Program
+   notes card. They never carry user-typed text, so they can go out unquoted.
+   Clean gets the same guidance with the arithmetic taken out. */
+function gpopNotes(o, clean){
+  const m = o.maxes, tm = k => fmtW(Math.round(m[k]*0.9/2.5)*2.5);
+  const n = ["MEET PEAK v2 · GEN POP · 16 weeks, classic (raw). Balanced: squat, bench and deadlift share one structure and no lift is prioritised.",
+             "Meet = Week 16 Day 4. Train 4 days a week, e.g. Mon · Tue · Thu · Sat."];
+  if(!clean) n.push("Loads are % of the 1RMs entered (Squat " + fmtW(m.Squat) + " · Bench " + fmtW(m.Bench) +
+                    " · Deadlift " + fmtW(m.Deadlift) + "), rounded to 2.5 kg. Use maxes you could hit today, not old PRs.");
+  n.push("Blocks: Accumulation W1-4 · Pivot W5 · Strength W6-9 · Pivot + calibration W10 · Overreach W11-12 · Intensify W13-14 · Taper W15 · Meet W16.",
+         "Top set first, then back-offs. The RPE column is the target; the note gives the cap.");
+  n.push(clean
+    ? "The cap wins: a top set 1+ RPE over its cap means lighter back-offs; 1+ under for two sessions running means go up a jump next week."
+    : "The same % feels different from lifter to lifter, so the cap wins: a top set 1+ RPE over its cap means 5% off the back-offs; 1+ under for two sessions running means add 2.5% next week.");
+  n.push("Never grind a training rep. RPE 10 is for the platform.");
+  n.push(clean
+    ? "Warm-up: 5-6 jumps from the empty bar to the top set, fewer reps as the weight climbs."
+    : "Warm-up: bar ×10, 40% ×5, 60% ×3, 75% ×2, 85% ×1 on heavy days, then the top set.");
+  if(o.acc) n.push("Accessories: choose a load that lands on the RPE; add reps before load. Leg accessories stop after week 9 to keep the peak fresh.");
+  n.push(clean
+    ? "Week 10 calibration singles re-set the peak: RPE ≤6 means weeks 11-16 go up a notch, RPE ≥8.5 means down a notch. Rebuild those weeks before week 11."
+    : "W10 calibration singles: RPE ≤6 → rebuild weeks 11-16 with that max +2.5%; RPE ≥8.5 → rebuild with −2.5%. In the Program Hub set Weeks to 11-16, then export or send.");
+  n.push(clean
+    ? "Every 3rd attempt is planned as a PR. The week 14 singles confirm the attempts: RPE ≤8 → keep them; RPE ≥9.5 → come down a jump on the 2nd and 3rd. Week 15 rehearses each opener."
+    : "Attempts: the 3rd is a PR (+" + o.bump + "% on the max entered). Opener ≈ 91% and 2nd ≈ 96% of the 3rd, the pattern elite classic lifters use to go 9 for 9. W14 singles confirm them: RPE ≤8 → keep; RPE ≥9.5 → take 2.5% off the 2nd and 3rd. W15 rehearses each opener.");
+  n.push("Classic rules: belt, knee sleeves and wrist wraps only.");
+  if(!clean) n.push("Training max for any %-template you run later: 90% of a recent true 1RM = Squat " + tm("Squat") +
+                    " · Bench " + tm("Bench") + " · Deadlift " + tm("Deadlift") + ".");
+  const lim = gpopClassLimit(o.cls);
+  if(lim) n.push("Making weight (" + fmtW(lim) + " kg class): be at or under " + fmtW(Math.floor(lim*1.03*10)/10) + " kg" +
+                 (clean ? "" : " (~3% over the limit)") + " by week 13 and drift down from there, so meet week needs little or no cut.");
+  return n;
+}
+function gpopCSV(opts, rows, clean){
+  const q = v => csvRow([v[0]||"",v[1]||"",v[2]||"",v[3]||"",v[4]||"",v[5]||"",v[6]||""]);
+  let out="";
+  out += q(["#Program","Meet Peak v2 Gen Pop (16 weeks)"]);
+  out += q(["#Name",opts.name]);
+  out += q(["#Block",opts.block]);
+  if(opts.cls) out += q(["#Class",opts.cls]);
+  out += q(["#Max","Squat",fmtW(opts.maxes.Squat)]);
+  out += q(["#Max","Bench",fmtW(opts.maxes.Bench)]);
+  out += q(["#Max","Deadlift",fmtW(opts.maxes.Deadlift)]);
+  for(const n of gpopNotes(opts, clean)) out += "# " + n + "\r\n";
+  out += csvRow(["Week","Day","Exercise","Weight (kg)","Sets","Reps","RPE","Notes"]);
+  for(const r of rows) out += csvRow([r.Week,r.Day,r.Exercise,r["Weight (kg)"],r.Sets,r.Reps,r.Rpe,r.Notes]);
+  return out;
+}
+
 /* ===================== shared preview engine ===================== */
 function escapeHTML(s){ return String(s).replace(/[&<>]/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c])); }
 function sanitize(s){ return (s||"").trim().replace(/[^\w.-]+/g,"_").replace(/^_+|_+$/g,""); }
 
 let ctx = null;                          // active preview context
-const CTX = { gustav:null, wendler:null, equipped:null, deadlift:null, squat:null, bench:null, combined:null, lilliebridge:null, bench2:null, lilliesbd:null, ksb:null, fmgd:null, cvbt:null, mdl:null }; // last-built context per generator
+const CTX = { gustav:null, wendler:null, equipped:null, deadlift:null, squat:null, bench:null, combined:null, lilliebridge:null, bench2:null, lilliesbd:null, ksb:null, fmgd:null, cvbt:null, mdl:null, gpop:null }; // last-built context per generator
 
 function splitCSV(text){
   // -> { meta:[raw # lines], header:[cells], body:[[cells]...], idx:{col->index} }
@@ -4804,7 +5160,7 @@ function mountCtx(newCtx, scroll){
 /* Reflect "a program is built" into the layout: collapse the Setup card into the
    sticky bar, show the action bar, switch desktop to two-pane. Cheap and
    idempotent, so it can run on an interval to catch builds, resets and nav
-   without threading a call through all 15 builder/reset functions. */
+   without threading a call through every builder/reset function. */
 function abbrevMax(label){
   const A = {squat:"SQ", bench:"BN", deadlift:"DL", press:"OHP", "overhead press":"OHP"};
   const key = String(label||"").toLowerCase().replace(/1rm/g,"").replace(/\s+/g," ").trim();
@@ -4885,6 +5241,7 @@ const EMPTY_TXT = {
   bench2:  { big:"No block yet",  sub:"Enter a bench 1RM, then build the 14-week bench peak." },
   lilliesbd:{ big:"No program yet", sub:"Enter squat, bench &amp; deadlift 1RMs, then build the 14-week Lilliebridge SBD program." },
   lilliebridge:{ big:"No block yet", sub:"Enter squat &amp; deadlift 1RMs, then build the 14-week Lilliebridge block." },
+  gpop:    { big:"No program yet", sub:"Enter squat, bench &amp; deadlift 1RMs, then build the 16-week Gen Pop meet peak." },
 };
 function showView(name){
   document.querySelectorAll(".view").forEach(v=> v.classList.remove("active"));
@@ -5614,6 +5971,62 @@ function mdlReset(){
   $("dm-name").focus();
 }
 
+function buildGpop(){
+  const sq = parseFloat($("gp-squat").value);
+  const bp = parseFloat($("gp-bench").value);
+  const dl = parseFloat($("gp-dead").value);
+  let ok = true;
+  // 20kg floor: below an empty bar the attempts can't be spaced a jump apart
+  [["gp-squat",sq],["gp-bench",bp],["gp-dead",dl]].forEach(([id,v])=>{
+    const good = Number.isFinite(v) && v>=20;
+    $(id).closest(".field").classList.toggle("invalid", !good);
+    if(!good) ok = false;
+  });
+  if(!ok){ $("gp-msg").textContent = "Enter all three 1RMs in kg (20 kg or more)."; return; }
+  $("gp-msg").textContent = "";
+  const name  = $("gp-name").value.trim()  || "Lifter";
+  const block = $("gp-block").value.trim() || "Meet Peak v2 Gen Pop";
+  const cls   = $("gp-class").value.trim();
+  const bump  = parseFloat($("gp-bump").value) || 2.5;
+  const acc   = $("gp-acc").checked;
+  const maxes = { Squat:sq, Bench:bp, Deadlift:dl };
+  const opts  = { name, block, cls, maxes, bump, acc };
+  const built = gpopProgram(maxes, opts);
+  const c = {
+    program:"gpop",
+    meta:{ name, block, cls, maxLines: built.maxLines },
+    variants:[
+      {id:"program", label:"Program", csv:gpopCSV(opts, gpopRender(built.rows, {})),                 showRPE:true, suffix:""},
+      {id:"clean",   label:"Clean",   csv:gpopCSV(opts, gpopRender(built.rows, {pct:false}), true),  showRPE:true, suffix:"_clean"},
+    ],
+    active:"program", weekCount:16, mapTitle:"Block map",
+    phaseOf:(w)=> w<=4 ? "build" : ((w===5 || w===10) ? "deload" : (w<=9 ? "develop" : "peak")),
+    ribbon:[
+      {label:"Accumulation", dotColor:"var(--build)",        weeks:[1,2,3,4]},
+      {label:"Pivot",        dotColor:"var(--deload-badge)", weeks:[5]},
+      {label:"Strength",     dotColor:"var(--develop)",      weeks:[6,7,8,9]},
+      {label:"Calibrate",    dotColor:"var(--deload-badge)", weeks:[10]},
+      {label:"Peak",         dotColor:"var(--peak)",         weeks:[11,12,13,14]},
+      {label:"Taper + meet", dotColor:"var(--peak)",         weeks:[15,16]},
+    ],
+    weekTitle:(w)=> `Week ${w} · ${GPOP_PHASE[w]}`,
+  };
+  CTX.gpop = c;
+  $("gp-reset").style.display = "inline-block";
+  mountCtx(c, true);
+}
+function gpopReset(){
+  ["gp-name","gp-block","gp-class","gp-squat","gp-bench","gp-dead"].forEach(id=> $(id).value="");
+  $("gp-bump").value = "2.5";
+  $("gp-acc").checked = true;
+  document.querySelectorAll("#view-gpop .field.invalid").forEach(f=> f.classList.remove("invalid"));
+  CTX.gpop = null; ctx = null;
+  $("gp-reset").style.display = "none"; $("gp-msg").textContent = "";
+  $("results").style.display = "none"; $("empty").style.display = "block";
+  $("empty").innerHTML = `<div class="big">${EMPTY_TXT.gpop.big}</div>${EMPTY_TXT.gpop.sub}`;
+  $("gp-name").focus();
+}
+
 /* ===================== bindings ===================== */
 document.querySelectorAll("[data-go]").forEach(el=> el.onclick = ()=> showView(el.dataset.go));
 $("btn-generate").onclick = buildGustav;
@@ -5644,6 +6057,8 @@ $("ls-generate").onclick  = buildLillieSBD;
 $("ls-reset").onclick     = lillieSBDReset;
 $("lb-generate").onclick  = buildLilliebridge;
 $("lb-reset").onclick     = lilliebridgeReset;
+$("gp-generate").onclick  = buildGpop;
+$("gp-reset").onclick     = gpopReset;
 $("btn-export").onclick   = exportActive;
 
 /* Collapsed Setup bar + sticky action bar (standalone; see #ctxbar CSS). */
@@ -5698,6 +6113,7 @@ const FMGD_FIELDS    = ["fm-name","fm-block","fm-class","fm-squat","fm-bench","f
 const CVBT_FIELDS    = ["cv-name","cv-block","cv-class","cv-squat","cv-bench","cv-dead"];
 const MDL_FIELDS     = ["dm-name","dm-block","dm-class","dm-dead","dm-squat"];
 const LSBD_FIELDS    = ["ls-name","ls-block","ls-class","ls-squat","ls-bench","ls-dead"];
+const GPOP_FIELDS    = ["gp-name","gp-block","gp-class","gp-squat","gp-bench","gp-dead"];
 document.addEventListener("keydown", e=>{
   if(e.key !== "Enter") return;
   const id = document.activeElement.id;
@@ -5715,6 +6131,7 @@ document.addEventListener("keydown", e=>{
   else if(CVBT_FIELDS.includes(id)) buildCvbt();
   else if(MDL_FIELDS.includes(id)) buildMdl();
   else if(LSBD_FIELDS.includes(id)) buildLillieSBD();
+  else if(GPOP_FIELDS.includes(id)) buildGpop();
 });
 
 /* ===================== theme (light / dark) ===================== */
@@ -5842,7 +6259,7 @@ if("serviceWorker" in navigator){
   setInterval(postHeight, 700);   // catches anything the above miss (async renders)
   postHeight();
 
-  try { parent.postMessage({ type: "spotter-hub-ready", features: ["send", "height", "theme"], build: "hub-4" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-hub-ready", features: ["send", "height", "theme"], build: "hub-5" }, "*"); } catch (e) {}
 
   // ---- Send the built program straight into Manage Program's donor slot ----
   // Reuses the page's own export pipeline: syncExportScope() parses and validates

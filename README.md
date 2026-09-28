@@ -20,6 +20,8 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `.nojekyll` | Stops GitHub Pages running the files through Jekyll. |
 | `test-boot.js` | Smoke test — `npm install jsdom && node test-boot.js`. |
 | `test-weekrange.js` | Program Hub week-range export tests across all builders — `node test-weekrange.js`. |
+| `test-genpop.js` | Meet Peak v2 · Gen Pop builder checks, plus a real import of its CSV into the app — `node test-genpop.js`. |
+| `test-lifterorder.js` | Rearranging lifters: the sheet, the dropdown entry, saving and reloading the order — `node test-lifterorder.js`. |
 | `test-vbt.js` | Velocity Tracker smoke test — `node test-vbt.js`. |
 | `make_icons.py` | Regenerates the icons from `icons/_source.png`. |
 
@@ -88,6 +90,16 @@ Six edits, all additive except the icon swap:
    rather than the OS setting.
 6. **Service worker registration** with auto-activation of new builds.
 
+## Rearranging lifters
+
+With two or more lifters loaded, the lifter dropdown ends with **⇅ Rearrange lifters…**,
+and the sidebar has a **Rearrange lifters** button. Both open a sheet where you drag a
+lifter by its handle or nudge it with the arrows; the dropdown follows. The order is
+saved on the device as you go (`spotter.lifterOrder.v1`). Newly loaded lifters join
+at the bottom, a re-imported lifter keeps its place, and **Unload everything** resets
+it. iOS draws its own menu for a dropdown, so its items can't be dragged in place.
+That's why the dropdown opens a sheet instead.
+
 ## Generating a program straight into Manage Program
 
 The **Program Hub** tab inside Manage Program has a **Send to Manage Program** button
@@ -115,6 +127,21 @@ you leave Manage Program.
 
 Sending again replaces whatever donor is loaded, so you can iterate on maxes or switch
 builders and re-send without clearing first.
+
+## Meet Peak v2 · Gen Pop
+
+The first card in the Program Hub. A 16-week classic (raw) meet peak for any set of
+maxes, with no lift prioritised: squat and deadlift mirror each other (a heavy day and
+a secondary day on the same percentages), bench trains three times a week, and the meet
+is week 16, day 4. Every main-lift row has a percentage load *and* an RPE target and
+cap. The program notes (shown in the app's Program notes card) explain how to adjust.
+
+- **Third attempts:** pick +1%, +2.5% (default) or +4%. The third is always a PR, and
+  the opener and second sit at about 91% and 96% of it.
+- **Week 10 calibration:** one single per lift at 87.5%. If it moves at RPE ≤6, rebuild
+  with that max +2.5%; at RPE ≥8.5, with −2.5%. Then set **Weeks** to `11-16`, send
+  those weeks, and replace them in Manage Program.
+- **Clean** export hides the percentages; **Accessory work** can be switched off.
 
 ## Velocity Tracker layout
 

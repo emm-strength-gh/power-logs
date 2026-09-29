@@ -143,10 +143,14 @@ node test-dmnotes.js    # Manage Program Notes: PIN-only, editor, links, backups
 node test-reimport.js   # Re-imports keep training maxes; CSV still wins for 1-rep maxes
 node test-managelayout.js # Manage tab: section order + every action from its new place
 node test-hubprefill.js # Hub builders prefilled from the loaded lifter (both pages)
+node test-hubanalytics.js # Hub analytics charts + parity with Power Logs' Analytics view
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all nine. Tests that need Manage Program (PIN-gated) swap
+`npm test` runs all ten. The Program Hub's analytics (`renderHubAnalytics()`) is a
+port of power-logs.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
+tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
+Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program (PIN-gated) swap
 `DM_PIN_HASH` in their in-memory copy of the page for `sha256(DM_PIN_SALT +
 "24682468")`, so the real PIN is never needed (see test-dmnotes.js). Any jsdom script that boots a page must end with
 `process.exit()`: both pages leave intervals running, so node never exits on its own.

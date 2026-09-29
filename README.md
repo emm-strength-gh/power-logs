@@ -24,6 +24,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-lifterorder.js` | Rearranging lifters: the sheet, the dropdown entry, saving and reloading the order — `node test-lifterorder.js`. |
 | `test-dmnotes.js` | Manage Program's Notes card: PIN-only visibility, editing, links, backups, and that Weekly notes still work — `node test-dmnotes.js`. |
 | `test-reimport.js` | Re-importing a lifter's CSV or an older JSON backup keeps their training maxes; the CSV still sets the 1-rep maxes — `node test-reimport.js`. |
+| `test-hubanalytics.js` | Program Hub analytics: charts for each program, controls, and the same numbers as Power Logs' Analytics for the same CSV — `node test-hubanalytics.js`. |
 | `test-hubprefill.js` | Program Hub builders filled from the loaded lifter: every builder, typed values kept, Wendler/Massthetics TM %, and Power Logs sending it — `node test-hubprefill.js`. |
 | `test-managelayout.js` | Manage Program's Manage tab: section order, and every action from its place (add exercise, days & weeks, undo, import, replace/merge, clear, compare) — `node test-managelayout.js`. |
 | `test-vbt.js` | Velocity Tracker smoke test — `node test-vbt.js`. |
@@ -152,6 +153,14 @@ you leave Manage Program.
 
 Sending again replaces whatever donor is loaded, so you can iterate on maxes or switch
 builders and re-send without clearing first.
+
+## Program Hub analytics
+
+Every generated program shows an **Analytics** section under its table: **Total
+tonnage**, **Number of lifts** (reps at ≥50% of 1RM) and **Heaviest top set**, per
+session or per week. These are the same charts and maths as the app's Analytics view, so
+a program charts the same in both. The charts follow the variant you're viewing and
+your Sets/Reps edits.
 
 ## Program Hub builders fill themselves in
 

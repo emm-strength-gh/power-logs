@@ -100,7 +100,7 @@ const DEAD  = ["in-deadlift", "w-deadlift", "e-rdead", "d-max", "cb-dead", "lb-d
   w.showView("combined");
   w.buildCombined();
   const csv = w.variantToCSV(w.activeVariant());
-  check("a builder runs straight off the prefill", /^#Name,Test Lifter/m.test(csv) && /#Max Squat,175/.test(csv) && /#Class,74/.test(csv), csv.split("\n").slice(0, 7).join(" / "));
+  check("a builder runs straight off the prefill", /^#Name,Test Lifter/m.test(csv) && /#Max,Squat,175/.test(csv) && /#Class,74/.test(csv), csv.split("\n").slice(0, 7).join(" / "));
 
   const solo = boot("program-hub.html", "https://example.github.io/power-logs/program-hub.html");
   solo.w.dispatchEvent(new solo.w.MessageEvent("message", { data: { type: "spotter-lifter", name: "Test Lifter", trainingMaxes: { Squat: "175" } }, source: solo.w }));

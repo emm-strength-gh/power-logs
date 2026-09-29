@@ -35,8 +35,11 @@ check("hub boots with no script errors",
   hub.errors.filter(e => !/Not implemented/i.test(e)).length === 0, hub.errors.join(" | ").slice(0, 300));
 check("hub card links to the builder", !!w.document.querySelector('.gen-card[data-go="gpop"]'));
 check("builder view exists", !!$("view-gpop"));
-check("hub announces build hub-5", /build: "hub-5"/.test(fs.readFileSync(path.join(__dirname, "program-hub.html"), "utf8")));
-check("power-logs.html asks for HUB_BUILD 5", /var HUB_BUILD = "5";/.test(fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8")));
+{
+  const hubN = (fs.readFileSync(path.join(__dirname, "program-hub.html"), "utf8").match(/build: "hub-(\d+)"/) || [])[1];
+  const appN = (fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8").match(/var HUB_BUILD = "(\d+)";/) || [])[1];
+  check("hub's announced build matches power-logs.html's HUB_BUILD", !!hubN && hubN === appN, `hub-${hubN} vs HUB_BUILD ${appN}`);
+}
 
 /* Reset first, so a refused build can't be mistaken for the previous one still on screen. */
 function build(o) {

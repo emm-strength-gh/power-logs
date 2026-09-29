@@ -24,6 +24,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-lifterorder.js` | Rearranging lifters: the sheet, the dropdown entry, saving and reloading the order — `node test-lifterorder.js`. |
 | `test-dmnotes.js` | Manage Program's Notes card: PIN-only visibility, editing, links, backups, and that Weekly notes still work — `node test-dmnotes.js`. |
 | `test-reimport.js` | Re-importing a lifter's CSV or an older JSON backup keeps their training maxes; the CSV still sets the 1-rep maxes — `node test-reimport.js`. |
+| `test-hubprefill.js` | Program Hub builders filled from the loaded lifter: every builder, typed values kept, Wendler/Massthetics TM %, and Power Logs sending it — `node test-hubprefill.js`. |
 | `test-managelayout.js` | Manage Program's Manage tab: section order, and every action from its place (add exercise, days & weeks, undo, import, replace/merge, clear, compare) — `node test-managelayout.js`. |
 | `test-vbt.js` | Velocity Tracker smoke test — `node test-vbt.js`. |
 | `make_icons.py` | Regenerates the icons from `icons/_source.png`. |
@@ -151,6 +152,21 @@ you leave Manage Program.
 
 Sending again replaces whatever donor is loaded, so you can iterate on maxes or switch
 builders and re-send without clearing first.
+
+## Program Hub builders fill themselves in
+
+Opened from Manage Program, every builder's **Lifter & 1RMs** card fills its blank
+fields from the lifter you have loaded:
+- **Name, block and class:** from the lifter's profile.
+- **Maxes:** from their **Training maxes** in Manage Program (not the CSV's 1-rep maxes).
+- **Bodyweight** (Equipped builder only).
+
+A line under the card title says where the numbers came from. Anything you type
+is kept. The fill never overwrites a field you've changed, and switching lifters
+only updates the fields you left alone. **Wendler 5/3/1** and **Massthetics** normally
+take a 1RM and apply a 90% training max. While they hold your training maxes, their
+TM % is set to 100% so the maxes aren't reduced twice. Type your own maxes and it goes
+back to 90%.
 
 ## Meet Peak v2 · Gen Pop
 

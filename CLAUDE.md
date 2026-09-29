@@ -133,10 +133,11 @@ node test-genpop.js     # Meet Peak v2 Gen Pop: balance, loads, attempts, Clean,
 node test-lifterorder.js # Rearrange lifters: sheet, dropdown entry, persistence, reload, unload
 node test-dmnotes.js    # Manage Program Notes: PIN-only, editor, links, backups, Weekly notes regression
 node test-reimport.js   # Re-imports keep training maxes; CSV still wins for 1-rep maxes
+node test-managelayout.js # Manage tab: section order + every action from its new place
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all seven. Tests that need Manage Program (PIN-gated) swap
+`npm test` runs all eight. Tests that need Manage Program (PIN-gated) swap
 `DM_PIN_HASH` in their in-memory copy of the page for `sha256(DM_PIN_SALT +
 "24682468")`, so the real PIN is never needed (see test-dmnotes.js). Any jsdom script that boots a page must end with
 `process.exit()`: both pages leave intervals running, so node never exits on its own.

@@ -4,11 +4,12 @@
   "private": true,
   "description": "EmmStrength Spotter — training-log PWA. This file exists only for the Node smoke tests; the app itself ships as plain static HTML with no build step.",
   "scripts": {
-    "test": "node test-boot.js && node test-lifterorder.js && node test-dmnotes.js && node test-reimport.js && node test-weekrange.js && node test-genpop.js && node test-vbt.js",
+    "test": "node test-boot.js && node test-lifterorder.js && node test-dmnotes.js && node test-reimport.js && node test-managelayout.js && node test-weekrange.js && node test-genpop.js && node test-vbt.js",
     "test:boot": "node test-boot.js",
     "test:lifterorder": "node test-lifterorder.js",
     "test:dmnotes": "node test-dmnotes.js",
     "test:reimport": "node test-reimport.js",
+    "test:managelayout": "node test-managelayout.js",
     "test:weekrange": "node test-weekrange.js",
     "test:genpop": "node test-genpop.js",
     "test:vbt": "node test-vbt.js"

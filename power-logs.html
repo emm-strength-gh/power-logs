@@ -454,17 +454,13 @@
   .dm-blockinput { width: 100%; max-width: 420px; padding: 11px 14px; font-family: inherit; font-weight: 600; font-size: 15px; color: var(--ink); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; }
   .dm-blockinput:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(46,90,78,.12); }
   .dm-blockhint { font-size: 12px; color: var(--faint); margin: 2px 0 0; }
-  .dm-export { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 14px; }
-  .dm-export-hint { font-size: 12px; color: var(--faint); flex: 1 1 200px; }
   .dm-sec-cap { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); margin: 0 0 12px; }
-  /* Collapsible section header */
-  .dm-collapse { display: flex; align-items: center; gap: 8px; width: 100%; background: transparent; padding: 4px 2px; margin: 0 0 12px; text-align: left; }
-  .dm-collapse .dm-sec-cap { margin: 0; transition: color .15s ease; }
-  .dm-collapse:hover .dm-sec-cap { color: var(--pine); }
-  .dm-collapse-caret { display: grid; place-items: center; flex: none; width: 16px; height: 16px; color: var(--faint); transition: transform .18s ease, color .15s ease; }
-  .dm-collapse-caret svg { width: 14px; height: 14px; }
-  .dm-collapse:hover .dm-collapse-caret { color: var(--pine); }
-  .dm-collapse.open .dm-collapse-caret { transform: rotate(90deg); }
+  .dm-mini-cap { font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin: 0; }
+  /* Each Manage-program section sits in one card: Program, Use the imported
+     program, Import. The day editor uses the comparison columns instead. */
+  .dm-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px; }
+  .dm-prog-acts { margin-top: 14px; }
+  .dm-card .dm-import-hint { margin-bottom: 12px; }
   .dm-cap-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
   .dm-cap-row .dm-sec-cap { margin-bottom: 0; }
   .dm-undo-btn { flex: none; }
@@ -473,7 +469,7 @@
   .dm-compare { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: stretch; }
   .dm-compare.two { grid-template-columns: 1fr; }
   .dm-cmp-col { min-width: 0; display: flex; flex-direction: column; }
-  .dm-cmp-col > .panel { flex: 1; padding: 6px 14px; }
+  .dm-cmp-col > .panel { flex: 1; padding: 6px 14px; margin-bottom: 0; }
   .dm-cmp-col .dm-selrow { margin-bottom: 12px; }
   /* Header: tag + day on one line, program name beneath, so both columns are
      the same height whatever the name length. */
@@ -484,12 +480,44 @@
   .dm-cmp-col.is-donor .dm-cmp-tag { background: rgba(176,124,18,.14); color: var(--gold); }
   .dm-cmp-where { font-family: "Bricolage Grotesque", sans-serif; font-size: 15px; font-weight: 700; color: var(--ink); }
   .dm-cmp-who { font-size: 12px; color: var(--faint); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .dm-cmp-note { font-size: 12px; color: var(--faint); margin: 12px 0 0; }
-  /* Per-column action row, sitting directly under each preview */
-  .dm-cmp-actions { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-  .dm-cmp-actions .dm-delrow { margin: 0; }
-  .dm-cmp-actions .dm-actions { gap: 8px; }
   .btn-solid.sm { padding: 9px 16px; font-size: 13.5px; }
+  /* "+ Add exercise" at the foot of the day's list; the form opens in place. */
+  .dm-addex { border-top: 1px solid var(--border); padding: 10px 0 8px; }
+  .dm-addex-toggle { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 12px; border: 1px dashed var(--border-strong); border-radius: 10px; background: transparent; color: var(--pine); font-weight: 600; font-size: 14px; }
+  .dm-addex-toggle:hover { border-color: var(--pine); background: var(--bg); }
+  .dm-addex-toggle svg { width: 16px; height: 16px; }
+  .dm-addform { display: none; }
+  .dm-addex.open .dm-addex-toggle { display: none; }
+  .dm-addex.open .dm-addform { display: block; }
+  .dm-addform .dm-mini-cap { margin: 2px 0 10px; }
+  .dm-addfields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 11px; }
+  .dm-addfields .add-field { flex-direction: column; align-items: stretch; gap: 5px; min-width: 0; }
+  .dm-addfields .add-field label { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
+  .dm-addfields .add-weight, .dm-addfields .add-weight.add-num { width: 100%; text-align: left; }
+  .dm-addform-acts { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
+  /* Days & weeks: add/delete the structure around the day being edited */
+  .dm-struct { margin-top: 12px; padding: 12px 2px 0; display: flex; flex-direction: column; gap: 10px; }
+  .dm-struct-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+  /* Label | number | button on a grid, so the two "add" lines align */
+  .dm-struct-adds { display: grid; grid-template-columns: max-content 76px max-content; align-items: center; justify-content: start; gap: 8px 10px; }
+  .dm-numadd { display: contents; }
+  .dm-numadd .dm-daynum { width: 100%; }
+  .dm-numadd-lab { font-size: 13px; color: var(--muted); }
+  /* Use the imported program: every replace/merge in one card, a row per scope */
+  .dm-swap { padding-top: 4px; padding-bottom: 4px; }
+  .dm-swap-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .dm-swap-lab { display: flex; flex-direction: column; gap: 3px; flex: 1 1 220px; min-width: 0; }
+  .dm-swap-kind { font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); }
+  .dm-swap-desc { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .dm-swap-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1 1 280px; max-width: 380px; }
+  .dm-swap-acts > button { width: 100%; }
+  .dm-swap-foot { font-size: 12px; color: var(--faint); line-height: 1.45; margin: 10px 0 8px; }
+  @media (max-width: 560px) {
+    .dm-addfields { grid-template-columns: 1fr 1fr; }
+    .dm-swap-acts { max-width: none; }
+    .dm-swap-acts > button { padding: 10px 8px; font-size: 13px; white-space: nowrap; }
+    .dm-card { padding: 14px 14px; }
+  }
   /* Match row geometry across the two columns. The editable side carries a drag
      grip (26px) and two 34px action buttons plus flex gaps; the read-only side
      reserves exactly that much padding so titles wrap at the same width and the
@@ -503,8 +531,6 @@
     /* Stacked: no second column to align with, so drop the reserved gutters. */
     .dm-preview.is-readonly .dm-row { padding-left: 2px; padding-right: 2px; }
   }
-  /* Day-management actions, below the comparison */
-  .dm-day-actions { margin-top: 16px; }
   .dm-selrow { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
   .dm-field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 130px; }
   .dm-field > label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
@@ -537,14 +563,12 @@
   .dm-empty { color: var(--muted); font-size: 14px; padding: 12px 2px; }
   .dm-import-hint { color: var(--muted); font-size: 13.5px; line-height: 1.5; margin: 0 0 12px; }
   .dm-donor-name { color: var(--ink); font-weight: 600; }
-  .dm-swap-label { font-size: 13.5px; color: var(--muted); line-height: 1.5; margin: 0 0 10px; }
   .dm-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
   .btn-solid:disabled, .btn-ghost:disabled { opacity: .45; cursor: not-allowed; }
   .btn-ghost { padding: 11px 22px; background: var(--surface); color: var(--ink); border-radius: 10px; font-weight: 600; border: 1px solid var(--border-strong); }
   .btn-ghost:hover:not(:disabled) { border-color: var(--pine); color: var(--pine); }
   .btn-ghost.sm { padding: 9px 16px; font-size: 13.5px; }
   .dm-addday { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 4px 0 12px; }
-  .dm-addday-lab { font-size: 13px; color: var(--muted); }
   .dm-daynum { width: 72px; padding: 9px 11px; font-family: inherit; font-weight: 600; font-size: 14px; color: var(--ink); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 9px; }
   .dm-daynum:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(46,90,78,.12); }
   .dm-charts { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--border); }
@@ -932,10 +956,7 @@
           <button type="button" class="seg-btn" data-tab="hub" role="tab" aria-selected="false">Program Hub</button>
         </div>
         <div id="dmPaneManage" role="tabpanel" aria-label="Manage program">
-          <p class="section-sub">Preview, edit, and reorganise the loaded program — edit, add, delete, or reorder exercises, add or delete days, delete weeks, and replace or merge a day or a whole week from another program you import. The imported program is temporary and is discarded when you go back.</p>
-          <div class="dm-delrow">
-            <button class="chip sm" id="cmpOpenBtn" type="button">Compare two programs</button>
-          </div>
+          <p class="section-sub">Edit this lifter's program day by day, or import another program and copy days or whole weeks across.</p>
           <div id="dmBody"></div>
           <div id="dmCharts" class="dm-charts"></div>
         </div>
@@ -1230,10 +1251,10 @@
   var STORE_LAST     = "spotter.lastLifter";
   var STORE_ORDER    = "spotter.lifterOrder.v1";
   var STORE_TOOLS    = "spotter.tools.v1";
-  var STORE_ADDOPEN  = "spotter.dmAddOpen.v2";   // v2: default flipped to open, so the panel is findable
+  var STORE_ADDOPEN  = "spotter.dmAddOpen.v3";   // v3: the form now folds into a "+ Add exercise" button under the day, closed by default
   // Shown at the bottom of Manage program. Bump when power-logs.html changes, so
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
-  var APP_BUILD = "25";
+  var APP_BUILD = "26";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -3321,9 +3342,22 @@
     var body = $("dmBody"); clear(body);
     if (!p) { body.appendChild(el("div", "dm-empty", "Load a lifter first.")); renderDMCharts(); return; }
 
-    // ---- Program block / title (editable) ----
+    // Top to bottom: the program itself (title, export, compare); the day editor,
+    // with the imported day beside it when there is one; every replace/merge in
+    // one card; then importing. Adding and deleting days/weeks stays with the
+    // day editor, away from the replace buttons.
+
+    // keep target selection valid
+    var weeks = p.weeks.map(function (w) { return String(w.week); });
+    if (weeks.indexOf(String(dmSel.tw)) === -1) dmSel.tw = weeks[0] || null;
+    var twObj = getWeek(p, dmSel.tw);
+    var tdays = twObj ? twObj.days.map(function (g) { return String(g.day); }) : [];
+    if (tdays.indexOf(String(dmSel.td)) === -1) dmSel.td = tdays[0] || null;
+
+    // ---- Program: block / title, export, compare ----
     var secB = el("div", "dm-sec");
     secB.appendChild(el("p", "dm-sec-cap", "Program"));
+    var cardB = el("div", "dm-card");
     var editWrap = el("div", "dm-blockedit");
     editWrap.appendChild(el("label", null, "Block / title"));
     var binp = el("input", "dm-blockinput");
@@ -3336,61 +3370,33 @@
         setBlock(p.name, v);
         renderPicker();   // dropdown shows "Name · Block"
         renderSidebar();  // block pill in the sidebar
-        toast(v ? "Block set to \u201C" + v + "\u201D." : "Block cleared.");
+        toast(v ? "Block set to “" + v + "”." : "Block cleared.");
       }
     };
     binp.addEventListener("blur", commit);
     binp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); binp.blur(); } });
     editWrap.appendChild(binp);
     editWrap.appendChild(el("p", "dm-blockhint", "Used for the export filename: Name_Block.json / Name_Block.csv"));
-    secB.appendChild(editWrap);
-
-
-    // ---- Export the current program as a standard-format CSV ----
-    var expRow = el("div", "dm-export");
+    cardB.appendChild(editWrap);
+    var progActs = el("div", "dm-actions dm-prog-acts");
     var expBtn = el("button", "btn-ghost sm", "Export CSV");
     expBtn.type = "button";
     expBtn.setAttribute("aria-label", "Export program as CSV");
+    expBtn.title = "Downloads the current program (including edits and added items) in the usual CSV format.";
     expBtn.onclick = exportProgramCSV;
-    expRow.appendChild(expBtn);
-    expRow.appendChild(el("span", "dm-export-hint", "Downloads the current program (including edits and added items) in the usual CSV format."));
-    secB.appendChild(expRow);
-
-    var addWk = el("div", "dm-addday");
-    addWk.appendChild(el("span", "dm-addday-lab", "Add empty week (no days):"));
-    var winp = el("input", "dm-daynum");
-    winp.type = "number"; winp.min = "1"; winp.step = "1";
-    winp.setAttribute("inputmode", "numeric"); winp.setAttribute("aria-label", "New week number");
-    winp.value = String(nextWeekNum(p));
-    addWk.appendChild(winp);
-    var addWkBtn = el("button", "btn-ghost sm"); addWkBtn.textContent = "Add week";
-    addWkBtn.onclick = function () {
-      var res = addEmptyWeek(p.name, winp.value);
-      if (res.ok) {
-        dmSel.tw = res.week; dmSel.td = null;
-        toast("Added empty Week " + res.week + ".");
-        renderDayMgr(); renderSidebar();
-      } else if (res.reason === "exists") {
-        toast("Week " + parseInt(winp.value, 10) + " already exists.");
-      } else {
-        toast("Enter a week number (1 or higher).");
-      }
-    };
-    addWk.appendChild(addWkBtn);
-    secB.appendChild(addWk);
+    progActs.appendChild(expBtn);
+    var cmpBtn = el("button", "btn-ghost sm", "Compare two programs");
+    cmpBtn.type = "button";
+    cmpBtn.onclick = openCompare;
+    progActs.appendChild(cmpBtn);
+    cardB.appendChild(progActs);
+    secB.appendChild(cardB);
     body.appendChild(secB);
 
-    // keep target selection valid
-    var weeks = p.weeks.map(function (w) { return String(w.week); });
-    if (weeks.indexOf(String(dmSel.tw)) === -1) dmSel.tw = weeks[0] || null;
-    var twObj = getWeek(p, dmSel.tw);
-    var tdays = twObj ? twObj.days.map(function (g) { return String(g.day); }) : [];
-    if (tdays.indexOf(String(dmSel.td)) === -1) dmSel.td = tdays[0] || null;
-
-    // ---- Target (current program) ----
+    // ---- Edit a day (with the imported day beside it when there is one) ----
     var secT = el("div", "dm-sec");
     var capRow = el("div", "dm-cap-row");
-    capRow.appendChild(el("p", "dm-sec-cap", "Current program — pick the day to preview / replace"));
+    capRow.appendChild(el("p", "dm-sec-cap", "Edit a day"));
     var undoBtn = el("button", "chip sm dm-undo-btn");
     undoBtn.type = "button";
     undoBtn.disabled = !dmUndoStack.length;
@@ -3401,117 +3407,36 @@
     undoBtn.onclick = function () { dmUndoStep(); };
     capRow.appendChild(undoBtn);
     secT.appendChild(capRow);
-    // The Week/Day pickers now live inside the left comparison column (built
-    // below) so both columns share the same header → selects → panel structure
-    // and their previews start at the same height.
+
+    // Both columns are built to the same shape — header, week/day pickers,
+    // preview panel — so they line up flush no matter which one is taller.
+    function cmpHeader(tagTxt, whereTxt, whoTxt) {
+      var hd = el("div", "dm-cmp-hd");
+      var top = el("div", "dm-cmp-hd-top");
+      top.appendChild(el("span", "dm-cmp-tag", tagTxt));
+      top.appendChild(el("span", "dm-cmp-where", whereTxt));
+      hd.appendChild(top);
+      hd.appendChild(el("div", "dm-cmp-who", whoTxt));
+      return hd;
+    }
+    var cmp = el("div", "dm-compare" + (donor ? " two" : ""));
+
+    // Left: the live, editable current day
+    var colT = el("div", "dm-cmp-col is-current");
+    colT.appendChild(cmpHeader("Current",
+      (dmSel.tw != null && dmSel.td != null) ? ("W" + dmSel.tw + "D" + dmSel.td) : "No day selected",
+      p.name + (p.block ? " · " + p.block : "")));
     var rowT = el("div", "dm-selrow");
     rowT.appendChild(labeledSelect("Week", weeks.map(function (w) { return { label: "Week " + w, value: w }; }),
       dmSel.tw, function (v) { dmSel.tw = v; dmSel.td = null; renderDayMgr(); }));
     rowT.appendChild(labeledSelect("Day", tdays.map(function (d) { return { label: "Day " + d, value: d }; }),
       dmSel.td, function (v) { dmSel.td = v; renderDayMgr(); }));
-
-    // Day-management actions; appended after the comparison grid so the two
-    // preview columns line up flush at the top.
-    var dayActions = el("div", "dm-day-actions");
-    // Add-an-empty-day control (only meaningful when the program has a week)
-    if (weeks.length) {
-      var addWrap = el("div", "dm-addday");
-      addWrap.appendChild(el("span", "dm-addday-lab", "Add empty day to Week " + dmSel.tw + ":"));
-      var inp = el("input", "dm-daynum");
-      inp.type = "number"; inp.min = "1"; inp.step = "1";
-      inp.setAttribute("inputmode", "numeric");
-      inp.setAttribute("aria-label", "New day number");
-      inp.value = String(nextDayNum(twObj));
-      addWrap.appendChild(inp);
-      var addBtn = el("button", "btn-ghost sm"); addBtn.textContent = "Add day";
-      addBtn.onclick = function () {
-        var res = addEmptyDay(p.name, dmSel.tw, inp.value);
-        if (res.ok) {
-          dmSel.td = res.day;
-          toast("Added empty Day " + res.day + " to Week " + dmSel.tw + ".");
-          renderDayMgr(); renderSidebar();
-        } else if (res.reason === "exists") {
-          toast("Week " + dmSel.tw + " already has a Day " + parseInt(inp.value, 10) + ".");
-        } else {
-          toast("Enter a day number (1 or higher).");
-        }
-      };
-      addWrap.appendChild(addBtn);
-      dayActions.appendChild(addWrap);
-
-      var delRow = el("div", "dm-delrow");
-      var delDayBtn = el("button", "chip danger sm");
-      delDayBtn.textContent = dmSel.td != null ? ("Delete Day " + dmSel.td) : "Delete day";
-      delDayBtn.disabled = (dmSel.td == null);
-      delDayBtn.onclick = function () {
-        askConfirm({
-          title: "Delete Day " + dmSel.td + "?",
-          body: "Remove all of W" + dmSel.tw + "D" + dmSel.td + " from " + p.name + ", including its progress. You'll get a few seconds to undo right after.",
-          confirmLabel: "Delete day"
-        }).then(function (ok) {
-          if (!ok) return;
-          var tw0 = getWeek(p, dmSel.tw), g0 = dayGroup(p, dmSel.tw, dmSel.td);
-          if (!tw0 || !g0) return;
-          var dayIndex = tw0.days.indexOf(g0);
-          var groupClone = deepClone(g0);
-          var progressMap = snapshotProgress(p.name, g0.rows);
-          var delWeek = dmSel.tw, delDay = dmSel.td;
-          if (deleteDay(p.name, delWeek, delDay)) {
-            dmSel.td = null;
-            pushUndoAction({
-              label: "Deleted Day " + delDay + " from Week " + delWeek + ".",
-              restoredLabel: "Day " + delDay + " restored.",
-              restore: function () {
-                var restored = restoreDayAt(p.name, delWeek, dayIndex, groupClone, progressMap);
-                if (restored) { dmSel.tw = delWeek; dmSel.td = delDay; }
-                return restored;
-              }
-            });
-            renderDayMgr(); renderSidebar();
-          }
-        });
-      };
-      var delWeekBtn = el("button", "chip danger sm");
-      delWeekBtn.textContent = "Delete Week " + dmSel.tw;
-      delWeekBtn.onclick = function () {
-        var nDays = twObj ? twObj.days.length : 0;
-        askConfirm({
-          title: "Delete Week " + dmSel.tw + "?",
-          body: "Remove the entire Week " + dmSel.tw + " (" + nDays + " day" + (nDays === 1 ? "" : "s") + ") from " + p.name + ", including all progress. You'll get a few seconds to undo right after.",
-          confirmLabel: "Delete week"
-        }).then(function (ok) {
-          if (!ok) return;
-          var weekIndex = -1;
-          for (var i = 0; i < p.weeks.length; i++) { if (String(p.weeks[i].week) === String(dmSel.tw)) { weekIndex = i; break; } }
-          if (weekIndex === -1) return;
-          var weekObj = p.weeks[weekIndex];
-          var weekClone = deepClone(weekObj);
-          var progressMap = snapshotProgress(p.name, weekObj.rows);
-          var delWeek = dmSel.tw;
-          if (deleteWeek(p.name, delWeek)) {
-            dmSel.tw = null; dmSel.td = null;
-            pushUndoAction({
-              label: "Deleted Week " + delWeek + ".",
-              restoredLabel: "Week " + delWeek + " restored.",
-              restore: function () {
-                var restored = restoreWeekAt(p.name, weekIndex, weekClone, progressMap);
-                if (restored) { dmSel.tw = delWeek; dmSel.td = null; }
-                return restored;
-              }
-            });
-            renderDayMgr(); renderSidebar();
-          }
-        });
-      };
-      delRow.appendChild(delDayBtn); delRow.appendChild(delWeekBtn);
-      // When a donor is loaded these move into the left comparison column instead.
-      if (!donor) dayActions.appendChild(delRow);
-    }
+    colT.appendChild(rowT);
     var panelT = el("div", "panel"); var prevT = el("div", "dm-preview");
     renderPreviewInto(prevT, p, dmSel.tw, dmSel.td, function (row) {
       askConfirm({
         title: "Delete this exercise?",
-        body: "Remove \u201C" + (row.exercise || "item") + "\u201D from W" + dmSel.tw + "D" + dmSel.td + " of " + p.name + ". You'll get a few seconds to undo right after.",
+        body: "Remove “" + (row.exercise || "item") + "” from W" + dmSel.tw + "D" + dmSel.td + " of " + p.name + ". You'll get a few seconds to undo right after.",
         confirmLabel: "Delete"
       }).then(function (ok) {
         if (!ok) return;
@@ -3523,8 +3448,8 @@
         var delWeek = dmSel.tw, delDay = dmSel.td, exName = row.exercise || "item";
         if (deleteRow(p.name, delWeek, delDay, row.rid)) {
           pushUndoAction({
-            label: "Deleted \u201C" + exName + "\u201D.",
-            restoredLabel: "\u201C" + exName + "\u201D restored.",
+            label: "Deleted “" + exName + "”.",
+            restoredLabel: "“" + exName + "” restored.",
             restore: function () { return restoreRowAt(p.name, delWeek, delDay, rowIndex, rowClone, progressMap); }
           });
           renderDayMgr(); renderSidebar();
@@ -3535,91 +3460,11 @@
     }, function (row) {
       openRowEditor(p.name, dmSel.tw, dmSel.td, row.rid);
     });
-    // Day-level replace/merge, built here so the buttons can sit directly under
-    // the imported day they act on (inside the comparison column).
-    function buildDaySwapActions() {
-      var dayReady = dmSel.tw != null && dmSel.td != null && dmSel.dw != null && dmSel.dd != null;
-      var wrap = el("div", "dm-cmp-actions");
-      var acts = el("div", "dm-actions");
-      var repl = el("button", "btn-solid sm");
-      repl.textContent = dayReady ? ("Replace W" + dmSel.tw + "D" + dmSel.td) : "Replace day";
-      repl.disabled = !dayReady;
-      repl.title = dayReady
-        ? ("Overwrite W" + dmSel.tw + "D" + dmSel.td + " with imported W" + dmSel.dw + "D" + dmSel.dd)
-        : "Pick a day on both sides first";
-      repl.onclick = function () {
-        if (!dayReady) return;
-        var tw = dmSel.tw, td = dmSel.td, dw = dmSel.dw, dd = dmSel.dd;
-        askConfirm({
-          title: "Replace W" + tw + "D" + td + "?",
-          body: "This overwrites W" + tw + "D" + td + " in " + p.name + " with the imported W" + dw + "D" + dd +
-                ". The label stays W" + tw + "D" + td + " and that day's progress is reset. This can't be undone.",
-          confirmLabel: "Replace day"
-        }).then(function (ok) {
-          if (!ok) return;
-          if (replaceDay(p.name, tw, td, donor, dw, dd)) {
-            toast("Replaced W" + tw + "D" + td + " with imported W" + dw + "D" + dd + ".");
-            renderDayMgr(); renderSidebar();
-          } else { toast("Couldn't replace that day."); }
-        });
-      };
-      acts.appendChild(repl);
-      var mrg = el("button", "btn-ghost sm");
-      mrg.textContent = dayReady ? ("Merge into W" + dmSel.tw + "D" + dmSel.td) : "Merge day";
-      mrg.disabled = !dayReady;
-      mrg.title = dayReady
-        ? ("Append imported W" + dmSel.dw + "D" + dmSel.dd + " to W" + dmSel.tw + "D" + dmSel.td)
-        : "Pick a day on both sides first";
-      mrg.onclick = function () {
-        if (!dayReady) return;
-        var tw = dmSel.tw, td = dmSel.td, dw = dmSel.dw, dd = dmSel.dd;
-        askConfirm({
-          title: "Merge into W" + tw + "D" + td + "?",
-          body: "This adds the imported W" + dw + "D" + dd + " exercises to the end of W" + tw + "D" + td + " in " + p.name +
-                ", keeping the existing exercises and their progress. The added exercises start unticked.",
-          confirmLabel: "Merge day"
-        }).then(function (ok) {
-          if (!ok) return;
-          if (mergeDay(p.name, tw, td, donor, dw, dd)) {
-            toast("Merged imported W" + dw + "D" + dd + " into W" + tw + "D" + td + ".");
-            renderDayMgr(); renderSidebar();
-          } else { toast("Couldn't merge that day."); }
-        });
-      };
-      acts.appendChild(mrg);
-      wrap.appendChild(acts);
-      return wrap;
-    }
-
-    // ---- Side-by-side review: current day next to the imported donor day ----
-    // Both columns are built to the same shape — header, week/day pickers, preview
-    // panel — so they line up flush no matter which one is taller.
-    var cmp = el("div", "dm-compare" + (donor ? " two" : ""));
-
-    function cmpHeader(tagTxt, whereTxt, whoTxt) {
-      var hd = el("div", "dm-cmp-hd");
-      var top = el("div", "dm-cmp-hd-top");
-      top.appendChild(el("span", "dm-cmp-tag", tagTxt));
-      top.appendChild(el("span", "dm-cmp-where", whereTxt));
-      hd.appendChild(top);
-      hd.appendChild(el("div", "dm-cmp-who", whoTxt));
-      return hd;
-    }
-
-    // Left: the live, editable current day
-    var colT = el("div", "dm-cmp-col is-current");
-    colT.appendChild(cmpHeader("Current",
-      (dmSel.tw != null && dmSel.td != null) ? ("W" + dmSel.tw + "D" + dmSel.td) : "No day selected",
-      p.name + (p.block ? " · " + p.block : "")));
-    colT.appendChild(rowT);
-    panelT.appendChild(prevT); colT.appendChild(panelT);
-    // With a donor loaded, the destructive day/week actions sit under the day they
-    // act on rather than in the shared row below the grid.
-    if (donor && typeof delRow !== "undefined") {
-      var delWrap = el("div", "dm-cmp-actions");
-      delWrap.appendChild(delRow);
-      colT.appendChild(delWrap);
-    }
+    panelT.appendChild(prevT);
+    // Adding an exercise folds into one button at the foot of the day it adds to.
+    if (weeks.length && dmSel.td != null) panelT.appendChild(buildAddExercise());
+    colT.appendChild(panelT);
+    colT.appendChild(buildDayWeekTools());
     cmp.appendChild(colT);
 
     // Right: the imported day, read-only, with its own week/day pickers so you can
@@ -3644,38 +3489,46 @@
       var panelD = el("div", "panel"); var prevD = el("div", "dm-preview is-readonly");
       renderPreviewInto(prevD, donor, dmSel.dw, dmSel.dd);   // no edit/delete/reorder callbacks — read-only
       panelD.appendChild(prevD); colD.appendChild(panelD);
-      colD.appendChild(buildDaySwapActions());
       cmp.appendChild(colD);
     }
     secT.appendChild(cmp);
-    if (donor) secT.appendChild(el("p", "dm-cmp-note", "The imported day is read-only \u2014 use \u201CUse the imported program\u201D below to bring it across."));
-    secT.appendChild(dayActions);
     body.appendChild(secT);
 
-    // ---- Add an exercise (adds a real program row to the selected day) ----
-    if (weeks.length && dmSel.td != null) {
-      var secAdd = el("div", "dm-sec");
-      // Collapsible: the toggle flips visibility in place rather than re-rendering,
-      // so anything half-typed in the fields survives a collapse and re-open.
-      var addToggle = el("button", "dm-collapse" + (dmAddOpen ? " open" : ""));
-      addToggle.type = "button";
-      addToggle.setAttribute("aria-expanded", dmAddOpen ? "true" : "false");
-      var addCaret = el("span", "dm-collapse-caret");
-      addCaret.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>';
-      addToggle.appendChild(addCaret);
-      addToggle.appendChild(el("span", "dm-sec-cap", "Add an Exercise to W" + dmSel.tw + "D" + dmSel.td));
-      secAdd.appendChild(addToggle);
-      var box = el("div", "panel addbox" + (dmAddOpen ? "" : " hidden"));
-      addToggle.setAttribute("aria-controls", "dmAddBox");
+    if (donor) body.appendChild(buildSwapSection());
+    body.appendChild(buildImportSection());
+
+    // Build stamp — lets a stale deploy be spotted immediately.
+    var stamp = el("p", "dm-build");
+    stamp.textContent = "Power Logs build " + APP_BUILD + " · Program Hub build " + HUB_BUILD;
+    body.appendChild(stamp);
+
+    renderDMCharts();   // program charts live below the manage-program controls
+
+    // "+ Add exercise" at the foot of the day's list, opening the form in place.
+    function buildAddExercise() {
+      var tag = "W" + dmSel.tw + "D" + dmSel.td;
+      var wrap = el("div", "dm-addex" + (dmAddOpen ? " open" : ""));
+      var toggle = el("button", "dm-addex-toggle");
+      toggle.type = "button";
+      toggle.setAttribute("aria-controls", "dmAddBox");
+      toggle.setAttribute("aria-expanded", dmAddOpen ? "true" : "false");
+      toggle.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+      toggle.appendChild(document.createTextNode("Add exercise"));
+      wrap.appendChild(toggle);
+
+      var box = el("div", "dm-addform");
       box.id = "dmAddBox";
-      addToggle.onclick = function () {
-        dmAddOpen = !dmAddOpen;
+      box.appendChild(el("p", "dm-mini-cap", "Add an exercise to " + tag));
+      // Opening and closing flip classes in place rather than re-rendering, so
+      // anything half-typed survives a close and re-open.
+      function setOpen(open) {
+        dmAddOpen = open;
         safeWrite(STORE_ADDOPEN, dmAddOpen);
-        box.classList.toggle("hidden", !dmAddOpen);
-        addToggle.classList.toggle("open", dmAddOpen);
-        addToggle.setAttribute("aria-expanded", dmAddOpen ? "true" : "false");
-        if (dmAddOpen) exText.focus();
-      };
+        wrap.classList.toggle("open", open);
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        if (open) exText.focus(); else toggle.focus();
+      }
+      toggle.onclick = function () { setOpen(true); };
 
       var exText = el("input", "add-area one-line"); exText.type = "text";
       exText.autocomplete = "off"; exText.setAttribute("list", "liftOptions");
@@ -3683,11 +3536,11 @@
       box.appendChild(exText);
       box.appendChild(liftPresetRow(exText));
 
-      var fieldsRow = el("div", "add-row");
+      var fieldsRow = el("div", "dm-addfields");
       // weight
       var fW = el("span", "add-field"); fW.appendChild(el("label", null, "Weight (kg)"));
       var inW = el("input", "add-weight"); inW.type = "text"; inW.setAttribute("inputmode", "decimal");
-      inW.autocomplete = "off"; inW.placeholder = "e.g. 147.5 or BW";
+      inW.autocomplete = "off"; inW.placeholder = "e.g. 147.5 or BW"; inW.setAttribute("aria-label", "Weight in kg");
       inW.addEventListener("input", function () { inW.value = sanitizeWeightValue(inW.value); });
       fW.appendChild(inW); fieldsRow.appendChild(fW);
       // sets / reps — whole numbers, typed
@@ -3720,8 +3573,12 @@
       notesArea.placeholder = "Notes (optional)"; notesArea.setAttribute("aria-label", "Notes");
       box.appendChild(notesArea);
 
-      var addActions = el("div", "add-row add-actions");
-      var addBtn = el("button", "btn-solid"); addBtn.textContent = "Add exercise";
+      var addActions = el("div", "dm-addform-acts");
+      var closeBtn = el("button", "btn-ghost sm", "Close");
+      closeBtn.type = "button";
+      closeBtn.onclick = function () { setOpen(false); };
+      var addBtn = el("button", "btn-solid sm", "Add to " + tag);
+      addBtn.type = "button";
       var doAdd = function () {
         var name = exText.value.trim();
         if (!name) { exText.focus(); toast("Type the exercise name first."); return; }
@@ -3746,65 +3603,193 @@
           rpe: isRest ? "" : rpe,
           notes: isRest ? "" : notesArea.value.trim()
         });
-        if (ok) { toast("Added \u201C" + name + "\u201D to W" + dmSel.tw + "D" + dmSel.td + "."); renderDayMgr(); renderSidebar(); }
+        if (ok) { toast("Added “" + name + "” to W" + dmSel.tw + "D" + dmSel.td + "."); renderDayMgr(); renderSidebar(); }
       };
       addBtn.onclick = doAdd;
       exText.addEventListener("keydown", function (e) {
-        // Single-line field now, so plain Enter submits; Cmd/Ctrl+Enter still works
-        // for anyone used to the old multi-line box.
+        // Single-line field, so plain Enter submits.
         if (e.key === "Enter") { e.preventDefault(); doAdd(); }
       });
-      addActions.appendChild(addBtn); box.appendChild(addActions);
-      secAdd.appendChild(box);
-      body.appendChild(secAdd);
+      addActions.appendChild(closeBtn); addActions.appendChild(addBtn);
+      box.appendChild(addActions);
+      wrap.appendChild(box);
+      return wrap;
     }
 
-    // ---- Donor (imported program) ----
-    var secD = el("div", "dm-sec");
-    secD.appendChild(el("p", "dm-sec-cap", "Import a program to pull a day from"));
-    if (!donor) {
-      secD.appendChild(el("p", "dm-import-hint", "Load a CSV or JSON program (same formats as usual), or build one in the Program Hub tab and send it straight here. It stays separate from your lifters and is discarded when you go back."));
-      var impRow = el("div", "dm-actions");
-      var imp = el("button", "chip primary"); imp.textContent = "Import CSV / JSON";
-      imp.onclick = function () { $("donorInput").click(); };
-      impRow.appendChild(imp);
-      var toHub = el("button", "chip sm"); toHub.textContent = "Build one in Program Hub";
-      toHub.onclick = function () { setDMTab("hub"); };
-      impRow.appendChild(toHub);
-      secD.appendChild(impRow);
-    } else {
-      var nameLine = el("p", "dm-import-hint");
-      nameLine.appendChild(document.createTextNode("Imported: "));
-      nameLine.appendChild(el("span", "dm-donor-name", donor.name + (donor.block ? " · " + donor.block : "")));
-      nameLine.appendChild(document.createTextNode(" \u2014 shown side by side with your current day above."));
-      secD.appendChild(nameLine);
-      var reimpRow = el("div", "dm-actions");
-      var reimp = el("button", "chip"); reimp.textContent = "Import a different program";
-      reimp.onclick = function () { $("donorInput").click(); };
-      reimpRow.appendChild(reimp);
-      var toHub2 = el("button", "chip sm"); toHub2.textContent = "Build one in Program Hub";
-      toHub2.onclick = function () { setDMTab("hub"); };
-      reimpRow.appendChild(toHub2);
-      secD.appendChild(reimpRow);
-    }
-    body.appendChild(secD);
+    // Days & weeks: add or delete the structure around the day being edited.
+    function buildDayWeekTools() {
+      var box = el("div", "dm-struct");
+      box.appendChild(el("p", "dm-mini-cap", "Days & weeks"));
+      var adds = el("div", "dm-struct-adds");
+      if (weeks.length) {
+        adds.appendChild(numberAdd("New day in Week " + dmSel.tw, nextDayNum(twObj), "Add day", function (v) {
+          var res = addEmptyDay(p.name, dmSel.tw, v);
+          if (res.ok) {
+            dmSel.td = res.day;
+            toast("Added empty Day " + res.day + " to Week " + dmSel.tw + ".");
+            renderDayMgr(); renderSidebar();
+          } else if (res.reason === "exists") {
+            toast("Week " + dmSel.tw + " already has a Day " + parseInt(v, 10) + ".");
+          } else {
+            toast("Enter a day number (1 or higher).");
+          }
+        }));
+      }
+      adds.appendChild(numberAdd("New empty week", nextWeekNum(p), "Add week", function (v) {
+        var res = addEmptyWeek(p.name, v);
+        if (res.ok) {
+          dmSel.tw = res.week; dmSel.td = null;
+          toast("Added empty Week " + res.week + ".");
+          renderDayMgr(); renderSidebar();
+        } else if (res.reason === "exists") {
+          toast("Week " + parseInt(v, 10) + " already exists.");
+        } else {
+          toast("Enter a week number (1 or higher).");
+        }
+      }));
+      box.appendChild(adds);
+      if (!weeks.length) return box;
 
-    // ---- Use the imported program (day-level and week-level) ----
-    if (donor) {
-      var secS = el("div", "dm-sec");
-      secS.appendChild(el("p", "dm-sec-cap", "Use the imported program \u2014 whole week"));
-      secS.appendChild(el("p", "dm-swap-label", "Single-day replace and merge live under the imported day above. These act on the entire week."));
+      var dels = el("div", "dm-struct-row");
+      var delDayBtn = el("button", "chip danger sm");
+      delDayBtn.type = "button";
+      delDayBtn.textContent = dmSel.td != null ? ("Delete Day " + dmSel.td) : "Delete day";
+      delDayBtn.disabled = (dmSel.td == null);
+      delDayBtn.onclick = function () {
+        askConfirm({
+          title: "Delete Day " + dmSel.td + "?",
+          body: "Remove all of W" + dmSel.tw + "D" + dmSel.td + " from " + p.name + ", including its progress. You'll get a few seconds to undo right after.",
+          confirmLabel: "Delete day"
+        }).then(function (ok) {
+          if (!ok) return;
+          var tw0 = getWeek(p, dmSel.tw), g0 = dayGroup(p, dmSel.tw, dmSel.td);
+          if (!tw0 || !g0) return;
+          var dayIndex = tw0.days.indexOf(g0);
+          var groupClone = deepClone(g0);
+          var progressMap = snapshotProgress(p.name, g0.rows);
+          var delWeek = dmSel.tw, delDay = dmSel.td;
+          if (deleteDay(p.name, delWeek, delDay)) {
+            dmSel.td = null;
+            pushUndoAction({
+              label: "Deleted Day " + delDay + " from Week " + delWeek + ".",
+              restoredLabel: "Day " + delDay + " restored.",
+              restore: function () {
+                var restored = restoreDayAt(p.name, delWeek, dayIndex, groupClone, progressMap);
+                if (restored) { dmSel.tw = delWeek; dmSel.td = delDay; }
+                return restored;
+              }
+            });
+            renderDayMgr(); renderSidebar();
+          }
+        });
+      };
+      var delWeekBtn = el("button", "chip danger sm");
+      delWeekBtn.type = "button";
+      delWeekBtn.textContent = "Delete Week " + dmSel.tw;
+      delWeekBtn.onclick = function () {
+        var nDays = twObj ? twObj.days.length : 0;
+        askConfirm({
+          title: "Delete Week " + dmSel.tw + "?",
+          body: "Remove the entire Week " + dmSel.tw + " (" + nDays + " day" + (nDays === 1 ? "" : "s") + ") from " + p.name + ", including all progress. You'll get a few seconds to undo right after.",
+          confirmLabel: "Delete week"
+        }).then(function (ok) {
+          if (!ok) return;
+          var weekIndex = -1;
+          for (var i = 0; i < p.weeks.length; i++) { if (String(p.weeks[i].week) === String(dmSel.tw)) { weekIndex = i; break; } }
+          if (weekIndex === -1) return;
+          var weekObj = p.weeks[weekIndex];
+          var weekClone = deepClone(weekObj);
+          var progressMap = snapshotProgress(p.name, weekObj.rows);
+          var delWeek = dmSel.tw;
+          if (deleteWeek(p.name, delWeek)) {
+            dmSel.tw = null; dmSel.td = null;
+            pushUndoAction({
+              label: "Deleted Week " + delWeek + ".",
+              restoredLabel: "Week " + delWeek + " restored.",
+              restore: function () {
+                var restored = restoreWeekAt(p.name, weekIndex, weekClone, progressMap);
+                if (restored) { dmSel.tw = delWeek; dmSel.td = null; }
+                return restored;
+              }
+            });
+            renderDayMgr(); renderSidebar();
+          }
+        });
+      };
+      dels.appendChild(delDayBtn); dels.appendChild(delWeekBtn);
+      box.appendChild(dels);
+      return box;
+    }
+    function numberAdd(labelTxt, value, btnTxt, onAdd) {
+      var f = el("span", "dm-numadd");
+      f.appendChild(el("span", "dm-numadd-lab", labelTxt));
+      var inp = el("input", "dm-daynum");
+      inp.type = "number"; inp.min = "1"; inp.step = "1";
+      inp.setAttribute("inputmode", "numeric");
+      inp.setAttribute("aria-label", labelTxt + " — number");
+      inp.value = String(value);
+      f.appendChild(inp);
+      var b = el("button", "btn-ghost sm", btnTxt);
+      b.type = "button";
+      b.onclick = function () { onAdd(inp.value); };
+      f.appendChild(b);
+      return f;
+    }
+
+    // Every replace/merge, day and week, in one card under the comparison.
+    function buildSwapSection() {
+      var sec = el("div", "dm-sec");
+      sec.appendChild(el("p", "dm-sec-cap", "Use the imported program"));
+      var card = el("div", "dm-card dm-swap");
+      var dayReady = dmSel.tw != null && dmSel.td != null && dmSel.dw != null && dmSel.dd != null;
       var weekReady = dmSel.tw != null && dmSel.dw != null;
 
+      var repl = el("button", "btn-solid sm");
+      repl.type = "button";
+      repl.textContent = dayReady ? ("Replace W" + dmSel.tw + "D" + dmSel.td) : "Replace day";
+      repl.disabled = !dayReady;
+      repl.onclick = function () {
+        if (!dayReady) return;
+        var tw = dmSel.tw, td = dmSel.td, dw = dmSel.dw, dd = dmSel.dd;
+        askConfirm({
+          title: "Replace W" + tw + "D" + td + "?",
+          body: "This overwrites W" + tw + "D" + td + " in " + p.name + " with the imported W" + dw + "D" + dd +
+                ". The label stays W" + tw + "D" + td + " and that day's progress is reset. This can't be undone.",
+          confirmLabel: "Replace day"
+        }).then(function (ok) {
+          if (!ok) return;
+          if (replaceDay(p.name, tw, td, donor, dw, dd)) {
+            toast("Replaced W" + tw + "D" + td + " with imported W" + dw + "D" + dd + ".");
+            renderDayMgr(); renderSidebar();
+          } else { toast("Couldn't replace that day."); }
+        });
+      };
+      var mrg = el("button", "btn-ghost sm");
+      mrg.type = "button";
+      mrg.textContent = dayReady ? ("Merge into W" + dmSel.tw + "D" + dmSel.td) : "Merge day";
+      mrg.disabled = !dayReady;
+      mrg.onclick = function () {
+        if (!dayReady) return;
+        var tw = dmSel.tw, td = dmSel.td, dw = dmSel.dw, dd = dmSel.dd;
+        askConfirm({
+          title: "Merge into W" + tw + "D" + td + "?",
+          body: "This adds the imported W" + dw + "D" + dd + " exercises to the end of W" + tw + "D" + td + " in " + p.name +
+                ", keeping the existing exercises and their progress. The added exercises start unticked.",
+          confirmLabel: "Merge day"
+        }).then(function (ok) {
+          if (!ok) return;
+          if (mergeDay(p.name, tw, td, donor, dw, dd)) {
+            toast("Merged imported W" + dw + "D" + dd + " into W" + tw + "D" + td + ".");
+            renderDayMgr(); renderSidebar();
+          } else { toast("Couldn't merge that day."); }
+        });
+      };
+      card.appendChild(swapRow("Day",
+        dayReady ? ("Imported W" + dmSel.dw + "D" + dmSel.dd + " → your W" + dmSel.tw + "D" + dmSel.td) : "Pick a day on both sides",
+        repl, mrg));
 
-      // Week-level
-      var weekLab = el("p", "dm-swap-label",
-        weekReady ? ("Week \u2014 replace or merge all of Week " + dmSel.tw + " using imported Week " + dmSel.dw + " (replace resets the whole week's progress).")
-                  : "Week \u2014 pick a week on both sides to replace or merge a whole week.");
-      weekLab.style.marginTop = "18px";
-      secS.appendChild(weekLab);
-      var weekActs = el("div", "dm-actions");
-      var replW = el("button", "btn-solid");
+      var replW = el("button", "btn-solid sm");
+      replW.type = "button";
       replW.textContent = weekReady ? ("Replace Week " + dmSel.tw) : "Replace week";
       replW.disabled = !weekReady;
       replW.onclick = function () {
@@ -3824,8 +3809,8 @@
           } else { toast("Couldn't replace that week."); }
         });
       };
-      weekActs.appendChild(replW);
-      var mrgW = el("button", "btn-ghost");
+      var mrgW = el("button", "btn-ghost sm");
+      mrgW.type = "button";
       mrgW.textContent = weekReady ? ("Merge into Week " + dmSel.tw) : "Merge week";
       mrgW.disabled = !weekReady;
       mrgW.onclick = function () {
@@ -3844,25 +3829,64 @@
           } else { toast("Couldn't merge that week."); }
         });
       };
-      weekActs.appendChild(mrgW);
-      secS.appendChild(weekActs);
-
-      // Clear import
-      var clrActs = el("div", "dm-actions"); clrActs.style.marginTop = "18px";
-      var clr = el("button", "chip"); clr.textContent = "Clear import";
-      clr.onclick = function () { donor = null; dmSel.dw = null; dmSel.dd = null; renderDayMgr(); };
-      clrActs.appendChild(clr);
-      secS.appendChild(clrActs);
-
-      body.appendChild(secS);
+      card.appendChild(swapRow("Whole week",
+        weekReady ? ("Imported Week " + dmSel.dw + " → your Week " + dmSel.tw) : "Pick a week on both sides",
+        replW, mrgW));
+      card.appendChild(el("p", "dm-swap-foot",
+        "Replace overwrites and resets that day's or week's progress, and can't be undone. Merge adds the imported exercises to the end and keeps what's there."));
+      sec.appendChild(card);
+      return sec;
+    }
+    function swapRow(kind, desc, a, b) {
+      var row = el("div", "dm-swap-row");
+      var lab = el("div", "dm-swap-lab");
+      lab.appendChild(el("span", "dm-swap-kind", kind));
+      lab.appendChild(el("span", "dm-swap-desc", desc));
+      row.appendChild(lab);
+      var acts = el("div", "dm-swap-acts");
+      acts.appendChild(a); acts.appendChild(b);
+      row.appendChild(acts);
+      return row;
     }
 
-    // Build stamp — lets a stale deploy be spotted immediately.
-    var stamp = el("p", "dm-build");
-    stamp.textContent = "Power Logs build " + APP_BUILD + " \u00b7 Program Hub build " + HUB_BUILD;
-    body.appendChild(stamp);
-
-    renderDMCharts();   // program charts live below the manage-program controls
+    // Importing lives in one place whether or not a program is loaded.
+    function buildImportSection() {
+      var sec = el("div", "dm-sec");
+      sec.appendChild(el("p", "dm-sec-cap", donor ? "Imported program" : "Import from another program"));
+      var card = el("div", "dm-card");
+      var acts = el("div", "dm-actions");
+      function hubBtn() {
+        var b = el("button", "chip sm", "Build one in Program Hub");
+        b.type = "button";
+        b.onclick = function () { setDMTab("hub"); };
+        return b;
+      }
+      if (!donor) {
+        card.appendChild(el("p", "dm-import-hint", "Load a CSV or JSON program, or build one in the Program Hub, to copy days or whole weeks into this one. It opens beside the day you're editing, stays separate from your lifters, and is discarded when you leave Manage Program."));
+        var imp = el("button", "chip primary", "Import CSV / JSON");
+        imp.type = "button";
+        imp.onclick = function () { $("donorInput").click(); };
+        acts.appendChild(imp);
+        acts.appendChild(hubBtn());
+      } else {
+        var nameLine = el("p", "dm-import-hint");
+        nameLine.appendChild(el("span", "dm-donor-name", donor.name + (donor.block ? " · " + donor.block : "")));
+        nameLine.appendChild(document.createTextNode(" — shown beside the day you're editing. Discarded when you leave Manage Program."));
+        card.appendChild(nameLine);
+        var reimp = el("button", "chip sm", "Import a different program");
+        reimp.type = "button";
+        reimp.onclick = function () { $("donorInput").click(); };
+        acts.appendChild(reimp);
+        acts.appendChild(hubBtn());
+        var clr = el("button", "chip sm", "Clear import");
+        clr.type = "button";
+        clr.onclick = function () { donor = null; dmSel.dw = null; dmSel.dd = null; renderDayMgr(); };
+        acts.appendChild(clr);
+      }
+      card.appendChild(acts);
+      sec.appendChild(card);
+      return sec;
+    }
   }
 
   function openDayMgr() {
@@ -6054,7 +6078,7 @@
     DMNOTES = safeRead(STORE_DMNOTES, {}) || {};
     ORDER = safeRead(STORE_ORDER, []);
     if (!Array.isArray(ORDER)) ORDER = [];
-    dmAddOpen = safeRead(STORE_ADDOPEN, true) !== false;   // open unless deliberately collapsed
+    dmAddOpen = safeRead(STORE_ADDOPEN, false) === true;   // closed until opened; remembered after that
 
     // gym tools: plate calculator + rest timer preferences
     var toolsPrefs = safeRead(STORE_TOOLS, null);
@@ -6155,7 +6179,6 @@
       b.onclick = function () { setDMTab(b.getAttribute("data-tab")); };
     });
     $("dmBack").onclick = closeDayMgr;
-    $("cmpOpenBtn").onclick = openCompare;
     $("cmpBack").onclick = closeCompare;
     $("rpeBack").onclick = closeRpe;
     $("vbtBack").onclick = closeVbt;

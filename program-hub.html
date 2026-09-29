@@ -6259,7 +6259,136 @@ if("serviceWorker" in navigator){
   setInterval(postHeight, 700);   // catches anything the above miss (async renders)
   postHeight();
 
-  try { parent.postMessage({ type: "spotter-hub-ready", features: ["send", "height", "theme"], build: "hub-5" }, "*"); } catch (e) {}
+  // ---- Prefill the builders from the lifter loaded in Power Logs ----
+  // The host sends the lifter in view: name, block, class, bodyweight and the
+  // training maxes entered in Manage Program. A field is only written while it's
+  // blank, still at its default, or still holding what the previous fill put
+  // there, so anything typed here is never overwritten.
+  var LIFTER_FIELDS = {
+    squat:    ["in-squat", "w-squat", "e-rsquat", "sq-max", "cb-squat", "lb-squat", "ls-squat", "fm-squat", "cv-squat", "dm-squat", "gp-squat"],
+    bench:    ["in-bench", "w-bench", "e-rbench", "bn-max", "b2-max", "ksb-max", "cb-bench", "ls-bench", "fm-bench", "cv-bench", "gp-bench"],
+    deadlift: ["in-deadlift", "w-deadlift", "e-rdead", "d-max", "cb-dead", "lb-dead", "ls-dead", "fm-dead", "cv-dead", "dm-dead", "gp-dead"],
+    press:    ["w-press"],
+    esquat:   ["e-esquat"], ebench: ["e-ebench"], edead: ["e-edead"],
+    bw:       ["e-bw"]
+  };
+  // Training-max lift names, matched case-insensitively against the ones typed
+  // into Manage Program's Training maxes card.
+  var TM_NAMES = {
+    squat: ["squat"], bench: ["bench", "bench press"], deadlift: ["deadlift"],
+    press: ["ohp", "overhead press", "press", "military press"],
+    esquat: ["squat equipped", "equipped squat"],
+    ebench: ["bench equipped", "equipped bench"],
+    edead: ["deadlift equipped", "equipped deadlift"]
+  };
+  // Wendler and Massthetics turn a 1RM into a training max themselves, so a
+  // training max fed in at their default 90% would be cut twice. While their
+  // max fields hold the lifter's training maxes, use them as-is (100%); once
+  // numbers are typed in, the TM % goes back to its default.
+  var TM_PCT = [
+    { ctl: "w-tm",  maxes: ["w-squat", "w-bench", "w-deadlift", "w-press"] },
+    { ctl: "dm-tm", maxes: ["dm-dead", "dm-squat"] }
+  ];
+  var lastLifter = null;
+
+  function defaultOf(inp) {
+    if (inp.tagName === "SELECT") {
+      for (var i = 0; i < inp.options.length; i++) if (inp.options[i].defaultSelected) return inp.options[i].value;
+      return inp.options.length ? inp.options[0].value : "";
+    }
+    return inp.defaultValue || "";
+  }
+  function fill(inp, v) {
+    if (!inp) return;
+    var cur = inp.value, prev = inp.getAttribute("data-filled"), def = defaultOf(inp);
+    if (cur !== "" && cur !== prev && cur !== def) return;      // typed here: leave it
+    var next = (v == null || v === "") ? def : String(v);
+    inp.value = next;
+    if (next !== def) inp.setAttribute("data-filled", next); else inp.removeAttribute("data-filled");
+    var f = inp.closest ? inp.closest(".field") : null;
+    if (f && next !== "") f.classList.remove("invalid");       // clear a stale "missing" outline
+  }
+  function isPrefilled(inp) { return !!inp && inp.value !== "" && inp.value === inp.getAttribute("data-filled"); }
+  function syncTmPct(b) {
+    var filled = false, typed = false;
+    b.maxes.forEach(function (id) {
+      var i = document.getElementById(id);
+      if (!i || i.value === "") return;
+      if (isPrefilled(i)) filled = true; else typed = true;
+    });
+    fill(document.getElementById(b.ctl), filled && !typed ? "100" : "");
+  }
+  function pickTM(tms, names) {
+    for (var k in tms) {
+      if (!Object.prototype.hasOwnProperty.call(tms, k)) continue;
+      if (names.indexOf(String(k).trim().toLowerCase()) !== -1 && tms[k] != null && String(tms[k]).trim() !== "") return String(tms[k]).trim();
+    }
+    return "";
+  }
+  function applyLifter(d) {
+    var tms = (d.trainingMaxes && typeof d.trainingMaxes === "object") ? d.trainingMaxes : {};
+    var bw = parseFloat(d.bodyweight);                          // e-bw is a number field; "74kg" -> 74
+    var vals = { name: d.name || "", block: d.block || "", cls: d.cls || "", bw: isFinite(bw) && bw > 0 ? String(bw) : "" };
+    Object.keys(TM_NAMES).forEach(function (k) { vals[k] = pickTM(tms, TM_NAMES[k]); });
+    var views = document.querySelectorAll(".view:not(#view-hub)");
+    Array.prototype.forEach.call(views, function (v) {
+      Array.prototype.forEach.call(v.querySelectorAll('input[id$="-name"]'), function (i) { fill(i, vals.name); });
+      Array.prototype.forEach.call(v.querySelectorAll('input[id$="-block"]'), function (i) { fill(i, vals.block); });
+      Array.prototype.forEach.call(v.querySelectorAll('input[id$="-class"]'), function (i) { fill(i, vals.cls); });
+    });
+    Object.keys(LIFTER_FIELDS).forEach(function (k) {
+      LIFTER_FIELDS[k].forEach(function (id) { fill(document.getElementById(id), vals[k]); });
+    });
+    TM_PCT.forEach(syncTmPct);
+    showPrefillNotes();
+  }
+  // One line under each builder's card title saying where the numbers came from.
+  function showPrefillNotes() {
+    var d = lastLifter;
+    var tms = (d && d.trainingMaxes && typeof d.trainingMaxes === "object") ? d.trainingMaxes : {};
+    var hasTMs = ["squat", "bench", "deadlift"].some(function (k) { return pickTM(tms, TM_NAMES[k]) !== ""; });
+    Array.prototype.forEach.call(document.querySelectorAll(".view:not(#view-hub) > .card"), function (card) {
+      var note = card.querySelector(".prefill-note");
+      if (!d || !d.name) { if (note) note.hidden = true; return; }
+      if (!note) {
+        note = document.createElement("p");
+        note.className = "prefill-note";
+        var head = card.querySelector(".card-head");
+        card.insertBefore(note, head ? head.nextSibling : card.firstChild);
+      }
+      var text = hasTMs
+        ? "Filled from " + d.name + " in Power Logs: training maxes, block and class. Change any field to override it."
+        : "Filled from " + d.name + " in Power Logs. " + d.name + " has no training maxes yet — add them in Manage Program and they’ll fill in here.";
+      TM_PCT.forEach(function (b) {
+        var ctl = document.getElementById(b.ctl);
+        if (ctl && card.contains(ctl) && ctl.getAttribute("data-filled") === "100") {
+          text += " TM % is set to 100% because these are already training maxes.";
+        }
+      });
+      note.textContent = text;
+      note.hidden = false;
+    });
+  }
+  (function () {
+    var st = document.createElement("style");
+    st.textContent = ".prefill-note{margin:-6px 0 14px;font-size:12.5px;line-height:1.45;color:var(--muted)}";
+    document.head.appendChild(st);
+  })();
+  window.addEventListener("message", function (e) {
+    var d = e.data;
+    if (!d || d.type !== "spotter-lifter" || e.source !== window.parent) return;
+    lastLifter = d;
+    applyLifter(d);
+  });
+  // Typing over a Wendler / Massthetics max hands its TM % back to the default.
+  document.addEventListener("input", function (e) {
+    var id = e.target && e.target.id;
+    TM_PCT.forEach(function (b) {
+      if (b.maxes.indexOf(id) !== -1) { syncTmPct(b); showPrefillNotes(); }
+    });
+  });
+
+  try { parent.postMessage({ type: "spotter-hub-ready", features: ["send", "height", "theme", "prefill"], build: "hub-6" }, "*"); } catch (e) {}
 
   // ---- Send the built program straight into Manage Program's donor slot ----
   // Reuses the page's own export pipeline: syncExportScope() parses and validates

@@ -53,6 +53,14 @@ Program Hub additionally:
   Program** button) — `loadDonorFromHub()` in power-logs.html parses it and
   drops it into the Manage Program **donor** slot, exactly like a file import.
 - Sends `spotter-hub-toast` to surface a message via the parent's toast UI.
+- Receives `spotter-lifter` (`pushLifterToHub()`: on hub-ready, on opening
+  the Hub tab, after max or block edits) with the lifter in view: `name`,
+  `block`, `cls`, `bodyweight`, `trainingMaxes`. The embed shim fills each
+  builder's blank fields from it: training maxes, not the CSV 1-rep maxes.
+  A field is written only while blank, at its default, or still holding the
+  previous fill (`data-filled`), so typed values are never overwritten.
+  Wendler/Massthetics derive their own TM, so their TM % goes to 100% while
+  their max fields hold prefilled TMs.
 
 ## Data model (power-logs.html)
 
@@ -134,10 +142,11 @@ node test-lifterorder.js # Rearrange lifters: sheet, dropdown entry, persistence
 node test-dmnotes.js    # Manage Program Notes: PIN-only, editor, links, backups, Weekly notes regression
 node test-reimport.js   # Re-imports keep training maxes; CSV still wins for 1-rep maxes
 node test-managelayout.js # Manage tab: section order + every action from its new place
+node test-hubprefill.js # Hub builders prefilled from the loaded lifter (both pages)
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all eight. Tests that need Manage Program (PIN-gated) swap
+`npm test` runs all nine. Tests that need Manage Program (PIN-gated) swap
 `DM_PIN_HASH` in their in-memory copy of the page for `sha256(DM_PIN_SALT +
 "24682468")`, so the real PIN is never needed (see test-dmnotes.js). Any jsdom script that boots a page must end with
 `process.exit()`: both pages leave intervals running, so node never exits on its own.
@@ -148,8 +157,10 @@ Touch points, in file order: a `--color` var (both themes) + `.btn-*` class + vi
 title/checkbox accents; a `.gen-card` in `#view-hub`; the `#view-*` markup; the
 generator + `*CSV()` writer (before the "shared preview engine" block); `CTX` and
 `EMPTY_TXT` entries; `build*()`/`*Reset()`; the click bindings and the `*_FIELDS`
-Enter-key list; a row in test-weekrange.js's `BUILDERS`; then bump `HUB_BUILD` and the
-`hub-N` string together.
+Enter-key list; a row in test-weekrange.js's `BUILDERS`; its max inputs in
+`LIFTER_FIELDS` in the embed shim (name/block/class are found by their
+`-name`/`-block`/`-class` id suffix), plus a `TM_PCT` entry if it applies its
+own TM %; then bump `HUB_BUILD` and the `hub-N` string together.
 
 - Power Logs only shows **`# ` lines** (hash + space) in its Program notes card;
   `#Note,...` lines, which several older builders write, are silently ignored. Write

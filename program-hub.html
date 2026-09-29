@@ -18,6 +18,8 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<!-- Same pinned Chart.js as power-logs.html (sw.js precaches this exact URL). -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 /* Spotter embed: runs before the app's own initTheme(), which persists a theme to
    localStorage on every load. Embedded, that would create or overwrite the
@@ -255,6 +257,21 @@
   }
   .cell-in:hover{border-color:var(--hair)}
   .cell-in:focus{outline:none; border-color:var(--build); background:var(--panel-2)}
+  /* Analytics under the table — same three charts as Power Logs' Analytics view */
+  .an-wrap{margin-top:30px}
+  .an-top{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+  .an-h{font-family:var(--disp); font-weight:700; font-size:20px; letter-spacing:.02em; text-transform:uppercase; margin:0}
+  .an-sub{font-family:var(--mono); font-size:11px; color:var(--muted-2); margin:6px 0 14px}
+  .an-panel{background:var(--panel); border:1px solid var(--hair); border-radius:12px; padding:16px 16px 14px; margin-bottom:14px}
+  .an-head{display:flex; align-items:baseline; justify-content:space-between; gap:12px}
+  .an-title{font-family:var(--disp); font-weight:600; font-size:17px; text-transform:uppercase; letter-spacing:.03em}
+  .an-kpi{font-family:var(--disp); font-weight:700; font-size:22px; color:var(--develop); white-space:nowrap}
+  .an-kpi .an-unit{font-family:var(--body); font-size:12px; font-weight:500; color:var(--muted-2)}
+  .an-desc{font-size:12.5px; color:var(--muted); line-height:1.45; margin-top:4px}
+  .an-chart{position:relative; width:100%; height:240px; margin-top:12px}
+  .an-empty{display:none; color:var(--muted-2); font-size:13px; text-align:center; padding:36px 6px}
+  .an-panel.is-empty .an-chart{display:none}
+  .an-panel.is-empty .an-empty{display:block}
   .edit-hint{font-family:var(--mono); font-size:11px; letter-spacing:.03em; color:var(--muted-2); margin:14px 0 -2px}
   td.wk-c{font-family:var(--mono); color:var(--muted)}
   td.ex{color:var(--ink)}
@@ -1117,6 +1134,36 @@
           </tr></thead>
           <tbody id="tbody"></tbody>
         </table>
+      </div>
+
+      <!-- Analytics: the same three charts as Power Logs' Analytics view -->
+      <div class="an-wrap" id="an-wrap">
+        <div class="an-top">
+          <h3 class="an-h">Analytics</h3>
+          <div class="seg" id="an-gran">
+            <button type="button" data-g="daily" class="on">Per session</button>
+            <button type="button" data-g="weekly">Per week</button>
+          </div>
+        </div>
+        <p class="an-sub" id="an-sub"></p>
+        <div class="an-panel" id="an-ton-panel">
+          <div class="an-head"><div class="an-title">Total tonnage</div><div class="an-kpi"><span id="an-ton-kpi">0</span> <span class="an-unit">kg</span></div></div>
+          <div class="an-desc">Weight × sets × reps across every set. Bodyweight and rest rows add nothing.</div>
+          <div class="an-chart"><canvas id="an-ton" role="img" aria-label="Total tonnage per session or week"></canvas></div>
+          <div class="an-empty" id="an-ton-empty">No sets with a weight, sets and reps to add up.</div>
+        </div>
+        <div class="an-panel" id="an-nl-panel">
+          <div class="an-head"><div class="an-title">Number of lifts</div><div class="an-kpi"><span id="an-nl-kpi">0</span> <span class="an-unit">reps</span></div></div>
+          <div class="an-desc" id="an-nl-desc">Total reps at ≥50% of 1RM for squat, bench &amp; deadlift (Sheiko NL).</div>
+          <div class="an-chart"><canvas id="an-nl" role="img" aria-label="Number of lifts per session or week"></canvas></div>
+          <div class="an-empty" id="an-nl-empty">No squat, bench or deadlift work at ≥50% of a max on file.</div>
+        </div>
+        <div class="an-panel" id="an-top-panel">
+          <div class="an-head"><div class="an-title">Heaviest top set</div><div class="an-kpi" id="an-top-kpi">–</div></div>
+          <div class="an-desc">Heaviest weight per period for squat, bench &amp; deadlift.</div>
+          <div class="an-chart"><canvas id="an-top" role="img" aria-label="Heaviest top set per session or week"></canvas></div>
+          <div class="an-empty" id="an-top-empty">No squat, bench or deadlift sets with a weight.</div>
+        </div>
       </div>
     </section>
   </div>
@@ -4423,9 +4470,9 @@ function combinedCSV(opts, rows){
   out += q(["#Name",opts.name]);
   out += q(["#Block",opts.block]);
   if(opts.cls) out += q(["#Class",opts.cls]);
-  out += q(["#Max Squat",fmtW(opts.sqMax)]);
-  out += q(["#Max Bench",fmtW(opts.bnMax)]);
-  out += q(["#Max Deadlift",fmtW(opts.dlMax)]);
+  out += q(["#Max","Squat",fmtW(opts.sqMax)]);
+  out += q(["#Max","Bench",fmtW(opts.bnMax)]);
+  out += q(["#Max","Deadlift",fmtW(opts.dlMax)]);
   out += csvRow(["Week","Day","Exercise","Weight (kg)","Sets","Reps","RPE","Notes"]);
   for(const r of rows) out += csvRow([r.Week,r.Day,r.Exercise,r["Weight (kg)"],r.Sets,r.Reps,r.Rpe,r.Notes]);
   return out;
@@ -4970,6 +5017,7 @@ function setVariant(id){
   document.querySelectorAll("#seg button").forEach(b=> b.classList.toggle("on", b.dataset.v===id));
   renderPreview();
   syncExportScope();     // row counts (and sometimes the week list) differ per variant
+  renderHubAnalytics();  // variants differ (e.g. Clean renames variations), so re-chart
 }
 
 function buildSummary(){
@@ -5020,6 +5068,208 @@ function renderPreview(){
   $("showing").textContent = wl ? `${wl} · ${shown} rows` : `All weeks · ${shown} rows`;
   $("rowcount").textContent = `${p.body.length} rows · ${variant.label}`;
 }
+
+/* ===================== analytics (same as Power Logs) =====================
+   Ported from power-logs.html's Analytics view: total tonnage, number of lifts
+   (reps at >=50% of 1RM, Sheiko NL) and heaviest top set, per session or per
+   week. The classifier and maths match Power Logs exactly, so a program charts
+   the same here as it will once it's imported there. It reads the active
+   variant's rows, including inline Sets/Reps edits, across the whole program
+   (the week filter only narrows the table). Maxes come from the builder's own
+   max list: per lift, the largest one whose label starts with that lift, like
+   Power Logs' bestMaxFor() over #Max lines. */
+const AN_LIFTS = {
+  Squat:    { keywords:["squat"] },
+  Bench:    { keywords:["bench press","bench"] },
+  Deadlift: { keywords:["deadlift"] },
+};
+const AN_EXCLUDED = ["pause squat","paused deadlift","pause deadlift","close grip","spoto","larsen","larssen","cgbp","db incline",
+  "face pull","tricep","leg curl","hanging","band pull","barbell row","lat pulldown","rdl",
+  "romanian","foam","lateral raise","walking","incline","ohp","overhead","front squat"];
+const AN_REST = /^rest(\s*day)?$/i;
+const AN_LIFT_NAMES = ["Squat","Bench","Deadlift"];
+let anGran = "daily";
+const anCharts = { ton:null, nl:null, top:null };
+
+function anClassify(exercise){
+  const ex = String(exercise || "").toLowerCase().trim();
+  if(AN_EXCLUDED.some(k => ex.indexOf(k) !== -1)) return null;
+  for(const n of AN_LIFT_NAMES){
+    if(AN_LIFTS[n].keywords.some(k => ex === k || ex.indexOf(k + " ") === 0 || ex.slice(-(k.length + 1)) === " " + k)) return n;
+  }
+  for(const n of AN_LIFT_NAMES){
+    if(AN_LIFTS[n].keywords.some(k => ex.indexOf(k) !== -1)) return n;
+  }
+  return null;
+}
+function anIsTNG(notes){ const n = String(notes || "").toLowerCase(); return n.indexOf("tng") !== -1 || n.indexOf("touch") !== -1; }
+function anKey(r){ return anGran === "weekly" ? ("W" + r.week) : (r.week + "-" + r.day); }
+function anLabel(r){ return anGran === "weekly" ? ("W" + r.week) : ("W" + r.week + "D" + r.day); }
+function anSort(map){ return Array.from(map.values()).sort((a,b)=> a.week !== b.week ? a.week - b.week : a.day - b.day); }
+function anRows(){
+  const p = activeVariant().parsed, i = p.idx;
+  return p.body.map(c => ({ week:parseFloat(cellAt(c,i.week)) || 0, day:parseFloat(cellAt(c,i.day)) || 0,
+    exercise:cellAt(c,i.ex), weight:cellAt(c,i.wt), sets:cellAt(c,i.sets), reps:cellAt(c,i.reps), notes:cellAt(c,i.notes) }));
+}
+function anMaxes(){
+  const out = { Squat:0, Bench:0, Deadlift:0 };
+  for(const m of (ctx.meta.maxLines || [])){
+    const lab = String(m.label || "").toLowerCase(), v = parseFloat(m.val);
+    if(!(v > 0)) continue;
+    for(const n of AN_LIFT_NAMES) if(lab.indexOf(n.toLowerCase()) === 0 && v > out[n]) out[n] = v;
+  }
+  return out;
+}
+function anTonnage(rows){
+  const map = new Map(); let grand = 0;
+  rows.forEach(r=>{
+    if(AN_REST.test(r.exercise)) return;
+    const sets = parseInt(r.sets,10), reps = parseInt(r.reps,10);
+    if(isNaN(sets) || isNaN(reps)) return;
+    const w = parseFloat(r.weight), load = (isNaN(w) || w <= 0) ? 0 : w;   // bodyweight adds 0
+    const ton = load * sets * reps; grand += ton;
+    const k = anKey(r);
+    if(!map.has(k)) map.set(k, { label:anLabel(r), total:0, week:r.week, day:r.day });
+    map.get(k).total += ton;
+  });
+  const arr = anSort(map);
+  return { labels:arr.map(x=>x.label), totals:arr.map(x=>x.total), grand };
+}
+function anNL(rows, maxes){
+  const map = new Map(); let grand = 0, skippedNoMax = 0;
+  rows.forEach(r=>{
+    if(AN_REST.test(r.exercise)) return;
+    const sets = parseInt(r.sets,10), reps = parseInt(r.reps,10);
+    if(isNaN(sets) || isNaN(reps) || sets < 1 || reps < 1) return;
+    const w = parseFloat(r.weight); if(isNaN(w) || w <= 0) return;
+    const lift = anClassify(r.exercise); if(!lift) return;
+    const oneRM = maxes[lift]; if(!oneRM || oneRM <= 0){ skippedNoMax++; return; }
+    if(w / oneRM < 0.50) return;
+    const nl = sets * reps; grand += nl;
+    const k = anKey(r);
+    if(!map.has(k)) map.set(k, { label:anLabel(r), nl:0, week:r.week, day:r.day });
+    map.get(k).nl += nl;
+  });
+  const arr = anSort(map);
+  return { labels:arr.map(x=>x.label), values:arr.map(x=>x.nl), grand, skippedNoMax };
+}
+function anTopSet(rows){
+  const map = new Map();
+  rows.forEach(r=>{
+    if(AN_REST.test(r.exercise)) return;
+    const w = parseFloat(r.weight); if(isNaN(w) || w <= 0) return;
+    const lift = anClassify(r.exercise); if(!lift) return;
+    const k = anKey(r);
+    if(!map.has(k)) map.set(k, { label:anLabel(r), week:r.week, day:r.day, top:{ Squat:null, Bench:null, Deadlift:null }, tng:{ Squat:false, Bench:false, Deadlift:false } });
+    const slot = map.get(k);
+    if(slot.top[lift] == null || w > slot.top[lift]){ slot.top[lift] = w; slot.tng[lift] = anIsTNG(r.notes); }
+  });
+  const arr = anSort(map);
+  const series = { Squat:[], Bench:[], Deadlift:[] }, tng = { Squat:[], Bench:[], Deadlift:[] }, peak = { Squat:null, Bench:null, Deadlift:null };
+  arr.forEach(x=>{
+    AN_LIFT_NAMES.forEach(l=>{
+      series[l].push(x.top[l]); tng[l].push(x.tng[l]);
+      if(x.top[l] != null && (peak[l] == null || x.top[l] > peak[l])) peak[l] = x.top[l];
+    });
+  });
+  const hasAny = AN_LIFT_NAMES.some(l => series[l].some(v => v != null));
+  return { labels:arr.map(x=>x.label), series, tng, peak, hasAny };
+}
+function anCss(name, fb){ const v = getComputedStyle(document.documentElement).getPropertyValue(name); return (v && v.trim()) || fb; }
+function anRGBA(hex, a){
+  const m = String(hex || "").trim().match(/^#?([0-9a-f]{6})$/i);
+  if(!m) return "rgba(224,163,62," + a + ")";
+  const n = parseInt(m[1], 16);
+  return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
+}
+/* Draw (or redraw) all three charts for the active program variant. */
+function renderHubAnalytics(){
+  const wrap = $("an-wrap"); if(!wrap) return;
+  for(const k in anCharts){ if(anCharts[k]){ anCharts[k].destroy(); anCharts[k] = null; } }
+  if(!ctx || $("results").style.display === "none"){ wrap.hidden = true; return; }
+  wrap.hidden = false;
+  const rows = anRows(), maxes = anMaxes();
+  const work = rows.filter(r => !AN_REST.test(r.exercise));
+  const sessions = new Set(work.map(r => r.week + "-" + r.day)).size;
+  const weeks = new Set(rows.map(r => r.week)).size;
+  $("an-sub").textContent = `${activeVariant().label} · ${weeks} week${weeks === 1 ? "" : "s"} · ${sessions} session${sessions === 1 ? "" : "s"}`;
+
+  const ready = (typeof Chart !== "undefined");
+  const ink = anCss("--muted", "#8A909C"), line = anCss("--hair", "#2A2F3A");
+  const tipBg = anCss("--ink", "#E8EAED"), tipTx = anCss("--bg", "#0E1014");
+  const axes = yTick => ({
+    x:{ grid:{ display:false }, ticks:{ color:ink, font:{ size:11 }, autoSkip:true, maxRotation:0 }, border:{ color:line } },
+    y:{ beginAtZero:true, grid:{ color:line }, ticks:Object.assign({ color:ink, font:{ size:11 } }, yTick), border:{ display:false } },
+  });
+  const noLib = (panel, empty) => { $(empty).textContent = "Couldn't load the chart library — check your connection."; $(panel).classList.add("is-empty"); };
+
+  // Total tonnage (bar)
+  const t = anTonnage(rows);
+  $("an-ton-kpi").textContent = Math.round(t.grand).toLocaleString();
+  const tHas = t.totals.some(v => v > 0);
+  $("an-ton-panel").classList.toggle("is-empty", !tHas);
+  if(tHas && !ready) noLib("an-ton-panel", "an-ton-empty");
+  else if(tHas){
+    const c = anCss("--build", "#4C7BD9");
+    anCharts.ton = new Chart($("an-ton"), {
+      type:"bar",
+      data:{ labels:t.labels, datasets:[{ label:"Tonnage", data:t.totals, backgroundColor:c, hoverBackgroundColor:c, borderRadius:5, maxBarThickness:54 }] },
+      options:{ responsive:true, maintainAspectRatio:false, animation:false,
+        plugins:{ legend:{ display:false }, tooltip:{ backgroundColor:tipBg, titleColor:tipTx, bodyColor:tipTx, padding:10, displayColors:false,
+          callbacks:{ label:c2 => " " + Math.round(c2.parsed.y).toLocaleString() + " kg" } } },
+        scales:axes({ callback:v => v >= 1000 ? (v / 1000) + "k" : v }) },
+    });
+  }
+
+  // Number of lifts (line)
+  const nl = anNL(rows, maxes);
+  $("an-nl-kpi").textContent = nl.grand.toLocaleString();
+  const noMax = AN_LIFT_NAMES.filter(l => !maxes[l]);
+  $("an-nl-desc").textContent = (noMax.length && nl.skippedNoMax > 0)
+    ? "Reps at ≥50% of 1RM (Sheiko NL). This program has no max for " + noMax.join(" / ") + ", so those reps aren't counted."
+    : "Total reps at ≥50% of 1RM for squat, bench & deadlift (Sheiko NL).";
+  const nlHas = nl.values.length > 0;
+  $("an-nl-panel").classList.toggle("is-empty", !nlHas);
+  if(nlHas && !ready) noLib("an-nl-panel", "an-nl-empty");
+  else if(nlHas){
+    const c = anCss("--develop", "#E0A33E");
+    anCharts.nl = new Chart($("an-nl"), {
+      type:"line",
+      data:{ labels:nl.labels, datasets:[{ label:"NL", data:nl.values, borderColor:c, backgroundColor:anRGBA(c, 0.14), pointBackgroundColor:c,
+        pointRadius:nl.values.length > 30 ? 2 : 4, pointHoverRadius:6, borderWidth:2.5, tension:0.35, fill:true }] },
+      options:{ responsive:true, maintainAspectRatio:false, animation:false,
+        plugins:{ legend:{ display:false }, tooltip:{ backgroundColor:tipBg, titleColor:tipTx, bodyColor:tipTx, padding:10, displayColors:false,
+          callbacks:{ label:c2 => " " + c2.parsed.y.toLocaleString() + " reps (≥50% 1RM)" } } },
+        scales:axes({ precision:0 }) },
+    });
+  }
+
+  // Heaviest top set (multi-line, one colour per lift)
+  const ts = anTopSet(rows);
+  const kpi = AN_LIFT_NAMES.filter(l => ts.peak[l] != null).map(l => l[0] + " " + ts.peak[l]);
+  $("an-top-kpi").textContent = kpi.length ? kpi.join("  ·  ") : "–";
+  $("an-top-panel").classList.toggle("is-empty", !ts.hasAny);
+  if(ts.hasAny && !ready) noLib("an-top-panel", "an-top-empty");
+  else if(ts.hasAny){
+    const col = { Squat:anCss("--sqpk", "#D96BA0"), Bench:anCss("--bnpk", "#5BA36B"), Deadlift:anCss("--dlpk", "#2FB0A0") };
+    const ds = l => ({ label:l, data:ts.series[l], borderColor:col[l], backgroundColor:col[l], pointBackgroundColor:col[l],
+      pointRadius:ts.labels.length > 30 ? 2 : 4, pointHoverRadius:6, borderWidth:2.5, tension:0.3, spanGaps:false, fill:false });
+    anCharts.top = new Chart($("an-top"), {
+      type:"line",
+      data:{ labels:ts.labels, datasets:AN_LIFT_NAMES.map(ds) },
+      options:{ responsive:true, maintainAspectRatio:false, animation:false, interaction:{ mode:"index", intersect:false },
+        plugins:{
+          legend:{ display:true, position:"top", align:"end", labels:{ boxWidth:10, boxHeight:10, usePointStyle:true, pointStyle:"circle", color:ink, font:{ size:12 } } },
+          tooltip:{ backgroundColor:tipBg, titleColor:tipTx, bodyColor:tipTx, padding:10,
+            callbacks:{ label:c2 => { if(c2.parsed.y == null) return null; const l = c2.dataset.label; return " " + l + ": " + c2.parsed.y + " kg" + ((ts.tng[l] || [])[c2.dataIndex] ? "  [TNG]" : ""); } } },
+        },
+        scales:axes({ callback:v => v + " kg" }) },
+    });
+  }
+}
+// Inline Sets/Reps edits redraw after a pause rather than on every keystroke.
+let anEditTimer = null;
+function scheduleHubAnalytics(){ clearTimeout(anEditTimer); anEditTimer = setTimeout(renderHubAnalytics, 400); }
 
 /* ===================== export week scope ===================== */
 /* The weeks that actually exist in the active variant's rows. Derived from the
@@ -5153,6 +5403,7 @@ function mountCtx(newCtx, scroll){
   $("results").style.display = "block";
   contentWrap().classList.remove("editing");   // leave edit mode on a fresh build
   syncBuildUI();
+  renderHubAnalytics();                        // after results are visible, so Chart.js can size itself
   /* Deliberately no scrollIntoView — the collapsed Setup bar keeps the maxes in
      reach, so we stay put instead of jumping the viewport down to the table. */
 }
@@ -6096,7 +6347,15 @@ $("tbody").addEventListener("input", e=>{
   if(ri>=0 && ri<p.body.length && col>=0){
     while(p.body[ri].length <= col) p.body[ri].push("");
     p.body[ri][col] = t.value;
+    scheduleHubAnalytics();
   }
+});
+$("an-gran").addEventListener("click", e=>{
+  const b = e.target.closest && e.target.closest("button[data-g]");
+  if(!b || b.dataset.g === anGran) return;
+  anGran = b.dataset.g;
+  document.querySelectorAll("#an-gran button").forEach(x=> x.classList.toggle("on", x === b));
+  renderHubAnalytics();
 });
 
 const GUSTAV_FIELDS  = ["in-name","in-block","in-class","in-squat","in-bench","in-deadlift"];
@@ -6141,6 +6400,7 @@ function applyTheme(t){
   const tc = document.getElementById("theme-color-meta");                       // status bar tint follows the theme
   if(tc) tc.setAttribute("content", (t === "light") ? "#F1F2F5" : "#0E1014");
   try{ localStorage.setItem("emm_theme", t); }catch(e){}
+  if(typeof ctx !== "undefined" && ctx) renderHubAnalytics();   // chart colours come from the theme
 }
 function initTheme(){
   let t = "dark";
@@ -6215,6 +6475,7 @@ if("serviceWorker" in navigator){
     document.documentElement.setAttribute("data-theme", t);
     var ic = document.getElementById("theme-ic");
     if (ic) ic.textContent = (t === "light") ? "\u263C" : "\u263E";
+    try { if (typeof ctx !== "undefined" && ctx) renderHubAnalytics(); } catch (e) {}   // re-colour the charts
   }
   window.addEventListener("message", function (e) {
     var d = e.data;
@@ -6388,7 +6649,7 @@ if("serviceWorker" in navigator){
     });
   });
 
-  try { parent.postMessage({ type: "spotter-hub-ready", features: ["send", "height", "theme", "prefill"], build: "hub-6" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-hub-ready", features: ["send", "height", "theme", "prefill"], build: "hub-7" }, "*"); } catch (e) {}
 
   // ---- Send the built program straight into Manage Program's donor slot ----
   // Reuses the page's own export pipeline: syncExportScope() parses and validates

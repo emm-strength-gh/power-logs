@@ -69,6 +69,16 @@ the `.vN` suffix if you ever change a stored shape incompatibly.
   RPE+Notes text for a row.
 - `CUSTOM`: `name -> [{ cid, week, day, text, ... }]` — user-added items not
   present in the imported program.
+- `WKNOTES` (`spotter.weekNotes.v1`): `name -> { week: "text" }`, Weekly notes.
+  `DMNOTES` (`spotter.dmNotes.v1`): `name -> "text"`, the single Notes entry in
+  Manage Program's top section, never rendered outside Manage Program. Both are
+  their own stores, not on the profile, because a CSV re-import replaces the whole
+  profile. Both share one editor sheet (`openNoteEditor()` with save/done
+  callbacks) and ride in the JSON export (`weekNotes`, `manageNotes`).
+- `trainingMaxes` does live on the profile, and it has no CSV form, so
+  `ingestText()` carries it over from the lifter being replaced, and
+  `ingestJSON()` keeps the device's copy when an older export lacks it. The CSV
+  stays the source of truth for everything it does carry (rows, `#Block`, `#Max`).
 - `ORDER` (`spotter.lifterOrder.v1`): lifter names in the user's arranged
   dropdown order. Always enumerate lifters through `lifterNames()`, never
   `Object.keys(PROFILES)`: it applies this order and appends anything loaded
@@ -121,10 +131,14 @@ node test-boot.js       # PWA wiring smoke test (manifest, icons, saveFile routi
 node test-weekrange.js  # Program Hub week-range export parsing, across all builders
 node test-genpop.js     # Meet Peak v2 Gen Pop: balance, loads, attempts, Clean, real import into power-logs.html
 node test-lifterorder.js # Rearrange lifters: sheet, dropdown entry, persistence, reload, unload
+node test-dmnotes.js    # Manage Program Notes: PIN-only, editor, links, backups, Weekly notes regression
+node test-reimport.js   # Re-imports keep training maxes; CSV still wins for 1-rep maxes
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all five. Any jsdom script that boots a page must end with
+`npm test` runs all seven. Tests that need Manage Program (PIN-gated) swap
+`DM_PIN_HASH` in their in-memory copy of the page for `sha256(DM_PIN_SALT +
+"24682468")`, so the real PIN is never needed (see test-dmnotes.js). Any jsdom script that boots a page must end with
 `process.exit()`: both pages leave intervals running, so node never exits on its own.
 
 ## Adding a Program Hub builder

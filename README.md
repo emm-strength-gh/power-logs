@@ -22,6 +22,8 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-weekrange.js` | Program Hub week-range export tests across all builders — `node test-weekrange.js`. |
 | `test-genpop.js` | Meet Peak v2 · Gen Pop builder checks, plus a real import of its CSV into the app — `node test-genpop.js`. |
 | `test-lifterorder.js` | Rearranging lifters: the sheet, the dropdown entry, saving and reloading the order — `node test-lifterorder.js`. |
+| `test-dmnotes.js` | Manage Program's Notes card: PIN-only visibility, editing, links, backups, and that Weekly notes still work — `node test-dmnotes.js`. |
+| `test-reimport.js` | Re-importing a lifter's CSV or an older JSON backup keeps their training maxes; the CSV still sets the 1-rep maxes — `node test-reimport.js`. |
 | `test-vbt.js` | Velocity Tracker smoke test — `node test-vbt.js`. |
 | `make_icons.py` | Regenerates the icons from `icons/_source.png`. |
 
@@ -99,6 +101,15 @@ saved on the device as you go (`spotter.lifterOrder.v1`). Newly loaded lifters j
 at the bottom, a re-imported lifter keeps its place, and **Unload everything** resets
 it. iOS draws its own menu for a dropdown, so its items can't be dragged in place.
 That's why the dropdown opens a sheet instead.
+
+## Notes in Manage Program
+
+Manage Program's top section has a **Notes** card under the two maxes cards: one
+free-text note per lifter, edited in the same sheet as Weekly notes (multi-line,
+links become tappable). It never appears on the Overview or the week pages, so it's
+only readable behind the Manage Program PIN, and leaving Manage Program locks it again.
+It's stored separately from the program, so re-importing a lifter's CSV keeps it. It
+travels in **Save progress (JSON)** backups but never in CSV exports.
 
 ## Generating a program straight into Manage Program
 

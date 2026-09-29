@@ -283,6 +283,9 @@
   .wk-notes-btn.has { color: var(--pine); border-color: var(--pine); }
   .wk-notes { margin: -8px 0 18px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--pine); border-radius: 12px; font-size: 14.5px; line-height: 1.5; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; cursor: pointer; }
   .wk-notes a { color: var(--pine); text-decoration: underline; text-underline-offset: 2px; }
+  .dmn-text { margin: 10px 0 0; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--pine); border-radius: 12px; font-size: 14.5px; line-height: 1.5; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; cursor: pointer; }
+  .dmn-text a { color: var(--pine); text-decoration: underline; text-underline-offset: 2px; }
+  .dmn-edit { margin-top: 10px; }
   .wk-notes-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; white-space: normal; }
 
   /* day filter */
@@ -1058,11 +1061,12 @@
   </div>
 </div>
 
+<!-- Shared editor: Weekly notes (week view) and Notes (Manage Program). -->
 <div class="modal-scrim" id="wkNoteScrim">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Weekly notes">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="wkNoteTitle">
     <div class="modal-head">
-      <h2>Weekly notes</h2>
-      <button class="icon-x" id="wkNoteClose" aria-label="Close weekly notes">
+      <h2 id="wkNoteTitle">Weekly notes</h2>
+      <button class="icon-x" id="wkNoteClose" aria-label="Close notes">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>
@@ -1220,6 +1224,7 @@
   var STORE_SKIP     = "spotter.skip.v1";
   var STORE_NOTES    = "spotter.notes.v1";
   var STORE_WKNOTES  = "spotter.weekNotes.v1";
+  var STORE_DMNOTES  = "spotter.dmNotes.v1";
   var STORE_CUSTOM   = "spotter.custom.v1";
   var STORE_THEME    = "spotter.theme";
   var STORE_LAST     = "spotter.lastLifter";
@@ -1228,7 +1233,7 @@
   var STORE_ADDOPEN  = "spotter.dmAddOpen.v2";   // v2: default flipped to open, so the panel is findable
   // Shown at the bottom of Manage program. Bump when power-logs.html changes, so
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
-  var APP_BUILD = "24";
+  var APP_BUILD = "25";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -1236,6 +1241,7 @@
   var NOTES = {};           // name -> { rid: "user note string" }  (override of the derived RPE+Notes)
   var CUSTOM = {};          // name -> [ { cid, week, day, text } ]  (user-added items)
   var WKNOTES = {};         // name -> { weekNumber: "free text" }  (Weekly notes)
+  var DMNOTES = {};         // name -> "free text"  (Notes, shown only in Manage Program)
   var ORDER = [];           // lifter names in the order the user arranged them (see lifterNames)
   var current = null;       // current lifter name
   var currentWeek = null;   // current week number (string/number) when in week view
@@ -1633,6 +1639,14 @@
     if (String(text || "").trim() === "") delete WKNOTES[name][week];
     else WKNOTES[name][week] = String(text);
     safeWrite(STORE_WKNOTES, WKNOTES);
+  }
+  // Manage Program's Notes: one entry per lifter, kept out of the Overview and
+  // week views. Its own store too, for the same reason as Weekly notes.
+  function getDMNote(name) { return DMNOTES[name] || ""; }
+  function setDMNote(name, text) {
+    if (String(text || "").trim() === "") delete DMNOTES[name];
+    else DMNOTES[name] = String(text);
+    safeWrite(STORE_DMNOTES, DMNOTES);
   }
   // Fill `node` with `text`, turning http(s):// and www. addresses into links.
   // Built from text nodes and <a> elements only, never innerHTML, so pasted
@@ -2101,7 +2115,25 @@
   }
 
   // ───────────────────────── Weekly notes ─────────────────────────
-  var wkNoteCtx = null;     // { name, week } while the Weekly notes editor is open
+  // One editor serves Weekly notes and Manage Program's Notes: the context's
+  // save() persists every keystroke, done() redraws whatever shows the note.
+  var wkNoteCtx = null;     // { save(text), done() } while the notes editor is open
+  function openNoteEditor(o) {
+    wkNoteCtx = o;
+    $("wkNoteTitle").textContent = o.title;
+    $("wkNoteFor").textContent = o.forLabel;
+    $("wkNoteArea").placeholder = o.placeholder;
+    $("wkNoteArea").value = o.text;
+    $("wkNoteSaved").textContent = "Links become tappable";
+    $("wkNoteScrim").classList.add("show");
+    setTimeout(function () { $("wkNoteArea").focus(); }, 30);
+  }
+  function closeNoteEditor() {
+    var ctx = wkNoteCtx;
+    $("wkNoteScrim").classList.remove("show");
+    wkNoteCtx = null;
+    if (ctx && ctx.done) ctx.done();
+  }
   function renderWeekNotes(p, w) {
     var text = getWeekNote(p.name, w.week);
     var box = $("wkNotes"); clear(box);
@@ -2114,23 +2146,29 @@
   }
   function openWeekNote() {
     var p = PROFILES[current]; if (!p || currentWeek === null) return;
-    wkNoteCtx = { name: p.name, week: currentWeek };
-    $("wkNoteFor").textContent = "Week " + currentWeek;
-    $("wkNoteArea").value = getWeekNote(p.name, currentWeek);
-    $("wkNoteSaved").textContent = "Links become tappable";
-    $("wkNoteScrim").classList.add("show");
-    setTimeout(function () { $("wkNoteArea").focus(); }, 30);
+    var name = p.name, week = currentWeek;
+    openNoteEditor({
+      title: "Weekly notes", forLabel: "Week " + week, text: getWeekNote(name, week),
+      placeholder: "Anything for this week — focus, how it went, links to videos…",
+      save: function (t) { setWeekNote(name, week, t); },
+      done: function () { if (currentWeek !== null) renderWeek(); }
+    });
   }
-  function closeWeekNote() {
-    $("wkNoteScrim").classList.remove("show");
-    wkNoteCtx = null;
-    if (currentWeek !== null) renderWeek();
+  function openDMNote() {
+    var p = PROFILES[current]; if (!p) return;
+    var name = p.name;
+    openNoteEditor({
+      title: "Notes", forLabel: name, text: getDMNote(name),
+      placeholder: "Anything about this lifter or program — goals, injuries, reminders, links…",
+      save: function (t) { setDMNote(name, t); },
+      done: function () { if (inDayMgr) renderDMMaxes(); }
+    });
   }
   function wireWeekNotes() {
     var area = $("wkNoteArea");
     area.addEventListener("input", function () {
       if (!wkNoteCtx) return;
-      setWeekNote(wkNoteCtx.name, wkNoteCtx.week, area.value);
+      wkNoteCtx.save(area.value);
       $("wkNoteSaved").textContent = "Saved";
     });
     $("wkNotesBtn").onclick = openWeekNote;
@@ -2139,9 +2177,9 @@
       if (e.target.closest && e.target.closest("a")) return;
       openWeekNote();
     });
-    $("wkNoteClose").onclick = closeWeekNote;
-    $("wkNoteDone").onclick = closeWeekNote;
-    $("wkNoteScrim").addEventListener("click", function (e) { if (e.target === $("wkNoteScrim")) closeWeekNote(); });
+    $("wkNoteClose").onclick = closeNoteEditor;
+    $("wkNoteDone").onclick = closeNoteEditor;
+    $("wkNoteScrim").addEventListener("click", function (e) { if (e.target === $("wkNoteScrim")) closeNoteEditor(); });
   }
 
   // Composer: long textbox + day picker to add a free-text item to the week.
@@ -3104,6 +3142,51 @@
       setOne: setTrainingMax,
       setAll: setAllTrainingMaxes
     }));
+    host.appendChild(buildNotesCard());
+  }
+
+  // Manage Program's Notes card: same collapsible shell as the maxes cards,
+  // with the note shown like Weekly notes and edited in the same sheet.
+  function buildNotesCard() {
+    var p = PROFILES[current], text = getDMNote(p.name);
+    var key = "spotter.dmNotesCollapsed";
+    var collapsed = false;
+    try { collapsed = localStorage.getItem(key) === "1"; } catch (e) {}
+    var card = el("div", "pn-card dmn-card" + (collapsed ? "" : " open"));
+    var toggle = el("button", "pn-toggle");
+    var lab = el("span", "pn-labels");
+    lab.appendChild(el("span", "pn-title", "Notes"));
+    // First line as a preview, so a collapsed card still says what's in it.
+    var first = text.split(/\r?\n/).filter(function (l) { return l.trim(); })[0];
+    if (first) lab.appendChild(el("span", "pn-sub", first.trim()));
+    toggle.appendChild(lab);
+    var chev = el("span", "pn-chev");
+    chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+    toggle.appendChild(chev);
+    toggle.onclick = function () {
+      card.classList.toggle("open");
+      try { localStorage.setItem(key, card.classList.contains("open") ? "0" : "1"); } catch (e) {}
+    };
+    card.appendChild(toggle);
+
+    var cbody = el("div", "pn-body");
+    cbody.appendChild(el("p", "dm-blockhint", "Only visible here in Manage Program — never on the Overview or the week pages."));
+    if (text) {
+      var box = el("div", "dmn-text");
+      appendLinkified(box, text);
+      // Tapping the note edits it, but a tap on a link should just follow the link.
+      box.addEventListener("click", function (e) {
+        if (e.target.closest && e.target.closest("a")) return;
+        openDMNote();
+      });
+      cbody.appendChild(box);
+    }
+    var edit = el("button", "chip sm dmn-edit", text ? "Edit notes" : "Add notes");
+    edit.type = "button";
+    edit.onclick = openDMNote;
+    cbody.appendChild(edit);
+    card.appendChild(cbody);
+    return card;
   }
 
   // Builds one editable maxes card. `cfg.storeKey` picks which store on the
@@ -5623,14 +5706,14 @@
       confirmLabel: "Unload everything"
     }).then(function (ok) {
       if (!ok) return;
-      PROFILES = {}; DONE = {}; SKIP = {}; NOTES = {}; CUSTOM = {}; WKNOTES = {}; ORDER = [];
+      PROFILES = {}; DONE = {}; SKIP = {}; NOTES = {}; CUSTOM = {}; WKNOTES = {}; DMNOTES = {}; ORDER = [];
       current = null; currentWeek = null; dayFilterSel = "all"; noteCtx = null; wkNoteCtx = null;
       inDayMgr = false; inAnalytics = false; donor = null; dmSel = { tw: null, td: null, dw: null, dd: null };
       inCompare = false; cmpProfA = null; cmpProfB = null;
       inRpe = false; inVbt = false;
       dmUndoStack = []; dmUndoOwner = null;
       dmUnlocked = false;
-      [STORE_PROFILES, STORE_DONE, STORE_SKIP, STORE_NOTES, STORE_CUSTOM, STORE_WKNOTES, STORE_LAST, STORE_ORDER].forEach(function (k) {
+      [STORE_PROFILES, STORE_DONE, STORE_SKIP, STORE_NOTES, STORE_CUSTOM, STORE_WKNOTES, STORE_DMNOTES, STORE_LAST, STORE_ORDER].forEach(function (k) {
         try { localStorage.removeItem(k); } catch (e) {}
       });
       if ($("noteScrim").classList.contains("show")) $("noteScrim").classList.remove("show");
@@ -5707,7 +5790,8 @@
       skip:   SKIP[p.name]   || {},
       notes:  NOTES[p.name]  || {},     // per-item note overrides (keyed by rid)
       custom: CUSTOM[p.name] || [],     // user-added items
-      weekNotes: WKNOTES[p.name] || {}  // Weekly notes, keyed by week number
+      weekNotes: WKNOTES[p.name] || {}, // Weekly notes, keyed by week number
+      manageNotes: getDMNote(p.name)    // Manage Program's Notes (one entry)
     };
 
     var base = p.block ? (sanitizeName(p.name) + "_" + sanitizeName(p.block)) : sanitizeName(p.name);
@@ -5817,6 +5901,11 @@
     });
     delete profile._hasStatus;
 
+    // Training maxes are entered in Manage Program and have no CSV form, so a
+    // re-import would otherwise wipe them. Keep the ones already on the device.
+    var prevTM = PROFILES[nm] && PROFILES[nm].trainingMaxes;
+    if (prevTM && typeof prevTM === "object") profile.trainingMaxes = prevTM;
+
     PROFILES[nm] = profile;
     safeWrite(STORE_DONE, DONE);
     safeWrite(STORE_SKIP, SKIP);
@@ -5842,7 +5931,12 @@
 
     // Defensive defaults so a hand-edited or partial file can't crash the renderer.
     if (!prof.maxes || typeof prof.maxes !== "object") prof.maxes = {};
-    if (!prof.trainingMaxes || typeof prof.trainingMaxes !== "object") prof.trainingMaxes = {};
+    // Older exports predate Training maxes; keep what's on the device rather than
+    // wiping it. An export that has them (even empty) is restored as saved.
+    if (!prof.trainingMaxes || typeof prof.trainingMaxes !== "object") {
+      var prevTM = PROFILES[nm] && PROFILES[nm].trainingMaxes;
+      prof.trainingMaxes = (prevTM && typeof prevTM === "object") ? prevTM : {};
+    }
     if (!prof.sourceFile) prof.sourceFile = filename || "";   // so a re-export keeps a sensible name
 
     function asMap(v) { return (v && typeof v === "object" && !Array.isArray(v)) ? v : {}; }
@@ -5853,6 +5947,7 @@
     CUSTOM[nm] = Array.isArray(data.custom) ? data.custom : [];
     // Older exports predate Weekly notes; keep what's on the device rather than wiping it.
     if (data.weekNotes !== undefined) WKNOTES[nm] = asMap(data.weekNotes);
+    if (data.manageNotes !== undefined) setDMNote(nm, typeof data.manageNotes === "string" ? data.manageNotes : "");
 
     safeWrite(STORE_DONE, DONE);
     safeWrite(STORE_SKIP, SKIP);
@@ -5956,6 +6051,7 @@
     NOTES = safeRead(STORE_NOTES, {}) || {};
     CUSTOM = safeRead(STORE_CUSTOM, {}) || {};
     WKNOTES = safeRead(STORE_WKNOTES, {}) || {};
+    DMNOTES = safeRead(STORE_DMNOTES, {}) || {};
     ORDER = safeRead(STORE_ORDER, []);
     if (!Array.isArray(ORDER)) ORDER = [];
     dmAddOpen = safeRead(STORE_ADDOPEN, true) !== false;   // open unless deliberately collapsed
@@ -6206,7 +6302,7 @@
         else if ($("pinScrim").classList.contains("show")) $("pinCancel").click();
         else if ($("confirmScrim").classList.contains("show")) $("confirmNo").click();
         else if ($("noteScrim").classList.contains("show")) closeNote();
-        else if ($("wkNoteScrim").classList.contains("show")) closeWeekNote();
+        else if ($("wkNoteScrim").classList.contains("show")) closeNoteEditor();
         else if ($("orderScrim").classList.contains("show")) closeOrder();
         else if ($("toolsScrim").classList.contains("show")) closeTools();
         else closeNav();

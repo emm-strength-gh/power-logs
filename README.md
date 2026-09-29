@@ -24,6 +24,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-lifterorder.js` | Rearranging lifters: the sheet, the dropdown entry, saving and reloading the order — `node test-lifterorder.js`. |
 | `test-dmnotes.js` | Manage Program's Notes card: PIN-only visibility, editing, links, backups, and that Weekly notes still work — `node test-dmnotes.js`. |
 | `test-reimport.js` | Re-importing a lifter's CSV or an older JSON backup keeps their training maxes; the CSV still sets the 1-rep maxes — `node test-reimport.js`. |
+| `test-managelayout.js` | Manage Program's Manage tab: section order, and every action from its place (add exercise, days & weeks, undo, import, replace/merge, clear, compare) — `node test-managelayout.js`. |
 | `test-vbt.js` | Velocity Tracker smoke test — `node test-vbt.js`. |
 | `make_icons.py` | Regenerates the icons from `icons/_source.png`. |
 
@@ -101,6 +102,18 @@ saved on the device as you go (`spotter.lifterOrder.v1`). Newly loaded lifters j
 at the bottom, a re-imported lifter keeps its place, and **Unload everything** resets
 it. iOS draws its own menu for a dropdown, so its items can't be dragged in place.
 That's why the dropdown opens a sheet instead.
+
+## The Manage tab, top to bottom
+
+1. **Program:** block/title, **Export CSV**, **Compare two programs**.
+2. **Edit a day:** pick the week and day (Undo on the right).
+   - **+ Add exercise** sits at the foot of the day's list and opens the form in place.
+   - **Days & weeks** (add a day or week, delete the day or week) sits right under it.
+   - With a program imported, its day shows beside yours (stacked on a phone).
+3. **Use the imported program:** every Replace/Merge in one card, a **Day** row and
+   a **Whole week** row that say what goes where ("Imported W1D1 → your W9D1").
+4. **Import:** import a CSV/JSON or build one in the Program Hub; once loaded,
+   **Import a different program** and **Clear import** live here too.
 
 ## Notes in Manage Program
 

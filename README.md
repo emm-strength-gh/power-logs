@@ -92,9 +92,11 @@ by the app, so a modified copy of the page can't get around them.
   coaches (share by email, remove), and **Delete lifter for everyone**.
 - **Lifter**: signs in with the email their coach entered. Sees only their own program
   (Overview, weeks, Analytics, 1-rep maxes, RPE Estimator, Velocity Tracker) and logs
-  it; no Manage Program, and a file can't replace a program their coach manages.
-- **Signed out**: the app works on local data as it always has, but Manage Program
-  needs a coach account. The old 8-digit PIN is gone: its hash shipped in this public
+  it; no Manage Program, and no loading or saving files (Load CSV/JSON, Save
+  progress): their program comes through their account.
+- **Signed out**: whatever is already on the device keeps working, but Manage
+  Program and loading/saving files need a coach account; the start screen asks
+  you to sign in. The old 8-digit PIN is gone: its hash shipped in this public
   page, so it only ever slowed people down.
 
 How it syncs: each change is saved locally, then compared with what the server last

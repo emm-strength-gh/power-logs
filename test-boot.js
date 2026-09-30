@@ -116,6 +116,34 @@ if (btn && btn.onclick) {
     meta() === (after === "dark" ? "#14171a" : "#f1f3ee"), `${after} gave ${meta()}`);
 }
 
+/* Phones/tablets fold the header buttons into ⋯ (jsdom doesn't apply media
+   queries, so this checks the menu's wiring, not which buttons show). */
+console.log("\nHeader ⋯ menu and About");
+const $ = id => doc.getElementById(id);
+const src = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
+check("at 820px and under, load/save/tools/theme/About fold away and ⋯ shows",
+  /@media \(max-width: 820px\)[\s\S]*?#loadBtn, #saveBtn, #toolsBtn, #themeBtn, #aboutBtn \{ display: none; \}\s*\.more-btn \{ display: grid; \}/.test(src));
+check("the account button stays out of the menu", !$("moreMenu").querySelector('[data-for="acctBtn"]'));
+check("menu starts closed", $("moreMenu").hidden && $("moreBtn").getAttribute("aria-expanded") === "false");
+$("moreBtn").click();
+check("⋯ opens it", !$("moreMenu").hidden && $("moreBtn").getAttribute("aria-expanded") === "true");
+const themeBefore = doc.documentElement.getAttribute("data-theme");
+check("theme item says what it will switch to",
+  $("moreThemeLabel").textContent === (themeBefore === "dark" ? "Light mode" : "Dark mode"), $("moreThemeLabel").textContent);
+$("moreMenu").querySelector('[data-for="themeBtn"]').click();
+check("an item runs its button and closes the menu", doc.documentElement.getAttribute("data-theme") !== themeBefore && $("moreMenu").hidden);
+$("moreBtn").click();
+$("moreMenu").querySelector('[data-for="aboutBtn"]').click();
+check("About opens from the menu", $("aboutScrim").classList.contains("show"));
+check("About shows the version", /^\d+\.\d+\.\d+$/.test($("aboutVer").textContent), $("aboutVer").textContent);
+$("aboutClose").click();
+$("moreBtn").click();
+doc.body.click();
+check("a tap elsewhere closes the menu", $("moreMenu").hidden);
+$("moreBtn").click();
+doc.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape" }));
+check("Escape closes the menu", $("moreMenu").hidden);
+
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : failures + " CHECK(S) FAILED"}\n`);
 window.close();          // app leaves timers running; close so node can exit
 process.exit(failures === 0 ? 0 : 1);

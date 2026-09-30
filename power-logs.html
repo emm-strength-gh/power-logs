@@ -20,6 +20,9 @@
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
 <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- Accounts + sync. Deferred: it still runs before boot() (DOMContentLoaded), and
+     the app works without it (offline first launch, blocked CDN), just unsynced. -->
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -399,6 +402,43 @@
   .pin-input:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(46,90,78,.12); }
   .pin-err { color: var(--clay); font-size: 13px; font-weight: 600; margin: 10px 0 0; display: none; }
   .pin-err.show { display: block; }
+
+  /* ---------- Account + sync ---------- */
+  .acct-btn { position: relative; }
+  .acct-dot { position: absolute; right: 3px; bottom: 3px; width: 9px; height: 9px; border-radius: 999px; background: var(--faint); border: 2px solid var(--surface); }
+  .acct-dot.ok { background: var(--pine); }
+  .acct-dot.busy { background: var(--daily); }
+  .acct-dot.warn { background: var(--gold); }
+  .acct-dot.err { background: var(--clay); }
+  .acct-dot.out { display: none; }
+  .acct-badge { position: absolute; top: -4px; right: -4px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; background: var(--clay); color: #fff; font-size: 10.5px; font-weight: 700; line-height: 17px; text-align: center; }
+  .acct-badge[hidden] { display: none; }
+  .acct-modal { max-height: 88vh; max-height: 88dvh; overflow-y: auto; }
+  .acct-input { width: 100%; margin-top: 12px; padding: 12px 14px; font-family: inherit; font-size: 15px; color: var(--ink); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px; }
+  .acct-input:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(46,90,78,.12); }
+  .acct-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .acct-who { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 2px; font-size: 15px; font-weight: 600; word-break: break-all; }
+  .acct-role { font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+  .acct-role.coach { background: var(--pine); color: #fff; border-color: var(--pine); }
+  .acct-status { font-size: 13px; color: var(--muted); margin: 2px 0 0; }
+  .acct-status.err { color: var(--clay); }
+  .acct-sec { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .acct-sec h3 { font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+  .acct-sec p { font-size: 14px; line-height: 1.5; margin: 0; }
+  .acct-person { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .acct-person:last-child { border-bottom: 0; }
+  .acct-person .who { min-width: 0; flex: 1 1 180px; }
+  .acct-person .who b { display: block; font-size: 14px; word-break: break-all; }
+  .acct-person .who span { font-size: 12.5px; color: var(--muted); word-break: break-all; }
+  .acct-person .acts { display: flex; gap: 6px; }
+  .dm-share-block { margin-top: 18px; }
+  .dm-share-del { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .dm-share-list { margin: 2px 0 0; padding: 0; list-style: none; max-width: 520px; }
+  .dm-share-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; font-size: 14px; border-bottom: 1px solid var(--border); word-break: break-all; }
+  .dm-share-list li:last-child { border-bottom: 0; }
+  .dm-share-row { display: flex; gap: 8px; margin-top: 10px; max-width: 520px; }
+  .dm-share-row input { flex: 1 1 auto; min-width: 0; }
+  .dm-share-ok { color: var(--pine); font-weight: 600; }
   .dm-efield-err { color: var(--clay); font-size: 12.5px; font-weight: 600; margin: 6px 0 0; display: none; line-height: 1.45; }
   .dm-efield-err.show { display: block; }
   /* Rearrange lifters sheet — rows reuse .dm-row/.dm-grip so enableRowDrag works as-is */
@@ -732,6 +772,8 @@
     select.lifter { max-width: none; width: 100%; min-width: 0; padding-left: 12px; padding-right: 28px; }
     .picker .caret { right: 10px; }
     .icon-btn { width: 34px; height: 34px; }
+    /* Room for the account button: Save progress is also in the sidebar. */
+    #saveBtn { display: none; }
   }
 
   /* ===================== iOS / PWA standalone ===================== */
@@ -772,6 +814,11 @@
   <button class="icon-btn" id="toolsBtn" aria-label="Gym tools: plate calculator and rest timer" title="Gym tools: plate calculator &amp; rest timer">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h2"/><path d="M18 12h2"/><rect x="6" y="9" width="2.4" height="6" rx="0.6"/><rect x="15.6" y="9" width="2.4" height="6" rx="0.6"/><rect x="8.4" y="7" width="1.8" height="10" rx="0.6"/><rect x="13.8" y="7" width="1.8" height="10" rx="0.6"/><path d="M10.2 12h3.6"/></svg>
   </button>
+  <button class="icon-btn acct-btn" id="acctBtn" aria-label="Account and sync" title="Account &amp; sync">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+    <span class="acct-dot" id="acctDot"></span>
+    <span class="acct-badge" id="acctBadge" hidden></span>
+  </button>
   <button class="icon-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle theme">
     <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
   </button>
@@ -807,7 +854,7 @@
       </button>
       <button class="chip danger" id="unloadBtn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-        Unload everything
+        <span id="unloadLabel">Unload everything</span>
       </button>
       <div class="foot-spacer"></div>
     </div>
@@ -1117,6 +1164,19 @@
   </div>
 </div>
 
+<!-- Before confirmScrim so its confirmations (sign out, delete) stack on top. -->
+<div class="modal-scrim" id="acctScrim">
+  <div class="modal acct-modal" role="dialog" aria-modal="true" aria-labelledby="acctTitle">
+    <div class="modal-head">
+      <h2 id="acctTitle">Account</h2>
+      <button class="icon-x" id="acctClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="acctBody"></div>
+  </div>
+</div>
+
 <div class="modal-scrim" id="confirmScrim">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
     <div class="modal-head">
@@ -1129,24 +1189,6 @@
     <div class="confirm-actions">
       <button class="chip" id="confirmNo">Cancel</button>
       <button class="btn-danger" id="confirmYes">Confirm</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-scrim" id="pinScrim">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pinTitle">
-    <div class="modal-head">
-      <h2 id="pinTitle">Enter PIN</h2>
-      <button class="icon-x" id="pinClose" aria-label="Cancel">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
-    </div>
-    <p class="confirm-body">Manage program is protected. Enter the 8-digit super-user PIN to continue.</p>
-    <input id="pinInput" class="pin-input" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="········" aria-label="8-digit PIN" />
-    <p class="pin-err" id="pinErr" aria-live="polite"></p>
-    <div class="confirm-actions">
-      <button class="chip" id="pinCancel">Cancel</button>
-      <button class="btn-solid" id="pinOk">Unlock</button>
     </div>
   </div>
 </div>
@@ -1252,9 +1294,13 @@
   var STORE_ORDER    = "spotter.lifterOrder.v1";
   var STORE_TOOLS    = "spotter.tools.v1";
   var STORE_ADDOPEN  = "spotter.dmAddOpen.v3";   // v3: the form now folds into a "+ Add exercise" button under the day, closed by default
+  // Writes to these reach the cloud (see "Cloud: accounts + sync").
+  var SYNCED_STORES = {};
+  [STORE_PROFILES, STORE_DONE, STORE_SKIP, STORE_NOTES, STORE_WKNOTES, STORE_DMNOTES, STORE_CUSTOM, STORE_ORDER]
+    .forEach(function (k) { SYNCED_STORES[k] = true; });
   // Shown at the bottom of Manage program. Bump when power-logs.html changes, so
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
-  var APP_BUILD = "28";
+  var APP_BUILD = "29";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -1276,7 +1322,6 @@
   var donor = null;         // a program imported ONLY inside Day management (never committed to PROFILES)
   var dmSel = { tw: null, td: null, dw: null, dd: null }; // day-mgr selections: target week/day, donor week/day
   var rowUid = 0;           // monotonic counter for unique rids on grafted/merged rows
-  var dmUnlocked = false;   // has the Manage-days PIN been entered this session?
   // Whether the "Add an exercise" panel is expanded. Collapsed by default so the
   // day comparison sits closer to the top; remembered across sessions.
   var dmAddOpen = true;
@@ -1385,7 +1430,10 @@
     try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
     catch (e) { return fallback; }
   }
-  function safeWrite(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
+  function safeWrite(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
+    if (SYNCED_STORES[key]) cloudDirty();
+  }
   // Plain-data deep clone for undo snapshots — every row/day/week/custom-item
   // object here is JSON-safe (strings, numbers, booleans, nested plain objects).
   function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -1755,7 +1803,6 @@
 
   // ───────────────────────── Rendering ─────────────────────────
   function showView(id) {
-    if (id !== "viewDayMgr" && id !== "viewCompare") dmUnlocked = false;   // leaving Manage days (and its Compare sub-view) re-locks it
     if (id !== "viewVbt") { var lay = document.querySelector(".layout"); if (lay) lay.classList.remove("vbt-open"); }
     ["viewEmpty", "viewOverview", "viewWeek", "viewAnalytics", "viewDayMgr", "viewCompare", "viewRpe", "viewVbt"].forEach(function (v) {
       $(v).classList.toggle("active", v === id);
@@ -1899,21 +1946,23 @@
     an.onclick = function () { openAnalytics(); closeNav(); };
     nav.appendChild(an);
 
-    // Day management link
-    var dm = el("button", "nav-item" + (inDayMgr ? " active" : ""));
-    dm.appendChild(iconSpan('<path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/>'));
-    dm.appendChild(el("span", "nav-label", "Manage program"));
-    dm.onclick = function () { closeNav(); requestDayMgr(); };
-    nav.appendChild(dm);
+    // Day management link: coaches only, and only on lifters they coach.
+    if (canManage(current)) {
+      var dm = el("button", "nav-item" + (inDayMgr ? " active" : ""));
+      dm.appendChild(iconSpan('<path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/>'));
+      dm.appendChild(el("span", "nav-label", "Manage program"));
+      dm.onclick = function () { closeNav(); requestDayMgr(); };
+      nav.appendChild(dm);
+    }
 
-    // RPE Estimator — self-contained tool, no lifter data involved, no PIN
+    // RPE Estimator — self-contained tool, no lifter data involved
     var rpe = el("button", "nav-item" + (inRpe ? " active" : ""));
     rpe.appendChild(iconSpan('<path d="M3 17l5-5 4 3 5-7"/><path d="M3 21h18"/><circle cx="8" cy="12" r="1.4"/><circle cx="12" cy="15" r="1.4"/><circle cx="17" cy="8" r="1.4"/>'));
     rpe.appendChild(el("span", "nav-label", "RPE Estimator"));
     rpe.onclick = function () { openRpe(); closeNav(); };
     nav.appendChild(rpe);
 
-    // Velocity Tracker — self-contained tool, no lifter data involved, no PIN
+    // Velocity Tracker — self-contained tool, no lifter data involved
     var vbt = el("button", "nav-item" + (inVbt ? " active" : ""));
     vbt.appendChild(iconSpan('<path d="M3 12h3l2-6 4 12 3-8 2 2h4"/>'));
     vbt.appendChild(el("span", "nav-label", "Velocity Tracker"));
@@ -2559,76 +2608,6 @@
 
   function closeNav() { $("layout").classList.remove("nav-open"); }
   function openNav() { $("layout").classList.add("nav-open"); }
-
-  // ───────────────────────── Manage-days PIN gate ─────────────────────────
-  // The plaintext PIN is NOT in this file. We only store a salted SHA-256 hash
-  // of it and compare hashes. Note: this is a client-side deterrent, not real
-  // security — the hash ships in the page and an 8-digit PIN is brute-forceable.
-  var DM_PIN_SALT = "spotter.dm.v1:";
-  var DM_PIN_HASH = "c30a18e5dc82ddb4ee8bc6f9c01972b90f190e069413009c68f7c709217c1c6b";
-
-  // Compact, self-contained SHA-256 (no crypto.subtle / secure-context dependency).
-  function sha256(ascii) {
-    function rr(n, x) { return (x >>> n) | (x << (32 - n)); }
-    var mathPow = Math.pow, maxWord = mathPow(2, 32), result = "";
-    var words = [], asciiBitLength = ascii.length * 8;
-    var hash = sha256.h = sha256.h || [];
-    var k = sha256.k = sha256.k || [];
-    var primeCounter = k.length;
-    var isComposite = {};
-    for (var candidate = 2; primeCounter < 64; candidate++) {
-      if (!isComposite[candidate]) {
-        for (var i = 0; i < 313; i += candidate) isComposite[i] = candidate;
-        hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
-        k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
-      }
-    }
-    ascii += "\x80";
-    while (ascii.length % 64 - 56) ascii += "\x00";
-    for (i = 0; i < ascii.length; i++) {
-      var j = ascii.charCodeAt(i);
-      if (j >> 8) return;
-      words[i >> 2] |= j << ((3 - i) % 4) * 8;
-    }
-    words[words.length] = (asciiBitLength / maxWord) | 0;
-    words[words.length] = asciiBitLength;
-    for (j = 0; j < words.length;) {
-      var w = words.slice(j, j += 16);
-      var oldHash = hash;
-      hash = hash.slice(0, 8);
-      for (i = 0; i < 64; i++) {
-        var w15 = w[i - 15], w2 = w[i - 2];
-        var a = hash[0], e = hash[4];
-        var temp1 = hash[7]
-          + (rr(6, e) ^ rr(11, e) ^ rr(25, e))
-          + ((e & hash[5]) ^ (~e & hash[6]))
-          + k[i]
-          + (w[i] = (i < 16) ? w[i] : (
-              w[i - 16]
-              + (rr(7, w15) ^ rr(18, w15) ^ (w15 >>> 3))
-              + w[i - 7]
-              + (rr(17, w2) ^ rr(19, w2) ^ (w2 >>> 10))
-            ) | 0
-          );
-        var temp2 = (rr(2, a) ^ rr(13, a) ^ rr(22, a))
-          + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
-        hash = [(temp1 + temp2) | 0].concat(hash);
-        hash[4] = (hash[4] + temp1) | 0;
-      }
-      for (i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
-    }
-    for (i = 0; i < 8; i++)
-      for (j = 3; j + 1; j--) {
-        var b = (hash[i] >> (j * 8)) & 255;
-        result += ((b < 16) ? 0 : "") + b.toString(16);
-      }
-    return result;
-  }
-
-  function verifyPin(pin) {
-    if (!/^\d{8}$/.test(pin)) return false;
-    return sha256(DM_PIN_SALT + pin) === DM_PIN_HASH;
-  }
 
   // ───────────────────────── Day management ─────────────────────────
   // Parse a program file WITHOUT committing it to PROFILES/localStorage — used for
@@ -3498,6 +3477,9 @@
 
     if (donor) body.appendChild(buildSwapSection());
     body.appendChild(buildImportSection());
+    // Sharing last: set up once per lifter, not part of day-to-day editing.
+    var secShare = buildShareSection(p);
+    if (secShare) body.appendChild(secShare);
 
     // Build stamp — lets a stale deploy be spotted immediately.
     var stamp = el("p", "dm-build");
@@ -4043,48 +4025,13 @@
     setTimeout(function () { inW.focus(); }, 30);
   }
 
-  // Ask for the PIN. Resolves true once the correct PIN is entered, false if cancelled.
-  function askPin() {
-    return new Promise(function (resolve) {
-      var scrim = $("pinScrim"), inp = $("pinInput"), err = $("pinErr");
-      var ok = $("pinOk"), no = $("pinCancel"), x = $("pinClose");
-      inp.value = ""; err.textContent = ""; err.classList.remove("show");
-      var downSelf = false;
-      function done(result) {
-        scrim.classList.remove("show");
-        ok.onclick = no.onclick = x.onclick = scrim.onclick = scrim.onpointerdown = inp.onkeydown = inp.oninput = null;
-        resolve(result);
-      }
-      function attempt() {
-        if (verifyPin((inp.value || "").trim())) { done(true); }
-        else {
-          err.textContent = "Incorrect PIN. Try again.";
-          err.classList.add("show");
-          inp.value = ""; inp.focus();
-        }
-      }
-      inp.oninput = function () {
-        var v = (inp.value || "").replace(/\D/g, "").slice(0, 8);   // digits only, max 8
-        if (v !== inp.value) inp.value = v;
-        if (err.classList.contains("show")) { err.classList.remove("show"); err.textContent = ""; }
-        if (v.length === 8) attempt();                              // auto-submit on the 8th digit
-      };
-      ok.onclick = attempt;
-      no.onclick = function () { done(false); };
-      x.onclick = function () { done(false); };
-      scrim.onpointerdown = function (e) { downSelf = (e.target === scrim); };
-      scrim.onclick = function (e) { if (downSelf && e.target === scrim) done(false); };
-      inp.onkeydown = function (e) { if (e.key === "Enter") { e.preventDefault(); attempt(); } };
-      scrim.classList.add("show");
-      setTimeout(function () { inp.focus(); }, 30);
-    });
-  }
-
-  // Entry point for Manage days: PIN-gated, then unlocked for the rest of the session.
+  // Entry point for Manage program. Coaches only: the database refuses program
+  // edits from anyone else, so this just keeps the screen out of their way.
   function requestDayMgr() {
     var p = PROFILES[current]; if (!p) { toast("Load a lifter first."); return; }
-    if (dmUnlocked) { openDayMgr(); return; }
-    askPin().then(function (ok) { if (ok) { dmUnlocked = true; openDayMgr(); } });
+    if (canManage(current)) { openDayMgr(); return; }
+    if (!CLOUD.user) { toast("Manage program is for coaches. Sign in with a coach account."); openAcct(); return; }
+    toast(isCoach() ? "You don’t coach " + p.name + "." : "Manage program is for coaches.");
   }
 
   // ───────────────────────── Analytics ─────────────────────────
@@ -5162,7 +5109,7 @@
   }
 
   function openCompare() {
-    if (!dmUnlocked) { requestDayMgr(); return; }   // defense in depth — shouldn't be reachable otherwise
+    if (!canManage(current)) { requestDayMgr(); return; }   // only reachable from Manage program anyway
     inCompare = true;
     showView("viewCompare");
     renderCompareColumn("a"); renderCompareColumn("b");
@@ -5727,6 +5674,8 @@
       $("confirmTitle").textContent = opts.title || "Are you sure?";
       $("confirmBody").textContent = opts.body || "";
       yes.textContent = opts.confirmLabel || "Confirm";
+      yes.className = opts.safe ? "btn-solid" : "btn-danger";   // green for a yes that loses nothing
+      no.textContent = opts.cancelLabel || "Cancel";
       var downSelf = false;
       function done(result) {
         scrim.classList.remove("show");
@@ -5744,6 +5693,9 @@
   }
 
   function unloadAll() {
+    // Signed in, the synced lifters would just come back on the next sync, so
+    // the button becomes "Sign out & clear device".
+    if (CLOUD.user) { signOutFlow(); return; }
     if (!Object.keys(PROFILES).length) { toast("Nothing loaded."); return; }
     askConfirm({
       title: "Unload everything?",
@@ -5757,7 +5709,6 @@
       inCompare = false; cmpProfA = null; cmpProfB = null;
       inRpe = false; inVbt = false;
       dmUndoStack = []; dmUndoOwner = null;
-      dmUnlocked = false;
       [STORE_PROFILES, STORE_DONE, STORE_SKIP, STORE_NOTES, STORE_CUSTOM, STORE_WKNOTES, STORE_DMNOTES, STORE_LAST, STORE_ORDER].forEach(function (k) {
         try { localStorage.removeItem(k); } catch (e) {}
       });
@@ -5920,6 +5871,7 @@
     if (!hasNameHeader(rows)) return { ok: false, reason: "no #Name", file: filename };
     var profile = buildProfile(rows);
     if (!profile || !profile.name) return { ok: false, reason: "no name value", file: filename };
+    if (isCoachManaged(profile.name)) return { ok: false, reason: "coach", file: filename, name: profile.name };
     profile.sourceFile = filename || "";   // remember exactly what was uploaded, for Save
     // keep the original header block (all lines before the data header) verbatim,
     // so #Program / #Bodyweight / the comment notes survive a Save round-trip
@@ -5950,6 +5902,8 @@
     // re-import would otherwise wipe them. Keep the ones already on the device.
     var prevTM = PROFILES[nm] && PROFILES[nm].trainingMaxes;
     if (prevTM && typeof prevTM === "object") profile.trainingMaxes = prevTM;
+    // Same lifter, same cloud record: a re-import updates it rather than adding a second one.
+    if (PROFILES[nm] && PROFILES[nm].cloudId) profile.cloudId = PROFILES[nm].cloudId;
 
     PROFILES[nm] = profile;
     safeWrite(STORE_DONE, DONE);
@@ -5973,6 +5927,11 @@
       return { ok: false, reason: "not a Spotter export", file: filename };
     }
     var nm = prof.name;
+    if (isCoachManaged(nm)) return { ok: false, reason: "coach", file: filename, name: nm };
+    // An export carries the cloud id of the device it came from; only this
+    // device's own record for the lifter counts here.
+    delete prof.cloudId;
+    if (PROFILES[nm] && PROFILES[nm].cloudId) prof.cloudId = PROFILES[nm].cloudId;
 
     // Defensive defaults so a hand-edited or partial file can't crash the renderer.
     if (!prof.maxes || typeof prof.maxes !== "object") prof.maxes = {};
@@ -6022,7 +5981,12 @@
 
   function finishLoad(results) {
     var loaded = results.filter(function (r) { return r.ok; });
-    var skipped = results.filter(function (r) { return !r.ok; });
+    var coachOwned = results.filter(function (r) { return !r.ok && r.reason === "coach"; });
+    var skipped = results.filter(function (r) { return !r.ok && r.reason !== "coach"; });
+    if (coachOwned.length && !loaded.length && !skipped.length) {
+      toast(coachOwned.map(function (r) { return r.name; }).join(", ") + ": your coach manages this program, so a file can't replace it.");
+      return;
+    }
     if (!loaded.length && !Object.keys(PROFILES).length) {
       toast(skipped.length ? "Skipped " + skipped.length + " file(s) — not a valid CSV (needs #Name on row 1) or Spotter JSON." : "Nothing loaded.");
       return;
@@ -6035,6 +5999,7 @@
     var msg = "";
     if (loaded.length) msg = "Loaded " + loaded.map(function (r) { return r.name; }).join(", ");
     if (skipped.length) msg += (msg ? " · " : "") + "skipped " + skipped.length + " without #Name";
+    if (coachOwned.length) msg += (msg ? " · " : "") + "kept your coach’s program for " + coachOwned.map(function (r) { return r.name; }).join(", ");
     if (msg) toast(msg);
   }
 
@@ -6062,6 +6027,1108 @@
       if (err && err.name === "AbortError") return;   // user cancelled
       toast("Couldn't read that folder.");
     });
+  }
+
+  // ───────────────────────── Cloud: accounts + sync ─────────────────────────
+  // localStorage stays the working copy: every change lands on the device first
+  // (safeWrite), then syncNow() compares the stores with `shadow` (what the
+  // server last held) and uploads only the differences, one small row per tick,
+  // note or added item. A pull applies server rows unless the same thing has an
+  // unsent change here, so whichever change reaches the server last wins.
+  // Who may see or change what is enforced by the database's row-level security
+  // (Power Logs Cloud Setup/1-schema.sql, outside this repo); the checks in this
+  // file only decide what to show. Signed out, none of this runs.
+  var CLOUD_URL = "https://tkudwvzhsxdvxyyxcfeh.supabase.co";
+  // Publishable key: public by design, it only reaches what those rules allow.
+  var CLOUD_KEY = "sb_publishable_-EagRB14aP5mB7BJDpeq2A_Czjmlgu3";
+  var STORE_CLOUD  = "spotter.cloud.v1";
+  var STORE_BACKUP = "spotter.preCloudBackup.v1";
+  var LOG_TABLES = ["lifter_marks", "lifter_row_notes", "lifter_custom", "lifter_week_notes", "lifter_coach_notes"];
+  var LOG_KEYS = { lifter_marks: "lifter_id,rid", lifter_row_notes: "lifter_id,rid", lifter_custom: "lifter_id,cid",
+                   lifter_week_notes: "lifter_id,week", lifter_coach_notes: "lifter_id" };
+  // Each pull re-reads the last minute too: a slow commit can land "in the past".
+  var CURSOR_OVERLAP_MS = 60000;
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  function cloudDefaults() {
+    return { user: null, lastUserId: "", account: null, accounts: [], links: [], lifterMeta: {}, shadow: {},
+             cursors: {}, refetch: {}, orderShadow: "", autoUpload: false, uploadAsked: false,
+             lastSync: "", lastError: "" };
+  }
+  var CLOUD = cloudDefaults();
+  var cloudApiCache = null, cloudApplying = false, cloudChanged = false, cloudRedrawPending = false;
+  var syncing = null, syncAgain = false, syncTimer = null, stopListening = null;
+
+  // The Supabase client, behind the handful of calls the app makes. Tests swap
+  // in a stand-in with the same shape via window.__spotterCloud.
+  function cloudApi() {
+    if (cloudApiCache) return cloudApiCache;
+    if (window.__spotterCloud) return (cloudApiCache = window.__spotterCloud);
+    if (!window.supabase || !window.supabase.createClient) return null;   // library didn't load: stay local
+    try {
+      cloudApiCache = supabaseApi(window.supabase.createClient(CLOUD_URL, CLOUD_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: "spotter.auth" }
+      }));
+    } catch (e) { return null; }
+    return cloudApiCache;
+  }
+  function supabaseApi(sb) {
+    function data(res) {
+      if (res && res.error) throw new Error(res.error.message || "Request failed");
+      return res ? res.data : null;
+    }
+    function who(session) {
+      return session && session.user ? { id: session.user.id, email: String(session.user.email || "").toLowerCase() } : null;
+    }
+    return {
+      session: function () { return sb.auth.getSession().then(function (r) { return who(data(r).session); }); },
+      onSessionChange: function (fn) { sb.auth.onAuthStateChange(function (ev, s) { fn(who(s), ev); }); },
+      sendCode: function (email) {
+        return sb.auth.signInWithOtp({ email: email, options: { shouldCreateUser: true } }).then(data);
+      },
+      verifyCode: function (email, code) {
+        return sb.auth.verifyOtp({ email: email, token: code, type: "email" }).then(function (r) { return who(data(r).session); });
+      },
+      signOut: function () { return sb.auth.signOut({ scope: "local" }).then(data); },
+      // Every visible row, paged. o: { columns, since (updated_at >), ids, lifterIds, orderBy }
+      fetch: function (table, o) {
+        o = o || {};
+        var out = [], PAGE = 1000;
+        function page(from) {
+          var q = sb.from(table).select(o.columns || "*");
+          if (o.since) q = q.gt("updated_at", o.since);
+          if (o.ids) q = q.in("id", o.ids);
+          if (o.lifterIds) q = q.in("lifter_id", o.lifterIds);
+          q = q.order(o.orderBy || "updated_at", { ascending: true }).range(from, from + PAGE - 1);
+          return q.then(data).then(function (rows) {
+            rows = rows || [];
+            out = out.concat(rows);
+            return rows.length === PAGE ? page(from + PAGE) : out;
+          });
+        }
+        return page(0);
+      },
+      upsert: function (table, rows, onConflict) { return sb.from(table).upsert(rows, { onConflict: onConflict }).then(data); },
+      insert: function (table, rows) { return sb.from(table).insert(rows).then(data); },
+      update: function (table, id, patch) { return sb.from(table).update(patch).eq("id", id).then(data); },
+      rpc: function (fn, args) { return sb.rpc(fn, args || {}).then(data); },
+      // Any change another device makes, as it happens. The rows themselves
+      // are fetched by the next sync; this only says "something changed".
+      listen: function (fn) {
+        var ch = sb.channel("spotter-sync");
+        ["lifters", "lifter_coaches", "accounts"].concat(LOG_TABLES).forEach(function (t) {
+          ch.on("postgres_changes", { event: "*", schema: "public", table: t }, function () { fn(t); });
+        });
+        ch.subscribe();
+        return function () { try { sb.removeChannel(ch); } catch (e) {} };
+      }
+    };
+  }
+
+  function cloudLoad() {
+    var saved = safeRead(STORE_CLOUD, null), d = cloudDefaults();
+    if (saved && typeof saved === "object") Object.keys(d).forEach(function (k) { if (saved[k] !== undefined) d[k] = saved[k]; });
+    CLOUD = d;
+  }
+  function saveCloud() { try { localStorage.setItem(STORE_CLOUD, JSON.stringify(CLOUD)); } catch (e) {} }
+  // Writes that come FROM the cloud mustn't schedule another upload.
+  function quietWrite(key, val) { cloudApplying = true; try { safeWrite(key, val); } finally { cloudApplying = false; } }
+  function writeAllStores() {
+    quietWrite(STORE_PROFILES, PROFILES); quietWrite(STORE_DONE, DONE); quietWrite(STORE_SKIP, SKIP);
+    quietWrite(STORE_NOTES, NOTES); quietWrite(STORE_CUSTOM, CUSTOM); quietWrite(STORE_WKNOTES, WKNOTES);
+    quietWrite(STORE_DMNOTES, DMNOTES); quietWrite(STORE_ORDER, ORDER);
+  }
+
+  // ---- Roles. Cached with CLOUD, so a coach still reaches Manage program offline.
+  function isOwner() { return !!(CLOUD.user && CLOUD.account && CLOUD.account.role === "owner"); }
+  function isCoach() {
+    return !!(CLOUD.user && CLOUD.account && (CLOUD.account.role === "owner" || CLOUD.account.coach_status === "approved"));
+  }
+  function coachesLifter(id) {
+    if (!isCoach()) return false;
+    if (isOwner()) return true;
+    return CLOUD.links.some(function (l) { return l.lifter_id === id && l.coach_id === CLOUD.user.id; });
+  }
+  // May this person edit the program? A lifter only on this device is theirs to
+  // edit; a synced one needs them to be one of its coaches.
+  function canManage(name) {
+    var p = name && PROFILES[name];
+    if (!p || !isCoach()) return false;
+    return !p.cloudId || coachesLifter(p.cloudId);
+  }
+  // A synced program this person can't edit, so a file mustn't replace it.
+  function isCoachManaged(name) {
+    var p = PROFILES[name];
+    return !!(p && p.cloudId && CLOUD.user && !coachesLifter(p.cloudId));
+  }
+  function accountById(uid) {
+    for (var i = 0; i < CLOUD.accounts.length; i++) if (CLOUD.accounts[i].user_id === uid) return CLOUD.accounts[i];
+    return null;
+  }
+  function localOnlyNames() { return lifterNames().filter(function (n) { return !PROFILES[n].cloudId; }); }
+  function athleteNames() {
+    return lifterNames().filter(function (n) {
+      var m = PROFILES[n].cloudId && CLOUD.lifterMeta[PROFILES[n].cloudId];
+      return !!(m && m.mine);
+    });
+  }
+
+  // ---- Comparing the device with the server
+  // Key-sorted JSON, so the same data always gives the same string (the database
+  // hands objects back with their keys reordered).
+  function stableJSON(v) {
+    if (v === null || v === undefined || typeof v !== "object") return JSON.stringify(v === undefined ? null : v);
+    if (Array.isArray(v)) return "[" + v.map(stableJSON).join(",") + "]";
+    return "{" + Object.keys(v).filter(function (k) { return v[k] !== undefined; }).sort().map(function (k) {
+      return JSON.stringify(k) + ":" + stableJSON(v[k]);
+    }).join(",") + "}";
+  }
+  // cyrb53: a whole program is kept as a hash, not a second copy in localStorage.
+  function hashStr(s) {
+    var h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for (var i = 0, ch; i < s.length; i++) {
+      ch = s.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (h2 >>> 0).toString(36) + "." + (h1 >>> 0).toString(36);
+  }
+  // The profile as stored in the cloud: no local name or id (they're columns),
+  // and no flat week.rows, which only duplicates days[].rows.
+  function programForCloud(p) {
+    var c = {};
+    Object.keys(p).forEach(function (k) { if (k !== "cloudId" && k !== "name" && k !== "weeks") c[k] = p[k]; });
+    c.weeks = (p.weeks || []).map(function (w) {
+      var o = {};
+      Object.keys(w).forEach(function (k) { if (k !== "rows") o[k] = w[k]; });
+      return o;
+    });
+    return c;
+  }
+  function progHash(p) { return hashStr(stableJSON(programForCloud(p))); }
+  function profileFromCloud(program, name, id) {
+    var p = JSON.parse(JSON.stringify(program || {}));
+    if (!Array.isArray(p.weeks)) p.weeks = [];
+    p.weeks.forEach(function (w) {
+      if (!Array.isArray(w.days)) w.days = [];
+      w.days.forEach(function (g) { if (!Array.isArray(g.rows)) g.rows = []; });
+      rebuildWeekFlat(w);
+    });
+    if (!p.maxes || typeof p.maxes !== "object") p.maxes = {};
+    p.name = name;
+    p.cloudId = id;
+    return p;
+  }
+  function markOf(name, rid) { return isDone(name, rid) ? "done" : (isSkipped(name, rid) ? "skip" : "none"); }
+  function customWithPos(name) {
+    var m = {};
+    (CUSTOM[name] || []).forEach(function (c, i) {
+      var it = {};
+      Object.keys(c).forEach(function (k) { it[k] = c[k]; });
+      it.pos = i;
+      m[c.cid] = it;
+    });
+    return m;
+  }
+  function emptyShadow() { return { prog: "", marks: {}, notes: {}, custom: {}, week: {}, coach: "" }; }
+  function shadowOf(id) { return CLOUD.shadow[id] || (CLOUD.shadow[id] = emptyShadow()); }
+  function cloudIndex() {
+    var m = {};
+    Object.keys(PROFILES).forEach(function (n) { var id = PROFILES[n] && PROFILES[n].cloudId; if (id) m[id] = n; });
+    return m;
+  }
+  function keyUnion() {
+    var o = {};
+    for (var i = 0; i < arguments.length; i++) Object.keys(arguments[i] || {}).forEach(function (k) { o[k] = 1; });
+    return Object.keys(o);
+  }
+  function tms(iso) { return Date.parse(iso || "") || 0; }
+  function cursorSince(t) {
+    var c = CLOUD.cursors[t];
+    return c ? new Date(tms(c) - CURSOR_OVERLAP_MS).toISOString() : null;
+  }
+
+  // What this device has that the server doesn't, for one synced lifter.
+  function lifterChanges(name, manage) {
+    var p = PROFILES[name], id = p.cloudId, sh = shadowOf(id), ch = { prog: null, rows: {}, count: 0 };
+    function add(t, row) { (ch.rows[t] = ch.rows[t] || []).push(row); ch.count++; }
+    if (manage) {
+      var pj = programForCloud(p), h = hashStr(stableJSON(pj));
+      if (h !== sh.prog) { ch.prog = { obj: pj, hash: h }; ch.count++; }
+    }
+    keyUnion(DONE[name], SKIP[name], sh.marks).forEach(function (rid) {
+      var s = markOf(name, rid);
+      if (s !== (sh.marks[rid] || "none")) add("lifter_marks", { lifter_id: id, rid: rid, state: s });
+    });
+    keyUnion(NOTES[name], sh.notes).forEach(function (rid) {
+      var v = NOTES[name] && NOTES[name][rid] !== undefined ? String(NOTES[name][rid]) : null;
+      var was = sh.notes[rid] === undefined ? null : sh.notes[rid];
+      if (v !== was) add("lifter_row_notes", { lifter_id: id, rid: rid, body: v });
+    });
+    var cur = customWithPos(name);
+    keyUnion(cur, sh.custom).forEach(function (cid) {
+      var v = cur[cid] ? stableJSON(cur[cid]) : null;
+      if (v !== (sh.custom[cid] || null)) add("lifter_custom", { lifter_id: id, cid: cid, item: cur[cid] || {}, deleted: !cur[cid] });
+    });
+    keyUnion(WKNOTES[name], sh.week).forEach(function (wk) {
+      var v = (WKNOTES[name] && WKNOTES[name][wk]) || "";
+      if (v !== (sh.week[wk] || "")) add("lifter_week_notes", { lifter_id: id, week: String(wk), body: v });
+    });
+    if (manage && (DMNOTES[name] || "") !== (sh.coach || "")) add("lifter_coach_notes", { lifter_id: id, body: DMNOTES[name] || "" });
+    return ch;
+  }
+  function commitShadow(sh, t, row) {
+    if (t === "lifter_marks") { if (row.state === "none") delete sh.marks[row.rid]; else sh.marks[row.rid] = row.state; }
+    else if (t === "lifter_row_notes") { if (row.body == null) delete sh.notes[row.rid]; else sh.notes[row.rid] = row.body; }
+    else if (t === "lifter_custom") { if (row.deleted) delete sh.custom[row.cid]; else sh.custom[row.cid] = stableJSON(row.item); }
+    else if (t === "lifter_week_notes") { if (!row.body) delete sh.week[row.week]; else sh.week[row.week] = row.body; }
+    else if (t === "lifter_coach_notes") sh.coach = row.body || "";
+  }
+  function pendingCount() {
+    if (!CLOUD.user) return 0;
+    var n = 0;
+    lifterNames().forEach(function (name) {
+      if (!PROFILES[name].cloudId) { if (isCoach() && CLOUD.autoUpload) n++; return; }
+      n += lifterChanges(name, canManage(name)).count;
+    });
+    return n;
+  }
+
+  // ---- Applying what the server says
+  function setMarkLocal(name, rid, state) {
+    if (!DONE[name]) DONE[name] = {};
+    if (!SKIP[name]) SKIP[name] = {};
+    delete DONE[name][rid]; delete SKIP[name][rid];
+    if (state === "done") DONE[name][rid] = true;
+    else if (state === "skip") SKIP[name][rid] = true;
+  }
+  function placeCustom(name, row) {
+    var list = (CUSTOM[name] || []).filter(function (c) { return c.cid !== row.cid; });
+    if (!row.deleted) {
+      var src = row.item || {}, it = {};
+      Object.keys(src).forEach(function (k) { if (k !== "pos") it[k] = src[k]; });
+      it.cid = row.cid;
+      var at = typeof src.pos === "number" ? Math.max(0, Math.min(src.pos, list.length)) : list.length;
+      list.splice(at, 0, it);
+    }
+    CUSTOM[name] = list;
+  }
+  // force: the server wins even over an unsent change (a lifter just linked to
+  // this device, or one being reset to the server's copy).
+  function applyLogRow(t, row, name, force) {
+    var sh = shadowOf(row.lifter_id), cur, was, next;
+    if (t === "lifter_marks") {
+      cur = markOf(name, row.rid); was = sh.marks[row.rid] || "none";
+      if (force || cur === was) { setMarkLocal(name, row.rid, row.state); if (cur !== row.state) cloudChanged = true; }
+    } else if (t === "lifter_row_notes") {
+      cur = NOTES[name] && NOTES[name][row.rid] !== undefined ? String(NOTES[name][row.rid]) : null;
+      was = sh.notes[row.rid] === undefined ? null : sh.notes[row.rid];
+      next = row.body == null ? null : String(row.body);
+      if (force || cur === was) {
+        if (!NOTES[name]) NOTES[name] = {};
+        if (next === null) delete NOTES[name][row.rid]; else NOTES[name][row.rid] = next;
+        if (cur !== next) cloudChanged = true;
+      }
+    } else if (t === "lifter_custom") {
+      var mine = customWithPos(name)[row.cid];
+      cur = mine ? stableJSON(mine) : null; was = sh.custom[row.cid] || null;
+      if (force || cur === was) { placeCustom(name, row); if (cur !== (row.deleted ? null : stableJSON(row.item))) cloudChanged = true; }
+    } else if (t === "lifter_week_notes") {
+      cur = (WKNOTES[name] && WKNOTES[name][row.week]) || ""; was = sh.week[row.week] || "";
+      if (force || cur === was) {
+        if (!WKNOTES[name]) WKNOTES[name] = {};
+        if (row.body) WKNOTES[name][row.week] = row.body; else delete WKNOTES[name][row.week];
+        if (cur !== (row.body || "")) cloudChanged = true;
+      }
+    } else if (t === "lifter_coach_notes") {
+      cur = DMNOTES[name] || ""; was = sh.coach || "";
+      if (force || cur === was) {
+        if (row.body) DMNOTES[name] = row.body; else delete DMNOTES[name];
+        if (cur !== (row.body || "")) cloudChanged = true;
+      }
+    }
+    commitShadow(sh, t, row);
+  }
+  function clearLocalLogs(name) {
+    DONE[name] = {}; SKIP[name] = {}; NOTES[name] = {}; CUSTOM[name] = []; WKNOTES[name] = {}; delete DMNOTES[name];
+  }
+  function removeLocalLifter(name) {
+    var id = PROFILES[name] && PROFILES[name].cloudId;
+    delete PROFILES[name]; delete DONE[name]; delete SKIP[name]; delete NOTES[name];
+    delete CUSTOM[name]; delete WKNOTES[name]; delete DMNOTES[name];
+    ORDER = ORDER.filter(function (n) { return n !== name; });
+    if (id) { delete CLOUD.shadow[id]; delete CLOUD.lifterMeta[id]; delete CLOUD.refetch[id]; }
+    if (current === name) current = null;
+    cloudChanged = true;
+  }
+  // Two coaches' lifters can share a name; the dropdown needs them apart.
+  // Names that would clash with the object keys JS gives every object (or the
+  // dropdown's Rearrange entry) are never used as they are.
+  var RESERVED_NAME = /^(__proto__|constructor|prototype|hasOwnProperty|toString|valueOf|__spotter_rearrange__)$/;
+  function localNameFor(base, id) {
+    base = base || "Lifter";
+    var n = RESERVED_NAME.test(base) ? base + " (2)" : base, i = 2;
+    while (Object.prototype.hasOwnProperty.call(PROFILES, n) && PROFILES[n].cloudId !== id) n = base + " (" + (++i) + ")";
+    return n;
+  }
+  function applyLifterRow(row, fresh) {
+    if (row.deleted_at) return;
+    var name = cloudIndex()[row.id], refetch = CLOUD.refetch[row.id];
+    delete CLOUD.refetch[row.id];
+    if (!name) {
+      // Loaded here before signing in, under the same name: the same lifter.
+      // The server's program wins; ticks and notes found only here are kept
+      // and go up with the next push.
+      name = (!RESERVED_NAME.test(row.name) && Object.prototype.hasOwnProperty.call(PROFILES, row.name) && !PROFILES[row.name].cloudId)
+        ? row.name : localNameFor(row.name, row.id);
+      var np = profileFromCloud(row.program, name, row.id);
+      PROFILES[name] = np;
+      CLOUD.shadow[row.id] = emptyShadow();
+      CLOUD.shadow[row.id].prog = progHash(np);
+      fresh[row.id] = true;
+      cloudChanged = true;
+      return;
+    }
+    var sh = shadowOf(row.id), rp = profileFromCloud(row.program, name, row.id), rh = progHash(rp);
+    if (refetch === "all") {
+      clearLocalLogs(name);
+      sh = CLOUD.shadow[row.id] = emptyShadow();
+      fresh[row.id] = true;
+      cloudChanged = true;
+    }
+    if (refetch || progHash(PROFILES[name]) === sh.prog || !canManage(name)) {
+      if (progHash(PROFILES[name]) !== rh) { PROFILES[name] = rp; cloudChanged = true; }
+    }
+    sh.prog = rh;
+  }
+  function orderIds() {
+    return lifterNames().map(function (n) { return PROFILES[n].cloudId; }).filter(Boolean);
+  }
+  function applyOrder(prefs) {
+    if (!prefs || !Array.isArray(prefs.lifter_order)) return;
+    var remote = stableJSON(prefs.lifter_order);
+    if (remote === CLOUD.orderShadow) return;
+    // Rearranged here since the last sync: this device's order goes up instead.
+    if (CLOUD.orderShadow && stableJSON(orderIds()) !== CLOUD.orderShadow) { CLOUD.orderShadow = remote; return; }
+    var idx = cloudIndex(), names = [];
+    prefs.lifter_order.forEach(function (id) { if (idx[id]) names.push(idx[id]); });
+    lifterNames().forEach(function (n) { if (names.indexOf(n) === -1) names.push(n); });
+    if (stableJSON(names) !== stableJSON(lifterNames())) cloudChanged = true;
+    ORDER = names;
+    CLOUD.orderShadow = remote;
+  }
+  function fetchChunked(api, table, ids, key, columns) {
+    var out = [], chain = Promise.resolve();
+    for (var i = 0; i < ids.length; i += 40) (function (part) {
+      chain = chain.then(function () {
+        var o = { columns: columns };
+        o[key || "lifterIds"] = part;
+        return api.fetch(table, o).then(function (rows) { out = out.concat(rows || []); });
+      });
+    })(ids.slice(i, i + 40));
+    return chain.then(function () { return out; });
+  }
+
+  function pullAll(api) {
+    var me = CLOUD.user.id, fresh = {};
+    return Promise.all([
+      api.fetch("accounts", { orderBy: "created_at" }),
+      api.fetch("lifter_coaches", { orderBy: "created_at" }),
+      api.fetch("lifters", { columns: "id,name,lifter_email,lifter_user_id,created_by,updated_at,deleted_at" }),
+      api.fetch("user_prefs", {})
+    ]).then(function (r) {
+      CLOUD.accounts = r[0] || [];
+      var mine = accountById(me);
+      var wasCoach = isCoach();
+      CLOUD.account = mine ? { role: mine.role, coach_status: mine.coach_status, display_name: mine.display_name || "" } : null;
+      if (wasCoach !== isCoach()) cloudChanged = true;
+      var links = (r[1] || []).map(function (l) { return { lifter_id: l.lifter_id, coach_id: l.coach_id }; });
+      if (stableJSON(links) !== stableJSON(CLOUD.links)) cloudChanged = true;   // Sharing lists who coaches whom
+      CLOUD.links = links;
+      var idx = cloudIndex(), seen = {}, need = [], since = cursorSince("lifters"), top = CLOUD.cursors.lifters || "";
+      (r[2] || []).forEach(function (row) {
+        if (tms(row.updated_at) > tms(top)) top = row.updated_at;
+        var meta = { name: row.name, email: row.lifter_email || "", linked: !!row.lifter_user_id,
+                     mine: row.lifter_user_id === me, createdBy: row.created_by || "" };
+        // e.g. the lifter just signed in: Sharing shows it.
+        if (stableJSON(meta) !== stableJSON(CLOUD.lifterMeta[row.id] || null)) cloudChanged = true;
+        CLOUD.lifterMeta[row.id] = meta;
+        if (row.deleted_at) return;
+        seen[row.id] = true;
+        if (!idx[row.id] || !since || tms(row.updated_at) > tms(since) || CLOUD.refetch[row.id]) need.push(row.id);
+      });
+      // Deleted, or no longer shared with this account: off this device.
+      Object.keys(idx).forEach(function (id) { if (!seen[id]) removeLocalLifter(idx[id]); });
+      CLOUD.cursors.lifters = top;
+      var prefs = (r[3] || [])[0] || null;
+      return fetchChunked(api, "lifters", need, "ids", "id,name,program,updated_at,deleted_at").then(function (rows) {
+        rows.forEach(function (row) { applyLifterRow(row, fresh); });
+        applyOrder(prefs);
+      });
+    }).then(function () {
+      var idx = cloudIndex();
+      var freshIds = Object.keys(fresh).filter(function (id) { return idx[id]; });
+      var tables = LOG_TABLES.filter(function (t) { return t !== "lifter_coach_notes" || isCoach(); });
+      return tables.reduce(function (chain, t) {
+        return chain.then(function () {
+          var hadCursor = !!CLOUD.cursors[t];
+          return api.fetch(t, { since: cursorSince(t) }).then(function (rows) {
+            var top = CLOUD.cursors[t] || "";
+            rows.forEach(function (row) {
+              if (tms(row.updated_at) > tms(top)) top = row.updated_at;
+              if (idx[row.lifter_id]) applyLogRow(t, row, idx[row.lifter_id], !!fresh[row.lifter_id]);
+            });
+            CLOUD.cursors[t] = top;
+            if (!hadCursor || !freshIds.length) return;
+            // Newly visible lifters have rows older than the cursor: fetch them whole.
+            return fetchChunked(api, t, freshIds).then(function (old) {
+              old.forEach(function (row) { if (idx[row.lifter_id]) applyLogRow(t, row, idx[row.lifter_id], true); });
+            });
+          });
+        });
+      }, Promise.resolve());
+    }).then(function () {
+      if (cloudChanged) writeAllStores();
+      saveCloud();
+    });
+  }
+
+  // ---- Sending this device's changes
+  function pushLifter(api, name) {
+    var p = PROFILES[name];
+    if (!p || !p.cloudId) return Promise.resolve();
+    var id = p.cloudId, manage = canManage(name), ch = lifterChanges(name, manage), sh = shadowOf(id);
+    var steps = Promise.resolve();
+    if (ch.prog) {
+      steps = steps.then(function () { return api.update("lifters", id, { program: ch.prog.obj }); })
+        .then(function () { sh.prog = ch.prog.hash; });
+    } else if (!manage && progHash(p) !== sh.prog) {
+      CLOUD.refetch[id] = CLOUD.refetch[id] || "program";   // changed without the right to: take the server's back
+    }
+    Object.keys(ch.rows).forEach(function (t) {
+      var rows = ch.rows[t];
+      for (var i = 0; i < rows.length; i += 400) (function (part) {
+        steps = steps.then(function () { return api.upsert(t, part, LOG_KEYS[t]); })
+          .then(function () { part.forEach(function (r) { commitShadow(sh, t, r); }); });
+      })(rows.slice(i, i + 400));
+    });
+    return steps.then(saveCloud);
+  }
+  function uploadLifter(api, name) {
+    var p = PROFILES[name];
+    if (!p || p.cloudId) return Promise.resolve();
+    var id = newUuid(), pj = programForCloud(p);
+    return api.insert("lifters", [{ id: id, name: name, program: pj }]).then(function () {
+      if (!PROFILES[name]) return;
+      PROFILES[name].cloudId = id;
+      CLOUD.shadow[id] = emptyShadow();
+      CLOUD.shadow[id].prog = hashStr(stableJSON(pj));
+      CLOUD.links.push({ lifter_id: id, coach_id: CLOUD.user.id });   // the database adds the same row itself
+      CLOUD.lifterMeta[id] = { name: name, email: "", linked: false, mine: false, createdBy: CLOUD.user.id };
+      quietWrite(STORE_PROFILES, PROFILES);
+      saveCloud();
+      cloudChanged = true;
+      return pushLifter(api, name);   // its ticks and notes
+    });
+  }
+  function pushAll(api) {
+    var firstErr = null, chain = Promise.resolve();
+    function note(id) {
+      return function (err) {
+        // Refused by the rules (access removed mid-edit, say): retrying won't
+        // help, so reset this lifter to the server's copy on the next pull.
+        if (id && /row-level security|permission denied/i.test((err && err.message) || "")) CLOUD.refetch[id] = "all";
+        else if (!firstErr) firstErr = err;
+      };
+    }
+    lifterNames().forEach(function (name) {
+      chain = chain.then(function () {
+        var p = PROFILES[name];
+        if (!p) return;
+        if (!p.cloudId) return (isCoach() && CLOUD.autoUpload) ? uploadLifter(api, name) : null;
+        return pushLifter(api, name);
+      }).catch(note(PROFILES[name] && PROFILES[name].cloudId));
+    });
+    return chain.then(function () {
+      var ids = orderIds(), s = stableJSON(ids);
+      if (!ids.length || s === CLOUD.orderShadow) return;
+      return api.upsert("user_prefs", [{ user_id: CLOUD.user.id, lifter_order: ids }], "user_id")
+        .then(function () { CLOUD.orderShadow = s; }, note(null));
+    }).then(function () {
+      saveCloud();
+      if (firstErr) throw firstErr;
+    });
+  }
+  function newUuid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    var b = new Uint8Array(16);
+    crypto.getRandomValues(b);
+    b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
+    var h = Array.prototype.map.call(b, function (x) { return (x + 256).toString(16).slice(1); }).join("");
+    return h.slice(0, 8) + "-" + h.slice(8, 12) + "-" + h.slice(12, 16) + "-" + h.slice(16, 20) + "-" + h.slice(20);
+  }
+
+  // ---- Running it
+  function cloudDirty() {
+    if (cloudApplying || !CLOUD.user) return;
+    var dot = $("acctDot");
+    if (dot && !syncing) dot.className = "acct-dot warn";
+    scheduleSync(1500);
+  }
+  function scheduleSync(ms) {
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(function () { syncNow(); }, ms || 0);
+  }
+  function syncNow() {
+    var api = cloudApi();
+    if (!api || !CLOUD.user) return Promise.resolve(false);
+    if (syncing) { syncAgain = true; return syncing; }
+    clearTimeout(syncTimer);
+    cloudChanged = false;
+    syncing = pullAll(api).then(function () {
+      if (cloudChanged) cloudRefreshUI();
+      cloudChanged = false;
+      return pushAll(api);
+    }).then(function () {
+      if (cloudChanged) { writeAllStores(); cloudRefreshUI(); }
+      CLOUD.lastSync = new Date().toISOString();
+      CLOUD.lastError = "";
+      saveCloud();
+      return true;
+    }, function (err) {
+      CLOUD.lastError = (err && err.message) || "Sync failed";
+      saveCloud();
+      if (cloudChanged) cloudRefreshUI();
+      return false;
+    }).then(function (ok) {
+      syncing = null;
+      if (syncAgain) { syncAgain = false; scheduleSync(300); }
+      else if (!ok) scheduleSync(60000);          // offline or a hiccup: try again in a minute
+      else maybeOfferUpload();
+      setCloudStatus();
+      return ok;
+    });
+    setCloudStatus();
+    return syncing;
+  }
+  function startListening() {
+    var api = cloudApi();
+    if (stopListening || !api || !api.listen) return;
+    try { stopListening = api.listen(function () { scheduleSync(800); }); } catch (e) { stopListening = null; }
+  }
+  function stopListen() { if (stopListening) { stopListening(); stopListening = null; } }
+  function anyModalOpen() { return !!document.querySelector(".modal-scrim.show"); }
+  // Redraw whatever is showing, without yanking someone out of a field or dialog.
+  function cloudRefreshUI() {
+    if (current && !PROFILES[current]) current = null;
+    if (!current) { var ns = lifterNames(); current = ns.length ? ns[0] : null; }
+    renderPicker();
+    renderSidebar();
+    if (!current) {
+      if (!inRpe && !inVbt) { inDayMgr = false; inAnalytics = false; inCompare = false; currentWeek = null; showView("viewEmpty"); }
+      return;
+    }
+    if ((inDayMgr || inCompare) && !canManage(current)) { openOverview(); return; }
+    var ae = document.activeElement;
+    if ((ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && ae.id !== "lifterSelect") || anyModalOpen()) {
+      cloudRedrawPending = true;
+      return;
+    }
+    cloudRedrawPending = false;
+    if (inRpe || inVbt || inCompare) return;
+    if (inDayMgr) { if (dmTab === "manage") renderDayMgr(); return; }
+    if (inAnalytics) { renderAnalytics(); return; }
+    if (currentWeek !== null) { if (getWeek(PROFILES[current], currentWeek)) renderWeek(); else openOverview(); return; }
+    if ($("viewEmpty").classList.contains("active")) openOverview();
+    else renderOverview();
+  }
+  function setCloudStatus() {
+    var dot = $("acctDot"), badge = $("acctBadge"), s;
+    if (!CLOUD.user) s = "out";
+    else if (syncing) s = "busy";
+    else if (CLOUD.lastError) s = navigator.onLine === false ? "warn" : "err";
+    else s = pendingCount() ? "warn" : "ok";
+    if (dot) dot.className = "acct-dot " + s;
+    var pend = isOwner() ? CLOUD.accounts.filter(function (a) { return a.coach_status === "pending"; }).length : 0;
+    if (badge) { badge.hidden = !pend; badge.textContent = pend ? String(pend) : ""; }
+    var btn = $("acctBtn");
+    if (btn) btn.title = !CLOUD.user ? "Sign in to sync" : s === "busy" ? "Syncing…" : s === "ok" ? "Synced" : s === "err" ? "Sync problem" : "Changes waiting to sync";
+    var lab = $("unloadLabel");
+    if (lab) lab.textContent = CLOUD.user ? "Sign out & clear device" : "Unload everything";
+    if ($("acctScrim") && $("acctScrim").classList.contains("show")) renderAcct();
+  }
+  function maybeOfferUpload() {
+    if (!isCoach() || CLOUD.autoUpload || CLOUD.uploadAsked || anyModalOpen()) return;
+    var names = localOnlyNames();
+    if (!names.length) return;
+    CLOUD.uploadAsked = true;
+    saveCloud();
+    askConfirm({
+      title: "Upload this device's lifters?",
+      body: names.join(", ") + (names.length === 1 ? " is" : " are") + " only on this device. Upload to your account so they sync to your other devices, and so you can share them with their lifter or another coach.",
+      confirmLabel: "Upload", cancelLabel: "Not now", safe: true
+    }).then(function (ok) { if (ok) uploadLifters(); });
+  }
+  function uploadLifters() {
+    CLOUD.autoUpload = true;
+    CLOUD.uploadAsked = true;
+    saveCloud();
+    return syncNow().then(function (ok) {
+      toast(ok ? "Uploaded. Lifters you load from now on go up automatically." : "Couldn't upload yet. It'll try again when you're online.");
+      return ok;
+    });
+  }
+  function backupOnce() {
+    if (safeRead(STORE_BACKUP, null) || !Object.keys(PROFILES).length) return;
+    safeWrite(STORE_BACKUP, {
+      spotter: "backup", version: 1, savedAt: new Date().toISOString(), profiles: PROFILES, done: DONE, skip: SKIP,
+      notes: NOTES, custom: CUSTOM, weekNotes: WKNOTES, manageNotes: DMNOTES, order: ORDER
+    });
+  }
+  function onSignedIn(user) {
+    if (CLOUD.lastUserId && CLOUD.lastUserId !== user.id) {
+      // Another account's synced lifters aren't this one's to see.
+      Object.keys(PROFILES).forEach(function (n) { if (PROFILES[n].cloudId) removeLocalLifter(n); });
+      CLOUD = cloudDefaults();
+      writeAllStores();
+    }
+    if (!CLOUD.user) backupOnce();
+    CLOUD.user = user;
+    CLOUD.lastUserId = user.id;
+    saveCloud();
+    startListening();
+    setCloudStatus();
+    renderSidebar();
+    return syncNow();
+  }
+  function signOutFlow() {
+    var api = cloudApi();
+    function ask() {
+      var n = pendingCount();
+      askConfirm({
+        title: "Sign out of this device?",
+        body: "Synced lifters come off this device. They stay in your account and come back when you sign in again. Lifters that were only on this device stay." +
+          (n ? " " + n + " change" + (n === 1 ? "" : "s") + " made here haven't synced yet and will be lost." : ""),
+        confirmLabel: "Sign out"
+      }).then(function (ok) {
+        if (!ok) return;
+        (api ? api.signOut().catch(function () {}) : Promise.resolve()).then(function () {
+          stopListen();
+          clearTimeout(syncTimer);
+          Object.keys(PROFILES).forEach(function (nm) { if (PROFILES[nm].cloudId) removeLocalLifter(nm); });
+          CLOUD = cloudDefaults();
+          saveCloud();
+          writeAllStores();
+          acctUI = { step: "email", email: "", err: "", busy: false, coachForm: false };
+          $("acctScrim").classList.remove("show");
+          setCloudStatus();
+          cloudRefreshUI();
+          toast("Signed out.");
+        });
+      });
+    }
+    if (CLOUD.user && api && navigator.onLine !== false) syncNow().then(ask, ask); else ask();
+  }
+  function cloudBoot() {
+    cloudLoad();
+    setCloudStatus();
+    var api = cloudApi();
+    if (!api) return;
+    api.onSessionChange(function (user, ev) {
+      // Session ended elsewhere (expired, revoked): stop syncing, keep the data.
+      if (ev === "SIGNED_OUT" && CLOUD.user) {
+        CLOUD.user = null; saveCloud(); stopListen(); setCloudStatus(); cloudRefreshUI();
+      }
+    });
+    api.session().then(function (user) {
+      if (user) onSignedIn(user);
+      else if (CLOUD.user && navigator.onLine !== false) {
+        CLOUD.user = null; saveCloud(); setCloudStatus(); cloudRefreshUI();
+      }
+    }, function () { /* offline: the cached account keeps a coach in Manage program */ });
+    document.addEventListener("visibilitychange", function () { if (!document.hidden && CLOUD.user) scheduleSync(200); });
+    window.addEventListener("online", function () { if (CLOUD.user) scheduleSync(200); });
+    document.addEventListener("focusout", function () {
+      setTimeout(function () { if (cloudRedrawPending) cloudRefreshUI(); }, 0);
+    });
+    // Live updates cover the open app; this catches anything they missed.
+    setInterval(function () { if (CLOUD.user && !document.hidden) syncNow(); }, 300000);
+  }
+
+  // ───────────────────────── Account sheet ─────────────────────────
+  var acctUI = { step: "email", email: "", err: "", busy: false, coachForm: false };
+  function openAcct() { acctUI.err = ""; renderAcct(true); $("acctScrim").classList.add("show"); closeNav(); }
+  function closeAcct() {
+    $("acctScrim").classList.remove("show");
+    if (cloudRedrawPending) cloudRefreshUI();
+    maybeOfferUpload();
+  }
+  function acctButton(cls, label, fn) { var b = el("button", cls, label); b.type = "button"; b.onclick = fn; return b; }
+  function roleLabel() {
+    if (isOwner()) return "Owner";
+    var a = CLOUD.account || {};
+    if (a.coach_status === "approved") return "Coach";
+    if (a.coach_status === "pending") return "Coach · pending";
+    return athleteNames().length ? "Lifter" : "Signed in";
+  }
+  function agoText(iso) {
+    var s = Math.round((Date.now() - tms(iso)) / 1000);
+    if (s < 60) return "just now";
+    if (s < 3600) return Math.round(s / 60) + " min ago";
+    if (s < 86400) return Math.round(s / 3600) + " h ago";
+    return new Date(iso).toLocaleDateString();
+  }
+  function syncLine() {
+    if (syncing) return "Syncing…";
+    if (CLOUD.lastError) return (navigator.onLine === false ? "Offline" : "Couldn’t sync (" + CLOUD.lastError + ")") + ". Changes are saved here and sync later.";
+    var n = pendingCount();
+    if (n) return n + " change" + (n === 1 ? "" : "s") + " waiting to sync.";
+    return CLOUD.lastSync ? "Synced " + agoText(CLOUD.lastSync) + "." : "Not synced yet.";
+  }
+  function friendlyAuthError(err) {
+    var m = (err && err.message) || "";
+    if (navigator.onLine === false || /fetch|network/i.test(m)) return "You’re offline. Connect and try again.";
+    if (/rate|seconds|too many/i.test(m)) return "Too many tries. Wait a minute, then try again.";
+    if (/expired|invalid|otp|token/i.test(m)) return "That code didn’t work or has expired. Use the newest email, or send a new code.";
+    return m || "Something went wrong. Try again.";
+  }
+  function sendCodeFlow() {
+    var inp = $("acctEmail"), email = String(inp ? inp.value : acctUI.email).trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) { acctUI.err = "Enter your email address."; renderAcct(true); return; }
+    acctUI.email = email; acctUI.busy = true; acctUI.err = "";
+    renderAcct(true);
+    cloudApi().sendCode(email).then(function () {
+      acctUI.step = "code"; acctUI.busy = false;
+      renderAcct(true);
+      toast("Code sent to " + email + ".");
+    }, function (err) { acctUI.busy = false; acctUI.err = friendlyAuthError(err); renderAcct(true); });
+  }
+  function verifyFlow() {
+    var code = String(($("acctCode") || {}).value || "").replace(/\D/g, "");
+    if (code.length < 6) { acctUI.err = "Enter the code from the email."; renderAcct(true); return; }
+    acctUI.busy = true; acctUI.err = "";
+    renderAcct(true);
+    cloudApi().verifyCode(acctUI.email, code).then(function (user) {
+      if (!user) throw new Error("invalid code");
+      acctUI = { step: "email", email: "", err: "", busy: false, coachForm: false };
+      toast("Signed in as " + user.email + ".");
+      renderAcct(true);
+      return onSignedIn(user).then(function () { renderAcct(true); });
+    }).catch(function (err) { acctUI.busy = false; acctUI.err = friendlyAuthError(err); renderAcct(true); });
+  }
+  function requestCoachFlow(name) {
+    cloudApi().rpc("request_coach_access", { p_name: name || "" }).then(function (status) {
+      acctUI.coachForm = false;
+      toast(status === "pending" ? "Request sent. Manage program appears once it’s approved." : "Couldn’t send the request.");
+      return syncNow();
+    }).catch(function (err) { toast("Couldn’t send: " + err.message); }).then(function () { renderAcct(true); });
+  }
+  function decideCoach(x, decision) {
+    return function () {
+      var who = x.display_name || x.email;
+      function run() {
+        cloudApi().rpc("decide_coach", { p_user: x.user_id, p_decision: decision }).then(function () {
+          toast(decision === "approved" ? who + " can now manage programs." : decision === "declined" ? "Declined " + who + "." : who + " is no longer a coach.");
+          return syncNow();
+        }).catch(function (err) { toast("Couldn’t update: " + err.message); }).then(function () { renderAcct(true); });
+      }
+      if (decision !== "revoked") { run(); return; }
+      askConfirm({
+        title: "Remove " + who + " as a coach?",
+        body: who + " loses Manage program and every lifter they coach, straight away. Their lifters stay in your account.",
+        confirmLabel: "Remove coach"
+      }).then(function (ok) { if (ok) run(); });
+    };
+  }
+  function acctSec(title) {
+    var s = el("div", "acct-sec");
+    if (title) s.appendChild(el("h3", null, title));
+    return s;
+  }
+  function buildCoachesSection() {
+    var sec = acctSec("Coaches"), me = CLOUD.user.id, rank = { pending: 0, approved: 1, declined: 2, revoked: 3 };
+    var label = { pending: "Asking to be a coach", approved: "Coach", declined: "Declined", revoked: "Removed" };
+    var people = CLOUD.accounts.filter(function (x) {
+      return x.user_id !== me && x.role !== "owner" && rank[x.coach_status] !== undefined;
+    }).sort(function (x, y) { return rank[x.coach_status] - rank[y.coach_status]; });
+    if (!people.length) {
+      sec.appendChild(el("p", null, "No coach requests yet. A coach signs in on their own device, then taps “I’m a coach” here."));
+      return sec;
+    }
+    people.forEach(function (x) {
+      var row = el("div", "acct-person"), w = el("div", "who"), acts = el("div", "acts");
+      w.appendChild(el("b", null, x.display_name || x.email));
+      w.appendChild(el("span", null, (x.display_name ? x.email + " · " : "") + label[x.coach_status]));
+      if (x.coach_status === "pending") {
+        acts.appendChild(acctButton("btn-solid sm", "Approve", decideCoach(x, "approved")));
+        acts.appendChild(acctButton("chip sm", "Decline", decideCoach(x, "declined")));
+      } else if (x.coach_status === "approved") {
+        acts.appendChild(acctButton("chip sm danger", "Remove", decideCoach(x, "revoked")));
+      } else {
+        acts.appendChild(acctButton("chip sm", "Approve", decideCoach(x, "approved")));
+      }
+      row.appendChild(w); row.appendChild(acts);
+      sec.appendChild(row);
+    });
+    return sec;
+  }
+  // force: redraw even while a field in the sheet has focus (the flows' own
+  // steps). Background status changes only touch the sync line then.
+  function renderAcct(force) {
+    var body = $("acctBody");
+    if (!body) return;
+    var ae = document.activeElement;
+    if (!force && ae && body.contains(ae) && /^(INPUT|TEXTAREA)$/.test(ae.tagName)) {
+      var line = $("acctSync");
+      if (line) line.textContent = syncLine();
+      return;
+    }
+    clear(body);
+    var api = cloudApi();
+    function errLine() {
+      var e = el("p", "pin-err" + (acctUI.err ? " show" : ""), acctUI.err);
+      e.setAttribute("aria-live", "polite");
+      body.appendChild(e);
+    }
+    if (!CLOUD.user) {
+      $("acctTitle").textContent = "Sign in";
+      if (!api) {
+        body.appendChild(el("p", "confirm-body", "Sync couldn’t load. Check your connection, then close and reopen the app."));
+        return;
+      }
+      var acts = el("div", "acct-acts");
+      if (acctUI.step === "email") {
+        body.appendChild(el("p", "confirm-body", "Sign in to keep your lifters in sync on all your devices, with no more exporting and importing. We’ll email you a code; there’s no password."));
+        var em = el("input", "acct-input");
+        em.type = "email"; em.id = "acctEmail"; em.autocomplete = "email"; em.placeholder = "you@example.com";
+        em.value = acctUI.email; em.setAttribute("aria-label", "Email address");
+        em.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); sendCodeFlow(); } });
+        body.appendChild(em);
+        errLine();
+        var send = acctButton("btn-solid", acctUI.busy ? "Sending…" : "Email me a code", sendCodeFlow);
+        send.disabled = acctUI.busy;
+        acts.appendChild(send);
+        body.appendChild(acts);
+        if (!acctUI.busy) setTimeout(function () { if ($("acctScrim").classList.contains("show")) em.focus(); }, 30);
+      } else {
+        var intro = el("p", "confirm-body", "Enter the code we emailed to ");
+        intro.appendChild(el("b", null, acctUI.email));
+        intro.appendChild(document.createTextNode(". It can take a minute to arrive; check spam too."));
+        body.appendChild(intro);
+        var code = el("input", "pin-input");
+        code.id = "acctCode"; code.inputMode = "numeric"; code.autocomplete = "one-time-code"; code.maxLength = 10;
+        code.placeholder = "······"; code.setAttribute("aria-label", "Code from the email");
+        code.addEventListener("input", function () { var v = code.value.replace(/\D/g, ""); if (v !== code.value) code.value = v; });
+        code.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); verifyFlow(); } });
+        body.appendChild(code);
+        errLine();
+        var go = acctButton("btn-solid", acctUI.busy ? "Checking…" : "Sign in", verifyFlow);
+        go.disabled = acctUI.busy;
+        acts.appendChild(go);
+        acts.appendChild(acctButton("chip", "Send a new code", sendCodeFlow));
+        acts.appendChild(acctButton("chip", "Different email", function () { acctUI.step = "email"; acctUI.err = ""; renderAcct(true); }));
+        body.appendChild(acts);
+        if (!acctUI.busy) setTimeout(function () { if ($("acctScrim").classList.contains("show")) code.focus(); }, 30);
+      }
+      return;
+    }
+
+    $("acctTitle").textContent = "Account";
+    var whoRow = el("div", "acct-who");
+    whoRow.appendChild(el("span", null, CLOUD.user.email));
+    whoRow.appendChild(el("span", "acct-role" + (isCoach() ? " coach" : ""), roleLabel()));
+    body.appendChild(whoRow);
+    var st = el("p", "acct-status" + (CLOUD.lastError && navigator.onLine !== false ? " err" : ""), syncLine());
+    st.id = "acctSync";
+    body.appendChild(st);
+    var top = el("div", "acct-acts");
+    top.appendChild(acctButton("chip sm", "Sync now", function () {
+      syncNow().then(function (ok) { toast(ok ? "Synced." : "Couldn’t sync right now."); });
+      renderAcct(true);
+    }));
+    body.appendChild(top);
+
+    var a = CLOUD.account || {}, sec;
+    if (isOwner()) {
+      sec = acctSec("Owner");
+      sec.appendChild(el("p", null, "You approve coaches, see every lifter, and manage any program."));
+    } else if (a.coach_status === "approved") {
+      sec = acctSec("Coach");
+      sec.appendChild(el("p", null, "You manage the programs of lifters you add, or that another coach shares with you."));
+    } else if (a.coach_status === "pending") {
+      sec = acctSec("Coach access");
+      sec.appendChild(el("p", null, "Requested. Manage program appears here as soon as it’s approved."));
+    } else {
+      var mine = athleteNames();
+      sec = acctSec(mine.length ? "Your program" : "Your program");
+      sec.appendChild(el("p", null, mine.length
+        ? "Your coach manages " + mine.join(", ") + ". Tick sets and add notes as usual; your coach sees them."
+        : "Nothing here yet. Ask your coach to add " + CLOUD.user.email + " in Manage program, and your program appears here."));
+      if (a.coach_status === "revoked") {
+        sec.appendChild(el("p", "acct-status", "Your coach access was removed."));
+      } else if (acctUI.coachForm) {
+        var nm = el("input", "acct-input");
+        nm.id = "acctCoachName"; nm.placeholder = "Your name, as lifters know you"; nm.autocomplete = "name";
+        nm.setAttribute("aria-label", "Your name");
+        sec.appendChild(nm);
+        var ca = el("div", "acct-acts");
+        ca.appendChild(acctButton("btn-solid sm", "Send request", function () { requestCoachFlow(nm.value.trim()); }));
+        ca.appendChild(acctButton("chip sm", "Cancel", function () { acctUI.coachForm = false; renderAcct(true); }));
+        sec.appendChild(ca);
+        setTimeout(function () { nm.focus(); }, 30);
+      } else {
+        if (a.coach_status === "declined") sec.appendChild(el("p", "acct-status", "Your last coach request was declined."));
+        var cb = el("div", "acct-acts");
+        cb.appendChild(acctButton("chip sm", a.coach_status === "declined" ? "Ask again" : "I’m a coach: request access", function () {
+          acctUI.coachForm = true; renderAcct(true);
+        }));
+        sec.appendChild(cb);
+      }
+    }
+    body.appendChild(sec);
+
+    if (isCoach()) {
+      var lo = localOnlyNames();
+      if (lo.length) {
+        var up = acctSec("On this device only");
+        up.appendChild(el("p", null, lo.join(", ") + (lo.length === 1 ? " isn’t" : " aren’t") + " in your account yet."));
+        var ua = el("div", "acct-acts");
+        ua.appendChild(acctButton("btn-solid sm", "Upload to my account", function () { uploadLifters().then(function () { renderAcct(true); }); }));
+        up.appendChild(ua);
+        body.appendChild(up);
+      }
+    }
+    if (isOwner()) body.appendChild(buildCoachesSection());
+
+    var bk = safeRead(STORE_BACKUP, null);
+    if (bk && bk.savedAt) {
+      var bs = acctSec("Backup");
+      bs.appendChild(el("p", null, "This device saved a copy of everything before its first sync (" + new Date(bk.savedAt).toLocaleDateString() + ")."));
+      var ba = el("div", "acct-acts");
+      ba.appendChild(acctButton("chip sm", "Save backup file", function () {
+        var d = bk.savedAt.slice(0, 10);
+        saveFile(new Blob([JSON.stringify(bk, null, 2)], { type: "application/json;charset=utf-8;" }), "Spotter_backup_" + d + ".json", "Saved the backup.");
+      }));
+      bs.appendChild(ba);
+      body.appendChild(bs);
+    }
+
+    var so = acctSec("");
+    so.appendChild(acctButton("chip danger", "Sign out", signOutFlow));
+    body.appendChild(so);
+  }
+
+  // Manage program → Sharing: the lifter's own login, co-coaches, deleting.
+  function buildShareSection(p) {
+    if (!CLOUD.user || !isCoach() || !canManage(p.name)) return null;
+    var api = cloudApi();
+    var sec = el("div", "dm-sec");
+    sec.appendChild(el("p", "dm-sec-cap", "Sharing"));
+    var card = el("div", "dm-card");
+    sec.appendChild(card);
+    if (!p.cloudId) {
+      card.appendChild(el("p", "dm-import-hint", "Only on this device. Upload it to your account to sync it, share it with another coach, and let " + p.name + " log it on their own phone."));
+      var ua = el("div", "dm-actions");
+      ua.appendChild(acctButton("chip primary", "Upload lifters to my account", function () {
+        uploadLifters().then(function () { if (inDayMgr) renderDayMgr(); });
+      }));
+      card.appendChild(ua);
+      return sec;
+    }
+    var id = p.cloudId, meta = CLOUD.lifterMeta[id] || {};
+    if (!api) { card.appendChild(el("p", "dm-import-hint", "Sharing needs a connection.")); return sec; }
+
+    var wrap = el("div", "dm-blockedit");
+    wrap.appendChild(el("label", null, p.name + "’s email"));
+    var inp = el("input", "dm-blockinput");
+    inp.type = "email"; inp.autocomplete = "off"; inp.value = meta.email || "";
+    inp.placeholder = "The email they sign in with"; inp.setAttribute("aria-label", p.name + "'s sign-in email");
+    var saving = false;
+    function commit() {
+      var v = inp.value.trim().toLowerCase();
+      if (saving || v === (meta.email || "")) return;
+      if (v && !EMAIL_RE.test(v)) { toast("That doesn’t look like an email address."); return; }
+      saving = true;
+      api.update("lifters", id, { lifter_email: v || null }).then(function () { return syncNow(); }).then(function () {
+        toast(v ? "Saved. When " + p.name + " signs in with " + v + ", this program appears for them."
+                : "Email removed. " + p.name + " no longer sees this program.");
+      }, function (err) { toast("Couldn’t save: " + err.message); }).then(function () {
+        saving = false;
+        if (inDayMgr && document.activeElement !== inp) renderDayMgr();
+      });
+    }
+    inp.addEventListener("blur", commit);
+    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
+    wrap.appendChild(inp);
+    wrap.appendChild(el("p", "dm-blockhint" + (meta.linked ? " dm-share-ok" : ""),
+      !meta.email ? "Add the email " + p.name + " signs in with, so they can see this program and log it on their own phone."
+      : meta.linked ? "✓ " + p.name + " has signed in: they see this program and their ticks and notes sync to you."
+      : "Waiting for " + p.name + " to sign in with this email."));
+    card.appendChild(wrap);
+
+    var cw = el("div", "dm-blockedit dm-share-block");
+    cw.appendChild(el("label", null, "Coaches"));
+    var ul = el("ul", "dm-share-list");
+    CLOUD.links.filter(function (l) { return l.lifter_id === id; }).forEach(function (l) {
+      var acc = accountById(l.coach_id), li = el("li");
+      var label = l.coach_id === CLOUD.user.id ? "You" : acc ? (acc.display_name ? acc.display_name + " · " + acc.email : acc.email) : "A coach";
+      li.appendChild(el("span", null, label));
+      if (l.coach_id !== CLOUD.user.id) li.appendChild(acctButton("chip sm", "Remove", function () {
+        askConfirm({ title: "Stop sharing " + p.name + "?", body: label + " will no longer see or edit " + p.name + "’s program.", confirmLabel: "Stop sharing" })
+          .then(function (ok) {
+            if (!ok) return;
+            api.rpc("unshare_lifter", { p_lifter: id, p_coach: l.coach_id }).then(function () { return syncNow(); })
+              .then(function () { toast("Stopped sharing with " + label + "."); if (inDayMgr) renderDayMgr(); },
+                    function (err) { toast("Couldn’t remove: " + err.message); });
+          });
+      }));
+      ul.appendChild(li);
+    });
+    if (!ul.firstChild) ul.appendChild(el("li", null, "Only you, as owner"));
+    cw.appendChild(ul);
+    var row = el("div", "dm-share-row");
+    var sh = el("input", "dm-blockinput");
+    sh.type = "email"; sh.autocomplete = "off"; sh.placeholder = "Another coach’s email";
+    sh.setAttribute("aria-label", "Share with a coach by email");
+    function share() {
+      var v = sh.value.trim().toLowerCase();
+      if (!EMAIL_RE.test(v)) { toast("Enter the coach’s email address."); return; }
+      api.rpc("share_lifter", { p_lifter: id, p_email: v }).then(function (res) {
+        if (res !== "shared") { toast(v + " isn’t an approved coach yet. They sign in, ask for coach access, and the owner approves it."); return; }
+        sh.value = "";
+        return syncNow().then(function () { toast("Shared " + p.name + " with " + v + "."); if (inDayMgr) renderDayMgr(); });
+      }, function (err) { toast("Couldn’t share: " + err.message); });
+    }
+    sh.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); share(); } });
+    row.appendChild(sh);
+    row.appendChild(acctButton("chip sm", "Share", share));
+    cw.appendChild(row);
+    card.appendChild(cw);
+
+    var del = el("div", "dm-actions dm-share-del");
+    del.appendChild(acctButton("chip sm danger", "Delete lifter for everyone", function () {
+      askConfirm({
+        title: "Delete " + p.name + "?",
+        body: "Removes " + p.name + "’s program, ticks and notes from every device and account, including theirs. Save progress (JSON) first if you want a copy.",
+        confirmLabel: "Delete"
+      }).then(function (ok) {
+        if (!ok) return;
+        api.update("lifters", id, { deleted_at: new Date().toISOString() }).then(function () {
+          var nm = p.name;
+          removeLocalLifter(nm);
+          writeAllStores();
+          saveCloud();
+          current = lifterNames()[0] || null;
+          renderPicker();
+          if (current) openOverview(); else { renderSidebar(); showView("viewEmpty"); }
+          toast(nm + " deleted.");
+        }, function (err) { toast("Couldn’t delete: " + err.message); });
+      });
+    }));
+    card.appendChild(del);
+    return sec;
   }
 
   // ───────────────────────── Theme ─────────────────────────
@@ -6099,6 +7166,7 @@
     DMNOTES = safeRead(STORE_DMNOTES, {}) || {};
     ORDER = safeRead(STORE_ORDER, []);
     if (!Array.isArray(ORDER)) ORDER = [];
+    cloudBoot();   // before the first render: it decides who sees Manage program
     dmAddOpen = safeRead(STORE_ADDOPEN, false) === true;   // closed until opened; remembered after that
 
     // gym tools: plate calculator + rest timer preferences
@@ -6270,6 +7338,13 @@
     $("saveBtn").onclick = exportJSON;
     $("saveBtn2").onclick = exportJSON;
     $("unloadBtn").onclick = unloadAll;
+    $("acctBtn").onclick = openAcct;
+    $("acctClose").onclick = closeAcct;
+    (function () {
+      var scrim = $("acctScrim"), downSelf = false;
+      scrim.onpointerdown = function (e) { downSelf = (e.target === scrim); };
+      scrim.onclick = function (e) { if (downSelf && e.target === scrim) closeAcct(); };
+    })();
     wireNotes();
     wireWeekNotes();
     wireLifterOrder();
@@ -6344,8 +7419,8 @@
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") {
         if ($("editScrim").classList.contains("show")) $("editCancel").click();
-        else if ($("pinScrim").classList.contains("show")) $("pinCancel").click();
         else if ($("confirmScrim").classList.contains("show")) $("confirmNo").click();
+        else if ($("acctScrim").classList.contains("show")) closeAcct();
         else if ($("noteScrim").classList.contains("show")) closeNote();
         else if ($("wkNoteScrim").classList.contains("show")) closeNoteEditor();
         else if ($("orderScrim").classList.contains("show")) closeOrder();

@@ -2,19 +2,14 @@
  * from its new place (add exercise, days & weeks, import, replace/merge, clear).
  * Run: node test-managelayout.js
  *
- * Manage Program is PIN-gated; like test-dmnotes.js, this swaps DM_PIN_HASH in its
- * in-memory copy of the page for a throwaway 8-digit PIN.
+ * Manage Program is for coaches; like test-dmnotes.js, this boots the page signed
+ * in as the owner through the stand-in cloud in test-cloudfake.js.
  */
 const fs = require("fs");
 const path = require("path");
-const crypto = require("crypto");
 const { JSDOM, VirtualConsole } = require("jsdom");
-
-const TEST_PIN = "24682468";
-const src = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
-const salt = (src.match(/var DM_PIN_SALT = "([^"]*)";/) || [])[1] || "";
-const html = src.replace(/var DM_PIN_HASH = "[0-9a-f]{64}";/,
-  `var DM_PIN_HASH = "${crypto.createHash("sha256").update(salt + TEST_PIN).digest("hex")}";`);
+const { installCoach } = require("./test-cloudfake");
+const html = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
 let failures = 0, checks = 0;
 const check = (name, cond, extra = "") => {
   checks++;
@@ -32,6 +27,7 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
     virtualConsole: new VirtualConsole()
       .on("jsdomError", e => errors.push(e.message))
       .on("error", m => errors.push(String(m))),
+    beforeParse(w) { installCoach(w); },
   });
   const w = dom.window, doc = w.document, $ = id => doc.getElementById(id);
   await new Promise(res => { if (doc.readyState === "complete") res(); else w.addEventListener("load", res); setTimeout(res, 4000); });
@@ -60,7 +56,7 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   async function openManage() {
     [...doc.querySelectorAll("#sideNav .nav-item")].find(n => /Manage program/.test(n.textContent)).click();
     await tick();
-    if ($("pinScrim").classList.contains("show")) { $("pinInput").value = TEST_PIN; $("pinOk").click(); await tick(100); }
+    await tick(50);
     return $("viewDayMgr").classList.contains("active");
   }
 
@@ -68,7 +64,7 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   check("Manage Program opens", await openManage());
 
   console.log("\nLayout without an import");
-  check("sections: Program, Edit a day, Import", caps().join(" | ") === "Program | Edit a day | Import from another program", caps().join(" | "));
+  check("sections: Program, Edit a day, Import, Sharing", caps().join(" | ") === "Program | Edit a day | Import from another program | Sharing", caps().join(" | "));
   const progCard = body().querySelector(".dm-sec .dm-card");
   check("Program card holds Export CSV and Compare two programs",
     !!btn("Export CSV", progCard) && !!btn("Compare two programs", progCard));
@@ -125,7 +121,7 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   console.log("\nImport, replace and merge");
   await loadInto("donorInput", mk("Donor", [1], [1, 2, 3], ["Pause squat", "Larsen press", "Row"]), "donor.csv");
   check("sections now include Use the imported program", caps().join(" | ") ===
-    "Program | Edit a day | Use the imported program | Imported program", caps().join(" | "));
+    "Program | Edit a day | Use the imported program | Imported program | Sharing", caps().join(" | "));
   check("imported day shows beside the current one", body().querySelectorAll(".dm-cmp-col").length === 2);
   const swap = body().querySelector(".dm-swap");
   const swapRows = [...swap.querySelectorAll(".dm-swap-row")];

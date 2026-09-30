@@ -4,7 +4,7 @@
   "private": true,
   "description": "EmmStrength Spotter — training-log PWA. This file exists only for the Node smoke tests; the app itself ships as plain static HTML with no build step.",
   "scripts": {
-    "test": "node test-boot.js && node test-lifterorder.js && node test-dmnotes.js && node test-reimport.js && node test-managelayout.js && node test-hubprefill.js && node test-hubanalytics.js && node test-weekrange.js && node test-genpop.js && node test-vbt.js",
+    "test": "node test-boot.js && node test-lifterorder.js && node test-dmnotes.js && node test-reimport.js && node test-managelayout.js && node test-hubprefill.js && node test-hubanalytics.js && node test-cloudsql.js && node test-cloudsync.js && node test-weekrange.js && node test-genpop.js && node test-vbt.js",
     "test:boot": "node test-boot.js",
     "test:lifterorder": "node test-lifterorder.js",
     "test:dmnotes": "node test-dmnotes.js",
@@ -12,11 +12,14 @@
     "test:managelayout": "node test-managelayout.js",
     "test:hubprefill": "node test-hubprefill.js",
     "test:hubanalytics": "node test-hubanalytics.js",
+    "test:cloudsql": "node test-cloudsql.js",
+    "test:cloudsync": "node test-cloudsync.js",
     "test:weekrange": "node test-weekrange.js",
     "test:genpop": "node test-genpop.js",
     "test:vbt": "node test-vbt.js"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "jsdom": "^30.1.0"
   }
 }

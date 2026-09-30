@@ -1,19 +1,15 @@
-/* Manage Program's Notes card: one note per lifter, only visible behind the PIN.
+/* Manage Program's Notes card: one note per lifter, only visible to coaches.
  * Run: node test-dmnotes.js
  *
- * Manage Program is PIN-gated. The test swaps DM_PIN_HASH for the hash of a
- * throwaway PIN in its in-memory copy of the page, so the real PIN is never needed.
+ * Manage Program is for signed-in coaches; the page boots signed in as the
+ * owner through the stand-in cloud in test-cloudfake.js.
  */
 const fs = require("fs");
 const path = require("path");
-const crypto = require("crypto");
 const { JSDOM, VirtualConsole } = require("jsdom");
+const { installCoach } = require("./test-cloudfake");
 
-const TEST_PIN = "24682468";   // verifyPin() wants exactly 8 digits
-const src = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
-const salt = (src.match(/var DM_PIN_SALT = "([^"]*)";/) || [])[1] || "";
-const html = src.replace(/var DM_PIN_HASH = "[0-9a-f]{64}";/,
-  `var DM_PIN_HASH = "${crypto.createHash("sha256").update(salt + TEST_PIN).digest("hex")}";`);
+const html = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
 let failures = 0, checks = 0;
 const check = (name, cond, extra = "") => {
   checks++;
@@ -21,7 +17,6 @@ const check = (name, cond, extra = "") => {
   console.log(`${cond ? "  ok  " : " FAIL "} ${name}${extra && !cond ? " — " + extra : ""}`);
 };
 const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
-check("test PIN swapped into the page copy", html !== src);
 
 (async () => {
   const errors = [];
@@ -32,6 +27,7 @@ check("test PIN swapped into the page copy", html !== src);
     virtualConsole: new VirtualConsole()
       .on("jsdomError", e => errors.push(e.message))
       .on("error", m => errors.push(String(m))),
+    beforeParse(w) { installCoach(w); },
   });
   const w = dom.window, doc = w.document, $ = id => doc.getElementById(id);
   await new Promise(res => { if (doc.readyState === "complete") res(); else w.addEventListener("load", res); setTimeout(res, 4000); });
@@ -58,14 +54,10 @@ check("test PIN swapped into the page copy", html !== src);
   await loadFile(CSV, "lifter.csv");
   check("lifter loaded", $("lifterSelect").value === NAME, $("lifterSelect").value);
 
-  console.log("\nManage Program is behind the PIN");
+  console.log("\nManage Program, signed in as a coach");
   check("sidebar has Manage program", navTo("Manage program"));
-  await tick();
-  check("PIN prompt appears", $("pinScrim").classList.contains("show"));
-  $("pinInput").value = TEST_PIN;
-  $("pinOk").click();
   await tick(100);
-  check("Manage Program opens", $("viewDayMgr").classList.contains("active"));
+  check("Manage Program opens, no PIN", $("viewDayMgr").classList.contains("active"));
 
   console.log("\nThe Notes card");
   const titles = [...$("dmMaxes").querySelectorAll(".pn-title")].map(t => t.textContent);
@@ -131,12 +123,8 @@ check("test PIN swapped into the page copy", html !== src);
 
   console.log("\nClearing and unloading");
   navTo("Manage program");
-  await tick();
-  check("leaving Manage Program locked the notes again (PIN asked)", $("pinScrim").classList.contains("show"));
-  $("pinInput").value = TEST_PIN;
-  $("pinOk").click();
   await tick(100);
-  check("back in after the PIN", $("viewDayMgr").classList.contains("active"));
+  check("back in Manage Program", $("viewDayMgr").classList.contains("active"));
   card().querySelector(".dmn-edit").click();
   type("   ");
   $("wkNoteDone").click();
@@ -144,6 +132,14 @@ check("test PIN swapped into the page copy", html !== src);
   card().querySelector(".dmn-edit").click();
   type("Back again");
   $("wkNoteDone").click();
+  check("signed in, that button signs out instead", $("unloadLabel").textContent === "Sign out & clear device");
+  $("unloadBtn").click();
+  await tick(200);
+  $("confirmYes").click();
+  await tick(200);
+  check("signing out keeps a lifter that was only on this device",
+    JSON.parse(w.localStorage.getItem("spotter.dmNotes.v1") || "{}")[NAME] === "Back again");
+  check("...and Manage program goes with the account", !navTo("Manage program"));
   $("unloadBtn").click();
   await tick();
   $("confirmYes").click();

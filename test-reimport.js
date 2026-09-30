@@ -2,19 +2,15 @@
  * while the CSV stays the source of truth for everything it carries (1-rep maxes).
  * Run: node test-reimport.js
  *
- * Manage Program is PIN-gated; like test-dmnotes.js, this swaps DM_PIN_HASH in its
- * in-memory copy of the page for a throwaway 8-digit PIN.
+ * Manage Program is for coaches; like test-dmnotes.js, this boots the page signed
+ * in as the owner through the stand-in cloud in test-cloudfake.js.
  */
 const fs = require("fs");
 const path = require("path");
-const crypto = require("crypto");
 const { JSDOM, VirtualConsole } = require("jsdom");
+const { installCoach } = require("./test-cloudfake");
 
-const TEST_PIN = "24682468";
-const src = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
-const salt = (src.match(/var DM_PIN_SALT = "([^"]*)";/) || [])[1] || "";
-const html = src.replace(/var DM_PIN_HASH = "[0-9a-f]{64}";/,
-  `var DM_PIN_HASH = "${crypto.createHash("sha256").update(salt + TEST_PIN).digest("hex")}";`);
+const html = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
 let failures = 0, checks = 0;
 const check = (name, cond, extra = "") => {
   checks++;
@@ -32,11 +28,11 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
     virtualConsole: new VirtualConsole()
       .on("jsdomError", e => errors.push(e.message))
       .on("error", m => errors.push(String(m))),
+    beforeParse(w) { installCoach(w); },
   });
   const w = dom.window, doc = w.document, $ = id => doc.getElementById(id);
   await new Promise(res => { if (doc.readyState === "complete") res(); else w.addEventListener("load", res); setTimeout(res, 4000); });
   const real = () => errors.filter(e => !/Not implemented|HTMLCanvasElement|getContext|Chart is not defined/i.test(e));
-  check("test PIN swapped into the page copy", html !== src);
   check("boots with no script errors", real().length === 0, real().join(" | ").slice(0, 300));
 
   const NAME = "Test Lifter";
@@ -56,9 +52,6 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   };
   async function openManage() {
     navTo("Manage program");
-    await tick();
-    $("pinInput").value = TEST_PIN;
-    $("pinOk").click();
     await tick(100);
     return $("viewDayMgr").classList.contains("active");
   }

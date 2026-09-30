@@ -9,6 +9,10 @@
  *                          Without this, every analytics and chart view is blank
  *                          offline, which is most of the app's value on a phone.
  *   Google Fonts        -> cache-first, permanent, same reasoning.
+ *   supabase-js         -> cache-first, permanent, version-pinned on jsdelivr. The
+ *                          account + sync layer; the app runs without it, but
+ *                          a coach needs it to sign in and reach Manage program.
+ *   Supabase API        -> never touched (another origin): sync must be live.
  *
  * Note the page also sends `Cache-Control: no-store` via a <meta http-equiv>.
  * Browsers ignore that tag for cache decisions, and it does not affect the
@@ -16,11 +20,11 @@
  * harmless, but it is now redundant — this worker controls freshness instead.
  *
  * Bumping CACHE_VERSION drops every old cache on the next activation. You only
- * need that if you change the file list below or the pinned Chart.js version;
+ * need that if you change the file list below or a pinned library version;
  * ordinary edits to power-logs.html are picked up by the network-first rule.
  */
 
-const CACHE_VERSION = "v11";
+const CACHE_VERSION = "v12";
 const CACHE_SHELL = `spotter-shell-${CACHE_VERSION}`;
 const CACHE_VENDOR = `spotter-vendor-${CACHE_VERSION}`;
 
@@ -43,10 +47,12 @@ const SHELL_ASSETS = [
    the very first offline launch already has charts, not just the second. */
 const VENDOR_ASSETS = [
   "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js",
+  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js",
 ];
 
 const VENDOR_ORIGINS = [
   "https://cdnjs.cloudflare.com",
+  "https://cdn.jsdelivr.net",
   "https://fonts.googleapis.com",
   "https://fonts.gstatic.com",
 ];

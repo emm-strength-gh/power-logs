@@ -285,8 +285,34 @@ begin
   perform pg_temp.ok('a device signs up for notifications', r = 'ok 1', r);
   r := pg_temp.act(l, format($q$insert into public.push_subscriptions (endpoint, user_id, p256dh, auth) values ('https://push.example/x', %L, 'k', 'a')$q$, x));
   perform pg_temp.ok('...only for its own account', r like 'refused%' and pg_temp.cnt(x, 'select * from public.push_subscriptions') = 0, r);
+  -- Read markers ("Seen")
   r := pg_temp.act(c1, format($q$insert into public.message_reads (lifter_id, thread) values (%L, 'team')$q$, m));
-  perform pg_temp.ok('read markers are per person', r = 'ok 1' and pg_temp.cnt(l, 'select * from public.message_reads') = 0, r);
+  perform pg_temp.ok('a coach saves how far they''ve read', r = 'ok 1', r);
+  perform pg_temp.ok('...which the lifter sees (Seen)', pg_temp.cnt(l, 'select * from public.message_reads') = 1);
+  perform pg_temp.act(c1, format($q$insert into public.message_reads (lifter_id, thread) values (%L, %L)$q$, m, c1));
+  perform pg_temp.ok('a private thread''s marker stays between its two people',
+    pg_temp.cnt(c2, format('select * from public.message_reads where thread = %L', c1)) = 0
+    and pg_temp.cnt(l, format('select * from public.message_reads where thread = %L', c1)) = 1);
+  perform pg_temp.ok('...and strangers see none', pg_temp.cnt(x, 'select * from public.message_reads') = 0);
+  r := pg_temp.act(l, format($q$insert into public.message_reads (user_id, lifter_id, thread) values (%L, %L, 'team')$q$, c2, m));
+  perform pg_temp.ok('nobody writes someone else''s marker', r like 'refused%', r);
+
+  -- Clear (owner only)
+  v := pg_temp.val(c1, format($q$select public.clear_thread(%L, 'team')::text$q$, m));
+  perform pg_temp.ok('a coach cannot clear a conversation', v like 'refused%', v);
+  v := pg_temp.val(l, format($q$select public.clear_thread(%L, 'team')::text$q$, m));
+  perform pg_temp.ok('nor can the lifter', v like 'refused%', v);
+  v := pg_temp.val(o, format($q$select public.clear_thread(%L, 'team')::text$q$, m));
+  perform pg_temp.ok('the owner clears only conversations they''re in', v like 'refused%', v);
+  perform pg_temp.val(c1, format($q$select public.share_lifter(%L, 'owner@selftest.invalid')$q$, m));
+  v := pg_temp.val(o, format($q$select public.clear_thread(%L, %L)::text$q$, m, c1));
+  perform pg_temp.ok('...and never another coach''s private thread', v like 'refused%', v);
+  v := pg_temp.val(o, format($q$select public.clear_thread(%L, 'team')::text$q$, m));
+  perform pg_temp.ok('the owner clears the whole team thread, every coach''s messages included',
+    v = '3' and not exists (select 1 from public.messages where lifter_id = m and thread = 'team')
+    and exists (select 1 from public.messages where lifter_id = m and thread <> 'team'), v);
+  perform pg_temp.ok('...and devices are told when (to drop their copies)',
+    (select cleared ? 'team' from public.lifter_settings where lifter_id = m));
 
   -- Signed out, and personal settings
   r := pg_temp.act(null, 'select * from public.lifters');

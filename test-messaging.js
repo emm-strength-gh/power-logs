@@ -32,8 +32,9 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   const server = await pgServer();
   const apps = [];
 
-  function boot(label) {
-    const dev = server.device(label), errors = [];
+  // reuse: { dev, storage } to reopen the app on the same device (same session, same localStorage).
+  function boot(label, reuse) {
+    const dev = reuse ? reuse.dev : server.device(label), errors = [];
     const push = { sub: null, swListeners: [], unsubscribed: 0 };
     const dom = new JSDOM(html, {
       runScripts: "dangerously", pretendToBeVisual: true,
@@ -41,6 +42,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
       virtualConsole: new VirtualConsole().on("jsdomError", e => errors.push(e.message)).on("error", m => errors.push(String(m))),
       beforeParse(w) {
         w.__spotterCloud = dev;
+        if (reuse) Object.entries(reuse.storage).forEach(([k, v]) => w.localStorage.setItem(k, v));
         const reg = {
           addEventListener() {},
           pushManager: {
@@ -99,6 +101,9 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
       },
       closeSheet() { $("acctClose").click(); },
       bubbles: () => [...doc.querySelectorAll("#msgList .msg-bubble")].map(b => b.firstChild.textContent),
+      sending: () => [...doc.querySelectorAll("#msgList .msg-time")].some(t => /Sending/.test(t.textContent)),
+      seen: () => { const x = doc.querySelector("#msgList .msg-seen"); return x ? x.textContent : ""; },
+      storage: () => { const o = {}; for (let i = 0; i < w.localStorage.length; i++) { const k = w.localStorage.key(i); o[k] = w.localStorage.getItem(k); } return o; },
       async send(text) {
         $("msgInput").value = text;
         $("msgInput").dispatchEvent(new w.Event("input"));
@@ -164,6 +169,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   check("and goes straight into the thread", !!L.$("msgInput") && L.$("msgInput").placeholder === "Message your coaches");
   await L.send("Hi coach, knee is fine");
   check("the message shows at once, as sending", L.bubbles().includes("Hi coach, knee is fine"));
+  check("once it's gone, the sender's copy stops saying Sending", await until(() => !L.sending()));
   check("it's stored, from Tom, in the team thread", await until(async () => (await dbMsgs()).some(m => m.body === "Hi coach, knee is fine" && m.thread === "team" && m.email === "tom@test.invalid")));
   check("the coach's phone gets a banner, without the message", await until(() => pushesTo("coach").some(p => p.body === "New message from Tom")) && !pushesTo("coach").some(p => /knee/.test(p.body)));
   check("...that opens the conversation", pushesTo("coach")[0].url.includes("open=messages&lifter=" + tomId + "&thread=team"));
@@ -178,6 +184,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   check("with who wrote it", [...C.doc.querySelectorAll("#msgList .msg-who")].some(x => x.textContent === "Tom"));
   check("reading clears the badges", C.badge("Messages") === 0 && C.$("menuDot").hidden);
   check("...on every device (read marker saved)", await until(async () => (await server.sql("select count(*)::int n from public.message_reads"))[0].n === 1));
+  check("Tom sees his message was seen, by whom", await until(() => L.seen() === "Seen by owner"), L.seen());
   await C.send("Good. Keep it at RPE 7");
   check("Tom gets the reply live", await until(() => L.bubbles().includes("Good. Keep it at RPE 7")));
   check("...and a banner naming his coach", await until(() => pushesTo("lifter").some(p => p.body === "New message from owner")));
@@ -210,6 +217,13 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   await J.send("Welcome aboard, Tom");
   check("his message reaches Tom and the first coach", await until(() => L.bubbles().includes("Welcome aboard, Tom")) && await until(() => { C.nav("Messages"); return C.bubbles().includes("Welcome aboard, Tom"); }));
   check("Tom sees Jordan's name on it", await until(() => [...L.doc.querySelectorAll("#msgList .msg-who")].some(x => x.textContent === "Jordan")));
+  await L.send("Thanks both");
+  J.sync(); await J.settle(); J.nav("Overview"); J.nav("Messages"); await tick();
+  C.sync(); await C.settle(); C.nav("Overview"); C.nav("Messages"); await tick();
+  check("both coaches' reads show under Tom's latest", await until(() => L.seen() === "Seen by owner, Jordan"), L.seen());
+  check("...while the first coach's latest counts only Tom, not Jordan (who joined after it)",
+    await until(() => /^Seen by Tom$/.test(C.seen())), C.seen());
+  check("a coach can't clear conversations (the owner only)", !J.btn("Clear", J.$("msgBody")));
 
   /* --------------------------------------------- one thread per coach */
   console.log("\nTom switches to a private thread per coach");
@@ -310,6 +324,19 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   L.dev.state.offline = false;
   L.sync(); await L.settle();
   check("back online, it goes", await until(async () => (await dbMsgs()).some(m => m.body === "Written on the plane")));
+  check("...and stops saying Sending", await until(() => !L.sending()));
+  L.dev.state.offline = true;
+  await L.send("Written, then the app was closed");
+  L.sync(); await L.settle();
+  const L2 = boot("lifter reopened", { dev: L.dev, storage: L.storage() });
+  L.dev.state.offline = false;
+  await tick(300);
+  L2.sync(); await L2.settle();
+  L2.nav("Messages"); await tick();
+  if (!L2.$("msgList")) { [...L2.doc.querySelectorAll("#msgBody .msg-thread")].find(b => /Jordan/.test(b.textContent)).click(); await tick(); }
+  check("reopened later, the queued message goes and shows as sent",
+    await until(async () => (await dbMsgs()).some(m => m.body === "Written, then the app was closed")) &&
+    await until(() => L2.bubbles().includes("Written, then the app was closed") && !L2.sending()));
   await server.sql("insert into public.push_subscriptions (endpoint, user_id, p256dh, auth) select 'https://push.test/gone', user_id, 'k', 'a' from public.accounts where email = 'tom@test.invalid'");
   L.$("msgBody").querySelector(".msg-switch").click();
   await until(async () => (await server.sql("select team_thread from public.lifter_settings"))[0].team_thread === true);
@@ -320,6 +347,25 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   [...L.$("acctBody").querySelectorAll(".acct-check")].find(l => /New messages/.test(l.textContent)).querySelector("input").click();
   await tick(300); L.closeSheet();
   await C.send("Back to one thread");
+  console.log("\nThe owner clears a conversation");
+  check("the owner has Clear on the thread", !!C.btn("Clear", C.$("msgBody")));
+  C.btn("Clear", C.$("msgBody")).click(); await tick();
+  check("it asks first", C.$("confirmScrim").classList.contains("show") && /Clear this conversation\?/.test(C.$("confirmTitle").textContent)
+    && /all their coaches, including the other coaches/.test(C.$("confirmBody").textContent), C.$("confirmBody").textContent);
+  C.$("confirmNo").click(); await tick(200);
+  const teamCount = async () => (await server.sql("select count(*)::int n from public.messages where thread = 'team'"))[0].n;
+  check("Cancel leaves everything", (await teamCount()) > 0);
+  C.btn("Clear", C.$("msgBody")).click(); await tick();
+  C.$("confirmYes").click();
+  check("confirmed: every team message is gone, the coaches' too", await until(async () => (await teamCount()) === 0));
+  check("...private threads are untouched", (await server.sql("select count(*)::int n from public.messages where thread <> 'team'"))[0].n > 0);
+  check("...gone from the owner's screen", await until(() => C.bubbles().length === 0), C.bubbles().join("|"));
+  J.sync(); await J.settle();
+  L.sync(); await L.settle();
+  const cached = a => ((a.store("spotter.messages.v1") || {}).list || []).filter(m => m.thread === "team").length;
+  check("...and from every other device's copy", await until(() => cached(J) === 0 && cached(L) === 0), cached(J) + "/" + cached(L));
+  await C.send("Fresh start");
+  check("the thread carries on afterwards", await until(() => L.bubbles().includes("Fresh start") || cached(L) === 1));
   check("a device that's gone is forgotten when a push bounces", await until(async () => (await server.sql("select count(*)::int n from public.push_subscriptions where endpoint = 'https://push.test/gone'"))[0].n === 0));
   L.$("acctBtn").click(); await tick();
   L.btn("Sign out", L.$("acctBody")).click(); await tick(300);

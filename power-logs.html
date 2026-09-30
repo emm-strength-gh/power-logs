@@ -476,6 +476,8 @@
   .msg-title { font-family: "Bricolage Grotesque", sans-serif; font-size: 18px; font-weight: 700; margin: 0; }
   .msg-note { font-size: 13px; color: var(--muted); margin: 0 0 10px; }
   .msg-list { display: flex; flex-direction: column; gap: 6px; padding: 4px 0 12px; }
+  .msg-seen { align-self: flex-end; font-size: 11.5px; color: var(--faint); margin: -2px 4px 0 0; }
+  .msg-head .msg-clear { margin-left: auto; }
   .msg-empty { font-size: 14px; color: var(--faint); text-align: center; margin: 24px 0; }
   .msg-day { font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); text-align: center; margin: 12px 0 4px; }
   .msg-who { font-size: 12px; font-weight: 600; color: var(--muted); margin: 6px 0 0 4px; }
@@ -1463,7 +1465,7 @@
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
   // major.minor.patch: minor goes up with each release (it carried on from the
   // old build counter, 30), patch for a fix to one.
-  var APP_VERSION = "1.32.0";
+  var APP_VERSION = "1.33.0";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -6318,7 +6320,7 @@
       // are fetched by the next sync; this only says "something changed".
       listen: function (fn) {
         var ch = sb.channel("spotter-sync");
-        ["lifters", "lifter_coaches", "accounts", "messages", "lifter_settings", "lifter_events"].concat(LOG_TABLES).forEach(function (t) {
+        ["lifters", "lifter_coaches", "accounts", "messages", "lifter_settings", "lifter_events", "message_reads"].concat(LOG_TABLES).forEach(function (t) {
           ch.on("postgres_changes", { event: "*", schema: "public", table: t }, function () { fn(t); });
         });
         ch.subscribe();
@@ -6646,7 +6648,7 @@
       var wasCoach = isCoach();
       CLOUD.account = mine ? { role: mine.role, coach_status: mine.coach_status, display_name: mine.display_name || "" } : null;
       if (wasCoach !== isCoach()) cloudChanged = true;
-      var links = (r[1] || []).map(function (l) { return { lifter_id: l.lifter_id, coach_id: l.coach_id }; });
+      var links = (r[1] || []).map(function (l) { return { lifter_id: l.lifter_id, coach_id: l.coach_id, since: l.created_at || "" }; });
       if (stableJSON(links) !== stableJSON(CLOUD.links)) cloudChanged = true;   // Sharing lists who coaches whom
       CLOUD.links = links;
       var idx = cloudIndex(), seen = {}, need = [], since = cursorSince("lifters"), top = CLOUD.cursors.lifters || "";
@@ -6798,7 +6800,7 @@
       // database not updated for them yet) never holds up the training log.
       return pullMessages(api).then(function (ch) {
         if (ch.msgs || ch.settings) msgRefreshUI(ch.settings);
-        return pushMessages(api);
+        return pushMessages(api).then(function (sent) { if (sent) msgRefreshUI(false); });
       }).then(function () { CLOUD.msgError = ""; }, function (err) { CLOUD.msgError = (err && err.message) || "Messages couldn’t sync"; });
     }).then(function () {
       if (cloudChanged) { writeAllStores(); cloudRefreshUI(); }
@@ -7386,7 +7388,8 @@
   // Web Push (VAPID) public key. Public by design; the private half is a
   // secret on the Supabase notify function, never in this repo.
   var VAPID_PUBLIC_KEY = "BPHpAfnHIF5z3rYGQJPN5X-y3R8K_g51PjUrkBoL_BzARM7LcJ7k0U8RSNvtf4R0F03vs-8YXGIyLMIqRIcPN5M";
-  function msgDefaults() { return { list: [], reads: {}, settings: {}, events: [], outbox: [], cursors: {}, pushPrefs: null }; }
+  // reads: how far I've read each thread; seen: how far everyone else has ("Seen").
+  function msgDefaults() { return { list: [], reads: {}, seen: {}, settings: {}, events: [], outbox: [], cursors: {}, pushPrefs: null }; }
   var MSG = msgDefaults();
   var msgUI = { thread: null, drafts: {} };   // thread: null = pick for me, "" = show the list
   var inMessages = false, inInbox = false;
@@ -7482,22 +7485,36 @@
       var st = {};
       (r[0] || []).forEach(function (s) {
         st[s.lifter_id] = { team_thread: s.team_thread !== false, notified_weeks: s.notified_weeks || [],
-                            notified_by: s.notified_by || "", notified_at: s.notified_at || "" };
+                            notified_by: s.notified_by || "", notified_at: s.notified_at || "", cleared: s.cleared || {} };
       });
       if (stableJSON(st) !== stableJSON(MSG.settings)) { MSG.settings = st; out.settings = true; }
+      var seen = {};
       (r[1] || []).forEach(function (x) {
         var k = threadKey(x.lifter_id, x.thread);
+        if (x.user_id !== me()) { (seen[k] = seen[k] || {})[x.user_id] = x.read_at; return; }
         if (tms(x.read_at) > tms(MSG.reads[k])) { MSG.reads[k] = x.read_at; out.msgs = true; }
       });
+      if (stableJSON(seen) !== stableJSON(MSG.seen || {})) { MSG.seen = seen; out.msgs = true; }
       var at = {}, top = MSG.cursors.messages || "";
       MSG.list.forEach(function (m, i) { at[m.id] = i; });
       (r[2] || []).forEach(function (m) {
         if (tms(m.created_at) > tms(top)) top = m.created_at;
         var row = { id: m.id, lifter_id: m.lifter_id, thread: m.thread, sender_id: m.sender_id, body: m.body, created_at: m.created_at };
         if (at[m.id] === undefined) { at[m.id] = MSG.list.length; MSG.list.push(row); out.msgs = true; }
-        else if (MSG.list[at[m.id]].pending || MSG.list[at[m.id]].failed) { MSG.list[at[m.id]] = row; out.msgs = true; }
+        else {
+          // Ours comes back with the server's time; take it (and clear "Sending…").
+          var cur = MSG.list[at[m.id]];
+          if (cur.pending || cur.failed || cur.created_at !== m.created_at) { MSG.list[at[m.id]] = row; out.msgs = true; }
+        }
       });
       MSG.cursors.messages = top;
+      // Cleared by the owner: drop this device's copies too.
+      var before = MSG.list.length;
+      MSG.list = MSG.list.filter(function (m) {
+        var c = MSG.settings[m.lifter_id] && MSG.settings[m.lifter_id].cleared && MSG.settings[m.lifter_id].cleared[m.thread];
+        return m.pending || !c || tms(m.created_at) > tms(c);
+      });
+      if (MSG.list.length !== before) out.msgs = true;
       var seenEv = {}, etop = MSG.cursors.lifter_events || "";
       MSG.events.forEach(function (e) { seenEv[e.id] = true; });
       (r[3] || []).forEach(function (e) {
@@ -7520,8 +7537,16 @@
     MSG.events = MSG.events.filter(function (e) { return idx[e.lifter_id]; }).slice(-300);
   }
   function eventKey(e) { return [e.lifter_id, e.kind, e.week || "", e.day || ""].join("|"); }
+  // Resolves true when something on screen changed (a message went out, or failed).
   function pushMessages(api) {
-    var chain = Promise.resolve();
+    var chain = Promise.resolve(), changed = false;
+    // The queued copy and the one on screen are separate objects once the app
+    // has been reopened, so find the on-screen one by id.
+    function mark(id, patch) {
+      MSG.list.forEach(function (m) { if (m.id === id) Object.keys(patch).forEach(function (k) { m[k] = patch[k]; }); });
+      changed = true;
+      saveMsg();
+    }
     function done(job) { MSG.outbox = MSG.outbox.filter(function (j) { return j !== job; }); saveMsg(); }
     function refused(err) { return /row-level security|violates|permission denied|check constraint/i.test((err && err.message) || ""); }
     MSG.outbox.slice().forEach(function (job) {
@@ -7532,7 +7557,7 @@
             .catch(function (err) { if (!/duplicate key|already exists|23505/i.test((err && err.message) || "")) throw err; })
             .then(function () {
               done(job);
-              r.pending = false;
+              mark(r.id, { pending: false });
               // Best effort: a missing notification never blocks the message.
               if (api.invoke) return api.invoke("notify", { message_id: r.id }).catch(function () {});
             });
@@ -7552,10 +7577,10 @@
         if (!refused(err)) throw err;
         // It can never go (the thread closed, access removed): stop retrying, and say so.
         done(job);
-        if (job.type === "msg") { job.row.pending = false; job.row.failed = true; saveMsg(); }
+        if (job.type === "msg") mark(job.row.id, { pending: false, failed: true });
       });
     });
-    return chain;
+    return chain.then(function () { return changed; });
   }
   function msgRefreshUI(settingsChanged) {
     updateMsgBadges();
@@ -7683,6 +7708,12 @@
       head.appendChild(back);
     }
     head.appendChild(el("h2", "msg-title", threadLabel(id, t.th)));
+    if (isOwner() && t.live && (t.th === "team" || t.th === me())) {
+      var clr = el("button", "chip sm danger msg-clear", "Clear");
+      clr.type = "button";
+      clr.onclick = function () { clearThread(id, t.th); };
+      head.appendChild(clr);
+    }
     body.appendChild(head);
     if (!t.live) body.appendChild(el("p", "msg-note", t.th === "team"
       ? "History: the thread with all coaches is switched off, so it takes no new messages."
@@ -7728,7 +7759,7 @@
   function fillThread(list) {
     var parts = list.getAttribute("data-key").split("|"), id = parts[0], th = parts[1];
     clear(list);
-    var msgs = msgsOf(id, th), lastDay = "", lastSender = "";
+    var msgs = msgsOf(id, th), lastDay = "", lastSender = "", seen = seenLine(id, th, msgs);
     if (!msgs.length) list.appendChild(el("p", "msg-empty", "No messages yet. Say hello."));
     msgs.forEach(function (m) {
       var day = new Date(m.created_at).toDateString();
@@ -7741,9 +7772,53 @@
       var foot = el("span", "msg-time", m.failed ? "Not sent: this thread no longer takes messages" : m.pending ? "Sending…" : timeLabel(m.created_at));
       b.appendChild(foot);
       list.appendChild(b);
+      if (seen.id === m.id) list.appendChild(el("p", "msg-seen", seen.text));
     });
     if (!document.hidden) markRead(id, th);
     try { list.lastChild && list.lastChild.scrollIntoView({ block: "end" }); } catch (e) {}
+  }
+  // "Seen" (one other person) or "Seen by Tom, Jordan" under my latest sent
+  // message: whoever in the thread has read up to it. A coach who joined after
+  // it was sent never saw it, whatever their marker says.
+  function seenLine(id, th, msgs) {
+    var mine = msgs.filter(function (m) { return m.sender_id === me() && !m.pending && !m.failed; });
+    var last = mine[mine.length - 1];
+    if (!last) return {};
+    var marks = (MSG.seen || {})[threadKey(id, th)] || {}, meta = CLOUD.lifterMeta[id] || {};
+    var who = Object.keys(marks).filter(function (uid) {
+      if (tms(marks[uid]) < tms(last.created_at)) return false;
+      if (uid === meta.userId) return true;
+      var link = CLOUD.links.filter(function (l) { return l.lifter_id === id && l.coach_id === uid; })[0];
+      return !!link && (th !== "team" || !link.since || tms(link.since) <= tms(last.created_at));
+    });
+    if (!who.length) return {};
+    // A steady order: the lifter, then coaches in the order they joined.
+    var order = [meta.userId].concat(CLOUD.links.filter(function (l) { return l.lifter_id === id; })
+      .sort(function (a, b) { return tms(a.since) - tms(b.since); }).map(function (l) { return l.coach_id; }));
+    who.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); });
+    return { id: last.id, text: th === "team" ? "Seen by " + who.map(function (uid) { return senderName(id, uid); }).join(", ") : "Seen" };
+  }
+  function clearThread(id, th) {
+    var who = nameOfLifter(id);
+    askConfirm({
+      title: "Clear this conversation?",
+      body: th === "team"
+        ? "This deletes every message in the thread with " + who + " and all their coaches, including the other coaches’ messages. It’s gone for everyone, on every device, and can’t be undone."
+        : "This deletes every message between you and " + who + ". It’s gone for both of you, on every device, and can’t be undone.",
+      confirmLabel: "Clear conversation"
+    }).then(function (ok) {
+      if (!ok) return;
+      cloudApi().rpc("clear_thread", { p_lifter: id, p_thread: th }).then(function () {
+        MSG.list = MSG.list.filter(function (m) { return !(m.lifter_id === id && m.thread === th && !m.pending); });
+        saveMsg();
+        toast("Conversation cleared.");
+        renderMessages();
+        updateMsgBadges();
+        return syncNow();
+      }, function (err) {
+        toast("Couldn’t clear it" + (navigator.onLine === false ? " while offline." : ": " + err.message));
+      });
+    });
   }
   function renderInbox() {
     var body = $("inboxBody");

@@ -1,4 +1,4 @@
-# EmmStrength Spotter (Power Logs App)
+# EmmStrength Power Logs
 
 An installable iPhone/desktop PWA for powerlifting training logs. No build step,
 no framework, no server of our own — four self-contained HTML files with inline
@@ -18,10 +18,10 @@ edges in more depth than this file.
 
 | File | Role | Standalone? |
 |---|---|---|
-| [power-logs.html](power-logs.html) | **The main app** ("Spotter"). Lifter profiles, weekly program view, done/skip tracking, notes, custom items, Manage Program (day/week editing, coaches only), accounts + cloud sync, Analytics, Compare, plate calculator, rest timer, warm-up calculator, JSON/CSV import-export. Hosts the other three apps in iframes. | Yes — this is the PWA entry point (`start_url`). |
-| [program-hub.html](program-hub.html) | Program **builders**: Meet Peak v2 Gen Pop (balanced 16-week peak, first card), Gustav, Wendler, equipped lifting, single-lift (squat/bench/deadlift), combined, Lilliebridge, KSB, CVBT, MDL, fatigue-managed, etc. Generates a CSV program. | Yes, and also opens inside Spotter as the **Program Hub** tab in Manage Program. |
-| [VBT.html](VBT.html) | **Velocity Tracker**. Loads a video clip, tracks the barbell path frame-by-frame, computes bar speed/RPE per rep, detects stalls/grinds, exports an annotated MP4 (custom `mp4Mux` muxer + WebCodecs) or CSV. | Yes, and opens inside Spotter from the **Velocity Tracker** nav button. |
-| [rpe-estimator.html](rpe-estimator.html) | RPE ↔ %1RM load-chart tool (Chart.js). | Yes, and opens inside Spotter (RPE Estimator in the sidebar). |
+| [power-logs.html](power-logs.html) | **The main app** ("Power Logs"). Lifter profiles, weekly program view, done/skip tracking, notes, custom items, Manage Program (day/week editing, coaches only), accounts + cloud sync, Analytics, Compare, plate calculator, rest timer, warm-up calculator, JSON/CSV import-export. Hosts the other three apps in iframes. | Yes — this is the PWA entry point (`start_url`). |
+| [program-hub.html](program-hub.html) | Program **builders**: Meet Peak v2 Gen Pop (balanced 16-week peak, first card), Gustav, Wendler, equipped lifting, single-lift (squat/bench/deadlift), combined, Lilliebridge, KSB, CVBT, MDL, fatigue-managed, etc. Generates a CSV program. | Yes, and also opens inside Power Logs as the **Program Hub** tab in Manage Program. |
+| [VBT.html](VBT.html) | **Velocity Tracker**. Loads a video clip, tracks the barbell path frame-by-frame, computes bar speed/RPE per rep, detects stalls/grinds, exports an annotated MP4 (custom `mp4Mux` muxer + WebCodecs) or CSV. | Yes, and opens inside Power Logs from the **Velocity Tracker** nav button. |
+| [rpe-estimator.html](rpe-estimator.html) | RPE ↔ %1RM load-chart tool (Chart.js). | Yes, and opens inside Power Logs (RPE Estimator in the sidebar). |
 
 Supporting files: [manifest.webmanifest](manifest.webmanifest) (PWA metadata),
 [sw.js](sw.js) (service worker — see caching strategy below),
@@ -70,7 +70,7 @@ the `.vN` suffix if you ever change a stored shape incompatibly.
 
 - `PROFILES`: `name -> { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...]}]}] }`
   — one profile per lifter, built by `buildProfile()` from an imported
-  `#Name`-header CSV or a Spotter JSON export.
+  `#Name`-header CSV or a Power Logs JSON export.
 - `DONE` / `SKIP`: `name -> { rid: true }` — per-row completion/skip state,
   keyed by row id (`rid`), independent of the program data itself.
 - `NOTES`: `name -> { rid: "text" }` — user overrides of the derived

@@ -1,9 +1,9 @@
-/* Smoke test for VBT.html as a page inside the Spotter app.
+/* Smoke test for VBT.html as a page inside the Power Logs app.
  *
  *   node test-boot.js
  *
  * Verifies the file parses, every function it calls is defined, every element ID
- * it reaches for exists in the markup, and that it points at Spotter's manifest
+ * it reaches for exists in the markup, and that it points at Power Logs' manifest
  * and icons rather than declaring its own app identity.
  */
 const fs = require("fs");
@@ -61,10 +61,10 @@ check("every element ID resolves", missing.length === 0, missing.length ? missin
   check(`<${tag}> balanced`, o === c, `${o} open / ${c} close`);
 });
 
-/* ---------- 5. wired into Spotter, not standalone ---------- */
-check("uses Spotter's manifest", html.includes('href="./manifest.webmanifest"'));
+/* ---------- 5. wired into Power Logs, not standalone ---------- */
+check("uses Power Logs' manifest", html.includes('href="./manifest.webmanifest"'));
 check("no private manifest.json", !html.includes('href="manifest.json"'));
-check("uses Spotter's icon folder", html.includes('href="./icons/'));
+check("uses Power Logs' icon folder", html.includes('href="./icons/'));
 check("links back to power-logs.html", html.includes('href="./power-logs.html"'));
 check("registers the shared worker", /register\("\.?\/?sw\.js"\)/.test(html));
 check("exports go through saveFile()", /async function saveFile\(/.test(html));

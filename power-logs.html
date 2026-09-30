@@ -1466,7 +1466,7 @@
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
   // major.minor.patch: minor goes up with each release (it carried on from the
   // old build counter, 30), patch for a fix to one.
-  var APP_VERSION = "1.35.0";
+  var APP_VERSION = "1.35.1";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -7156,7 +7156,7 @@
       if (decision !== "revoked") { run(); return; }
       askConfirm({
         title: "Remove " + who + " as a coach?",
-        body: who + " loses Manage program and every lifter they coach, straight away. Their lifters stay in your account.",
+        body: who + " loses Manage program and every lifter they coach, straight away. Lifters they gave a sign-in email to lose access to their program too (the email is cleared). The programs stay in your account and with any other coaches.",
         confirmLabel: "Remove coach"
       }).then(function (ok) { if (ok) run(); });
     };

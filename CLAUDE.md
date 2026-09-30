@@ -112,7 +112,9 @@ checks (`isOwner`/`isCoach`/`canManage`/`isCoachManaged`) just decide what to sh
 Never put the secret key or the owner's email in this repo: the owner is set by a
 private script kept outside it (`private.settings`).
 
-- Roles: owner (sees all, approves coaches via the `decide_coach` RPC), coach
+- Roles: owner (sees all, approves coaches via the `decide_coach` RPC, which on
+  revoke/decline also clears the `lifter_email`s that coach entered,
+  `lifters.lifter_email_by`), coach
   (`coach_status = 'approved'`; edits lifters linked in `lifter_coaches`), lifter
   (`lifters.lifter_email` matches their confirmed email; reads the program, writes
   only the log tables). Manage Program shows only when `canManage(current)`; a

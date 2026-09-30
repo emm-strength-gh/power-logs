@@ -80,6 +80,7 @@ declare
   a  uuid := '5e1f7e57-0000-4000-8000-0000000000a1';
   b  uuid := '5e1f7e57-0000-4000-8000-0000000000b1';
   m  uuid := '5e1f7e57-0000-4000-8000-0000000000c1';
+  n  uuid := '5e1f7e57-0000-4000-8000-0000000000d1';
   r text; v text;
 begin
   insert into auth.users (instance_id, id, aud, role, email, email_confirmed_at,
@@ -313,6 +314,21 @@ begin
     and exists (select 1 from public.messages where lifter_id = m and thread <> 'team'), v);
   perform pg_temp.ok('...and devices are told when (to drop their copies)',
     (select cleared ? 'team' from public.lifter_settings where lifter_id = m));
+
+  -- Removing a coach takes back the access they gave, and only that.
+  perform pg_temp.act(c2, format($q$insert into public.lifters (id, name, lifter_email) values (%L, 'SELFTEST N', 'late@selftest.invalid')$q$, n));
+  perform pg_temp.ok('a lifter email records who entered it', (select lifter_email_by from public.lifters where id = n) = c2);
+  perform pg_temp.ok('...and the lifter can see their program', pg_temp.cnt(u, format('select * from public.lifters where id = %L', n)) = 1);
+  perform pg_temp.act(o, format($q$select public.decide_coach(%L, 'revoked')$q$, c2));
+  perform pg_temp.ok('removing that coach clears the emails they entered',
+    (select lifter_email from public.lifters where id = n) is null and (select lifter_user_id from public.lifters where id = n) is null);
+  perform pg_temp.ok('...so that lifter loses access', pg_temp.cnt(u, format('select * from public.lifters where id = %L', n)) = 0);
+  perform pg_temp.ok('...but the program stays, for the owner', (select deleted_at from public.lifters where id = n) is null
+    and pg_temp.cnt(o, format('select * from public.lifters where id = %L', n)) = 1);
+  perform pg_temp.ok('an email another coach entered is left alone (on a lifter they shared)',
+    (select lifter_email from public.lifters where id = m) = 'lifter@selftest.invalid'
+    and pg_temp.cnt(l, format('select * from public.lifters where id = %L', m)) = 1
+    and pg_temp.cnt(c1, format('select * from public.lifters where id = %L', m)) = 1);
 
   -- Signed out, and personal settings
   r := pg_temp.act(null, 'select * from public.lifters');

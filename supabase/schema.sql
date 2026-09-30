@@ -60,6 +60,9 @@ create table if not exists public.lifters (
 create index if not exists lifters_updated_idx on public.lifters (updated_at);
 create index if not exists lifters_user_idx on public.lifters (lifter_user_id);
 create index if not exists lifters_email_idx on public.lifters (lifter_email);
+-- Who entered lifter_email (set by the guard trigger), so removing a coach can
+-- take back exactly the access that coach gave.
+alter table public.lifters add column if not exists lifter_email_by uuid;
 
 create table if not exists public.lifter_coaches (
   lifter_id  uuid not null references public.lifters(id) on delete cascade,
@@ -219,6 +222,13 @@ begin
     new.created_at := old.created_at;
   end if;
   new.lifter_email := nullif(lower(btrim(coalesce(new.lifter_email, ''))), '');
+  if tg_op = 'INSERT' then
+    new.lifter_email_by := case when new.lifter_email is not null then auth.uid() end;
+  elsif new.lifter_email is distinct from old.lifter_email then
+    new.lifter_email_by := case when new.lifter_email is not null then auth.uid() end;
+  else
+    new.lifter_email_by := old.lifter_email_by;
+  end if;
   -- Only a confirmed email links, so nobody can sign up as someone else's
   -- address and see their program.
   new.lifter_user_id := (select u.id from auth.users u
@@ -319,6 +329,15 @@ begin
   update public.accounts set coach_status = p_decision, decided_at = now()
    where user_id = p_user and role <> 'owner';
   if not found then raise exception 'no such coach'; end if;
+  -- Removed or declined: the lifters this coach gave access to lose it (their
+  -- sign-in email is cleared). The programs stay, with the owner and any other
+  -- coaches. Emails entered by someone else are left alone. (Rows from before
+  -- lifter_email_by existed count as entered by whoever created the lifter.)
+  if p_decision in ('revoked', 'declined') then
+    update public.lifters set lifter_email = null
+     where deleted_at is null and lifter_email is not null
+       and (lifter_email_by = p_user or (lifter_email_by is null and created_by = p_user));
+  end if;
   return p_decision;
 end $$;
 

@@ -328,6 +328,13 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   check("the coach loses Tom and Manage program at once", !C.names().includes("Tom") && !C.navs().includes("Manage program"), C.names().join());
   check("...off the device, not just the screen", !("Tom" in C.store("spotter.profiles.v1")) && !("Tom" in (C.store("spotter.done.v1") || {})));
   check("...and sees the empty start screen", C.$("viewEmpty").classList.contains("active"));
+  check("the email the coach gave Tom is cleared", await until(async () => (await lifters()).find(l => l.name === "Tom").lifter_email === null));
+  check("...but Tom's program stays, with the owner", (await lifters()).find(l => l.name === "Tom").deleted_at === null && (A.sync(), await A.settle(), A.names().includes("Tom")));
+  A.pick("Tom"); await tick(); A.nav("Manage program"); await tick(100);
+  check("...where Sharing shows no email now", /Add the email Tom signs in with/.test(A.$("dmBody").textContent));
+  A.nav("Overview");
+  D.sync(); await D.settle();
+  check("and Tom's phone loses it", !D.names().includes("Tom"), D.names().join());
 
   console.log("\nThe owner deletes Sam for everyone");
   A.pick("Sam"); await tick();

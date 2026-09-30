@@ -16,7 +16,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
 | `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
-| `supabase/selftest.sql` | Checks on those rules (87 at present). Paste and run after the schema; every row should say PASS. |
+| `supabase/selftest.sql` | Checks on those rules (93 at present). Paste and run after the schema; every row should say PASS. |
 | `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
 | `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
 | `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the original logo). |
@@ -88,6 +88,8 @@ by the app, so a modified copy of the page can't get around them.
 - **Owner** (set by a private SQL script, so the email isn't in this public repo):
   sees every lifter and approves coaches under **Coaches** in the account sheet (the
   person icon shows a badge for requests); can remove a coach at any time.
+  Removing (or declining) a coach also clears the sign-in emails that coach entered,
+  so those lifters lose access; the programs stay with the owner and other coaches.
 - **Coach**: signs in, taps **I'm a coach: request access**, and once approved gets
   Manage Program for the lifters they upload or that another coach shares with them.
   Manage Program → **Sharing** holds the lifter's own sign-in email, the list of

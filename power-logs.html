@@ -559,6 +559,7 @@
   .dm-blockinput { width: 100%; max-width: 420px; padding: 11px 14px; font-family: inherit; font-weight: 600; font-size: 15px; color: var(--ink); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; }
   .dm-blockinput:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(46,90,78,.12); }
   .dm-blockhint { font-size: 12px; color: var(--faint); margin: 2px 0 0; }
+  .dm-blockedit > label.dm-label-gap { margin-top: 12px; }
   .dm-sec-cap { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); margin: 0 0 12px; }
   .dm-mini-cap { font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin: 0; }
   /* Each Manage-program section sits in one card: Program, Use the imported
@@ -1465,7 +1466,7 @@
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
   // major.minor.patch: minor goes up with each release (it carried on from the
   // old build counter, 30), patch for a fix to one.
-  var APP_VERSION = "1.34.0";
+  var APP_VERSION = "1.35.0";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -2844,6 +2845,39 @@
     safeWrite(STORE_PROFILES, PROFILES);
     safeWrite(STORE_DONE, DONE); safeWrite(STORE_SKIP, SKIP); safeWrite(STORE_NOTES, NOTES);
   }
+  // Rename a lifter (Manage Program). A synced lifter is renamed on the server
+  // first, so every device (theirs included) follows; that needs a connection.
+  function renameLifter(oldName, raw, inp) {
+    var v = String(raw || "").trim().replace(/\s+/g, " "), p = PROFILES[oldName];
+    if (!p || v === oldName) { if (inp) inp.value = oldName; return; }
+    if (!v) { toast("A lifter needs a name."); inp.value = oldName; return; }
+    if (RESERVED_NAME.test(v) || Object.prototype.hasOwnProperty.call(PROFILES, v)) {
+      toast("There\u2019s already a lifter called \u201C" + v + "\u201D here. Pick another name.");
+      inp.value = oldName; return;
+    }
+    function finish() {
+      renameLocal(oldName, v);
+      writeAllStores();
+      renderPicker(); renderSidebar();
+      if (inDayMgr) renderDayMgr();
+      pushLifterToHub();
+      toast("Renamed \u201C" + oldName + "\u201D to \u201C" + v + "\u201D.");
+    }
+    if (!p.cloudId) { finish(); return; }
+    var api = cloudApi(), id = p.cloudId;
+    if (!api) { toast("Renaming needs a connection."); inp.value = oldName; return; }
+    inp.disabled = true;
+    api.update("lifters", id, { name: v }).then(function () {
+      shadowOf(id).name = v;
+      if (CLOUD.lifterMeta[id]) CLOUD.lifterMeta[id].name = v;
+      saveCloud();
+      finish();
+      syncNow();
+    }, function (err) {
+      inp.disabled = false; inp.value = oldName;
+      toast("Couldn\u2019t rename" + (navigator.onLine === false ? " while offline." : ": " + err.message));
+    });
+  }
   // Edit the program's block / title.
   function setBlock(targetName, newBlock) {
     var p = PROFILES[targetName]; if (!p) return false;
@@ -3537,7 +3571,17 @@
     secB.appendChild(el("p", "dm-sec-cap", "Program"));
     var cardB = el("div", "dm-card");
     var editWrap = el("div", "dm-blockedit");
-    editWrap.appendChild(el("label", null, "Block / title"));
+    editWrap.appendChild(el("label", null, "Lifter name"));
+    var ninp = el("input", "dm-blockinput");
+    ninp.type = "text"; ninp.value = p.name; ninp.autocomplete = "off"; ninp.maxLength = 80;
+    ninp.setAttribute("aria-label", "Lifter name");
+    ninp.addEventListener("blur", function () { renameLifter(p.name, ninp.value, ninp); });
+    ninp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); ninp.blur(); } });
+    editWrap.appendChild(ninp);
+    editWrap.appendChild(el("p", "dm-blockhint", p.cloudId
+      ? "Changes it everywhere: the dropdown, their phone, messages and notifications."
+      : "Used in the dropdown and in exported files."));
+    editWrap.appendChild(el("label", "dm-label-gap", "Block / title"));
     var binp = el("input", "dm-blockinput");
     binp.type = "text"; binp.value = p.block || "";
     binp.placeholder = "e.g. Block 3"; binp.setAttribute("aria-label", "Block or program title");
@@ -6436,7 +6480,8 @@
     });
     return m;
   }
-  function emptyShadow() { return { prog: "", marks: {}, notes: {}, custom: {}, week: {}, coach: "" }; }
+  // name: the lifter's name as the server last had it (renames are compared with it).
+  function emptyShadow() { return { prog: "", name: "", marks: {}, notes: {}, custom: {}, week: {}, coach: "" }; }
   function shadowOf(id) { return CLOUD.shadow[id] || (CLOUD.shadow[id] = emptyShadow()); }
   function cloudIndex() {
     var m = {};
@@ -6567,6 +6612,22 @@
     if (current === name) current = null;
     cloudChanged = true;
   }
+  // Moves a lifter to a new name on this device: the profile and everything
+  // keyed by name (ticks, notes, added items, weekly and Manage notes, the
+  // order, the open selection). Row ids keep the old name inside them; they're
+  // only ids, so ticks stay attached.
+  function renameLocal(oldName, newName) {
+    if (oldName === newName || !Object.prototype.hasOwnProperty.call(PROFILES, oldName)) return;
+    var order = lifterNames();
+    [PROFILES, DONE, SKIP, NOTES, CUSTOM, WKNOTES, DMNOTES].forEach(function (store) {
+      if (Object.prototype.hasOwnProperty.call(store, oldName)) { store[newName] = store[oldName]; delete store[oldName]; }
+    });
+    PROFILES[newName].name = newName;
+    ORDER = order.map(function (n) { return n === oldName ? newName : n; });
+    if (current === oldName) { current = newName; safeWrite(STORE_LAST, newName); }
+    if (dmUndoOwner === oldName) dmUndoOwner = newName;
+    cloudChanged = true;
+  }
   // Two coaches' lifters can share a name; the dropdown needs them apart.
   // Names that would clash with the object keys JS gives every object (or the
   // dropdown's Rearrange entry) are never used as they are.
@@ -6591,6 +6652,7 @@
       PROFILES[name] = np;
       CLOUD.shadow[row.id] = emptyShadow();
       CLOUD.shadow[row.id].prog = progHash(np);
+      CLOUD.shadow[row.id].name = row.name;
       fresh[row.id] = true;
       cloudChanged = true;
       return;
@@ -6662,6 +6724,16 @@
         if (stableJSON(meta) !== stableJSON(CLOUD.lifterMeta[row.id] || null)) cloudChanged = true;
         CLOUD.lifterMeta[row.id] = meta;
         if (row.deleted_at) return;
+        if (idx[row.id]) {
+          var shn = shadowOf(row.id);
+          if (!shn.name) shn.name = row.name;
+          else if (shn.name !== row.name) {
+            // Renamed on another device.
+            renameLocal(idx[row.id], localNameFor(row.name, row.id));
+            shn.name = row.name;
+            idx = cloudIndex();
+          }
+        }
         seen[row.id] = true;
         if (!idx[row.id] || !since || tms(row.updated_at) > tms(since) || CLOUD.refetch[row.id]) need.push(row.id);
       });
@@ -6731,6 +6803,7 @@
       PROFILES[name].cloudId = id;
       CLOUD.shadow[id] = emptyShadow();
       CLOUD.shadow[id].prog = hashStr(stableJSON(pj));
+      CLOUD.shadow[id].name = name;
       CLOUD.links.push({ lifter_id: id, coach_id: CLOUD.user.id });   // the database adds the same row itself
       CLOUD.lifterMeta[id] = { name: name, email: "", linked: false, mine: false, createdBy: CLOUD.user.id };
       quietWrite(STORE_PROFILES, PROFILES);

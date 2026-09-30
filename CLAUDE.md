@@ -130,6 +130,10 @@ private script kept outside it (`private.settings`).
   not stored twice. Writes that come from the server go through `quietWrite` so
   they don't trigger another upload. Profiles carry `cloudId`; the local key is
   still the name (`localNameFor` suffixes clashes).
+  Renaming (Manage Program's "Lifter name", `renameLifter()`): the server's
+  `lifters.name` first, then `renameLocal()` moves every name-keyed store; other
+  devices notice `row.name` differing from `shadow.name` on pull and follow. Row
+  ids keep the old name inside them (they're only ids).
 - Messages (the "Messages" section of power-logs.html, below the account sheet):
   thread `team` = lifter + all their coaches, else one per coach keyed by the
   coach's user id; the lifter chooses (`lifter_settings.team_thread`, RPC

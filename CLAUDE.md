@@ -117,6 +117,8 @@ private script kept outside it (`private.settings`).
   (`lifters.lifter_email` matches their confirmed email; reads the program, writes
   only the log tables). Manage Program shows only when `canManage(current)`; a
   lifter only on this device counts as the coach's own. The old PIN is gone.
+  Loading/saving files (every Load/Save control, marked `.files-only`) is
+  coaches-only too: `applyRoleUI()` toggles `html.can-files`.
 - Tables: `lifters` (program as jsonb without `name`/`cloudId`/flat `week.rows`),
   and one small row per tick/note/item: `lifter_marks`, `lifter_row_notes`
   (null body = no override), `lifter_custom` (item carries `pos`),
@@ -148,8 +150,10 @@ Four independent counters, all manual, no build tooling enforces them:
   (added/renamed files) or a pinned library version (Chart.js, supabase-js) changes. Bumping drops
   every old cache on next activation. Do **not** bump for ordinary HTML edits
   — those are served network-first already.
-- `APP_BUILD` in power-logs.html — cosmetic, shown in Manage Program so
-  "is my deploy current?" is answerable at a glance.
+- `APP_VERSION` in power-logs.html (e.g. `1.30.0`) — cosmetic, shown in the
+  About sheet (header ⓘ button) and at the foot of Manage Program so "is my
+  deploy current?" is answerable at a glance. Bump the minor number for each
+  release, the patch number for a fix to one.
 - `HUB_BUILD` in power-logs.html (must match the `hub-N` string
   program-hub.html announces in its `spotter-hub-ready` message) — bump
   **both** whenever program-hub.html changes; this busts the iframe's HTTP

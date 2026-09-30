@@ -83,6 +83,9 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
       },
       close() { $("acctClose").click(); },
       role: () => (($("acctBody").querySelector(".acct-role")) || {}).textContent,
+      // Load/Save (every copy of them) show only with html.can-files; the CSS hides the rest.
+      files: () => doc.documentElement.classList.contains("can-files") &&
+        ["loadBtn", "saveBtn", "loadBtn2", "saveBtn2", "loadBtnEmpty"].every(id => $(id).closest(".files-only") || $(id).classList.contains("files-only")),
     };
     apps.push(app);
     return app;
@@ -98,6 +101,8 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   check("boots with no script errors", A.real().length === 0, A.real().join(" | "));
   check("account button shows signed out", /\bout\b/.test(A.$("acctDot").className));
   check("the old PIN dialog is gone", !A.$("pinScrim"));
+  check("signed out: no loading or saving files", !A.files());
+  check("...the start screen asks to sign in instead", /Sign in to see the program/.test(A.$("emptyAcctText").textContent) && A.$("emptySignIn").textContent === "Sign in");
   await A.load(SAM, "sam.csv");
   check("a CSV loads as usual", A.names().join() === "Sam");
   check("no Manage program without a coach account", !A.navs().includes("Manage program"), A.navs().join());
@@ -124,6 +129,7 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   check("the right code signs in", await until(() => A.$("acctTitle").textContent === "Account"));
   await A.settle();
   check("as Owner", A.role() === "Owner", A.role());
+  check("the owner can load and save files", A.files());
   check("a backup of the device was kept first", !!(A.store("spotter.preCloudBackup.v1") || {}).profiles?.Sam);
   check("Manage program appears", A.navs().includes("Manage program"));
   check("the unload button becomes sign out", A.$("unloadLabel").textContent === "Sign out & clear device");
@@ -215,6 +221,7 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   C.close(); await tick(100);
   await C.load(TOM, "tom.csv");
   check("still no Manage program while pending", !C.navs().includes("Manage program"));
+  check("...nor loading or saving files", !C.files());
 
   A.sync(); await A.settle();
   check("the owner sees a badge", A.$("acctBadge").textContent === "1" && !A.$("acctBadge").hidden);
@@ -228,6 +235,7 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
 
   C.sync(); await C.settle(); await tick(100);
   check("the coach gets Manage program", C.navs().includes("Manage program"));
+  check("...and loading and saving files", C.files());
   check("and is offered the upload", C.$("confirmScrim").classList.contains("show"));
   C.$("confirmYes").click();
   check("Tom uploaded", await until(async () => !!(await lifterId("Tom"))));
@@ -256,6 +264,11 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   check("nobody else's lifters", !D.names().includes("Sam"));
   D.pick("Tom"); await tick();
   check("no Manage program", !D.navs().includes("Manage program"));
+  check("no loading or saving files for a lifter", !D.files());
+  check("...every copy is marked coach-only (header, ⋯ menu, sidebar, start screen)",
+    ["loadBtn", "saveBtn", "loadBtn2", "saveBtn2", "scanBtn"].every(id => D.$(id).classList.contains("files-only")) &&
+    [...D.$("moreMenu").querySelectorAll('[data-for="loadBtn"], [data-for="saveBtn"]')].every(b => b.classList.contains("files-only")) &&
+    !!D.$("loadBtnEmpty").closest(".files-only"));
   check("but Overview, Analytics, RPE Estimator, Velocity Tracker and weeks", ["Overview", "Analytics", "RPE Estimator", "Velocity Tracker", "Week 1"].every(n => D.navs().includes(n)), D.navs().join());
   check("no upload prompt for a lifter", !D.$("confirmScrim").classList.contains("show"));
   C.sync(); await C.settle();
@@ -291,6 +304,7 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
     (await server.sql("select coach_status from public.accounts where email = 'coach@test.invalid'"))[0].coach_status === "revoked"));
   A.close();
   C.sync(); await C.settle();
+  check("the coach loses file loading with it", !C.files());
   check("the coach loses Tom and Manage program at once", !C.names().includes("Tom") && !C.navs().includes("Manage program"), C.names().join());
   check("...off the device, not just the screen", !("Tom" in C.store("spotter.profiles.v1")) && !("Tom" in (C.store("spotter.done.v1") || {})));
   check("...and sees the empty start screen", C.$("viewEmpty").classList.contains("active"));

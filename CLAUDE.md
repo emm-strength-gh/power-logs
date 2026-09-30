@@ -1,10 +1,10 @@
 # EmmStrength Spotter (Power Logs App)
 
 An installable iPhone/desktop PWA for powerlifting training logs. No build step,
-no framework, no backend — four self-contained HTML files with inline
+no framework, no server of our own — four self-contained HTML files with inline
 `<script>`/`<style>`, deployed as static files to GitHub Pages and installed to
-the iOS home screen via Safari. All data lives in `localStorage` on-device;
-nothing syncs anywhere. This folder is a git repo tracking
+the iOS home screen via Safari. Data lives in `localStorage` on-device; signed
+in, it also syncs through Supabase (see *Accounts + sync*). This folder is a git repo tracking
 `origin/main` (https://github.com/emm-strength-gh/power-logs), kept
 byte-for-byte identical to it — deploy by committing the files you changed and
 `git push origin main`. `node_modules/` and `test-assets/` (a personal video)
@@ -18,7 +18,7 @@ edges in more depth than this file.
 
 | File | Role | Standalone? |
 |---|---|---|
-| [power-logs.html](power-logs.html) | **The main app** ("Spotter"). Lifter profiles, weekly program view, done/skip tracking, notes, custom items, Manage Program (day/week editing, PIN-gated), Analytics, Compare, plate calculator, rest timer, warm-up calculator, JSON/CSV import-export. Hosts the other three apps in iframes. | Yes — this is the PWA entry point (`start_url`). |
+| [power-logs.html](power-logs.html) | **The main app** ("Spotter"). Lifter profiles, weekly program view, done/skip tracking, notes, custom items, Manage Program (day/week editing, coaches only), accounts + cloud sync, Analytics, Compare, plate calculator, rest timer, warm-up calculator, JSON/CSV import-export. Hosts the other three apps in iframes. | Yes — this is the PWA entry point (`start_url`). |
 | [program-hub.html](program-hub.html) | Program **builders**: Meet Peak v2 Gen Pop (balanced 16-week peak, first card), Gustav, Wendler, equipped lifting, single-lift (squat/bench/deadlift), combined, Lilliebridge, KSB, CVBT, MDL, fatigue-managed, etc. Generates a CSV program. | Yes, and also opens inside Spotter as the **Program Hub** tab in Manage Program. |
 | [VBT.html](VBT.html) | **Velocity Tracker**. Loads a video clip, tracks the barbell path frame-by-frame, computes bar speed/RPE per rep, detects stalls/grinds, exports an annotated MP4 (custom `mp4Mux` muxer + WebCodecs) or CSV. | Yes, and opens inside Spotter from the **Velocity Tracker** nav button. |
 | [rpe-estimator.html](rpe-estimator.html) | RPE ↔ %1RM load-chart tool (Chart.js). | Yes, and opens inside Spotter (RPE Estimator in the sidebar). |
@@ -95,13 +95,42 @@ the `.vN` suffix if you ever change a stored shape incompatibly.
   weight/collar mode, rest-timer duration/alert pref), Day-Manager
   add-panel-open state.
 
-Manage Program's day/week editing (PIN-gated via `DM_PIN_HASH`, a SHA-256 of
-the PIN implemented inline as `sha256()`) keeps a **donor** program in memory
-only — imported from a file or received from the Program Hub — and never
+Manage Program's day/week editing (coaches only: `canManage(name)`, see below)
+keeps a **donor** program in memory only — imported from a file or received from the Program Hub — and never
 writes it to `PROFILES`/localStorage until the user explicitly
 Replaces/Merges a day or week. A 5-deep undo stack (`dmUndoStack`) backs
 row/day/week deletes and edits there; drag-to-reorder deliberately isn't
 undoable.
+
+## Accounts + sync (Supabase)
+
+The "Cloud: accounts + sync" section of power-logs.html. localStorage stays the
+working copy; the database is Supabase (project URL + **publishable** key are in
+the page, public by design). **Who may see or change what is enforced only by
+row-level security in [supabase/schema.sql](supabase/schema.sql)**; the app's own
+checks (`isOwner`/`isCoach`/`canManage`/`isCoachManaged`) just decide what to show.
+Never put the secret key or the owner's email in this repo: the owner is set by a
+private script kept outside it (`private.settings`).
+
+- Roles: owner (sees all, approves coaches via the `decide_coach` RPC), coach
+  (`coach_status = 'approved'`; edits lifters linked in `lifter_coaches`), lifter
+  (`lifters.lifter_email` matches their confirmed email; reads the program, writes
+  only the log tables). Manage Program shows only when `canManage(current)`; a
+  lifter only on this device counts as the coach's own. The old PIN is gone.
+- Tables: `lifters` (program as jsonb without `name`/`cloudId`/flat `week.rows`),
+  and one small row per tick/note/item: `lifter_marks`, `lifter_row_notes`
+  (null body = no override), `lifter_custom` (item carries `pos`),
+  `lifter_week_notes`, `lifter_coach_notes` (coaches only), `user_prefs`.
+- Every `safeWrite` to a store in `SYNCED_STORES` calls `cloudDirty()` →
+  `syncNow()`: pull (apply server rows unless the local value differs from
+  `CLOUD.shadow`, i.e. has an unsent change), then push (diff against `shadow`,
+  `lifterChanges()`). Programs are compared by hash (`progHash`, stable JSON),
+  not stored twice. Writes that come from the server go through `quietWrite` so
+  they don't trigger another upload. Profiles carry `cloudId`; the local key is
+  still the name (`localNameFor` suffixes clashes).
+- Changing the database: edit `supabase/schema.sql` (keep it re-runnable), run
+  `node test-cloudsql.js`, and have the user paste it into Supabase **before**
+  deploying app code that needs it.
 
 ## Theming
 
@@ -116,7 +145,7 @@ iframes (`pushThemeToEmbeds()`).
 Four independent counters, all manual, no build tooling enforces them:
 
 - `CACHE_VERSION` in [sw.js](sw.js) — bump when the **file list** changes
-  (added/renamed files) or the pinned Chart.js version changes. Bumping drops
+  (added/renamed files) or a pinned library version (Chart.js, supabase-js) changes. Bumping drops
   every old cache on next activation. Do **not** bump for ordinary HTML edits
   — those are served network-first already.
 - `APP_BUILD` in power-logs.html — cosmetic, shown in Manage Program so
@@ -134,25 +163,29 @@ No test framework/runner — plain Node scripts that regex/DOM-inspect the
 built HTML files directly:
 
 ```bash
-npm install jsdom   # one-time, only needed for test-boot.js
+npm install         # one-time: jsdom, and PGlite (in-memory Postgres) for the cloud tests
 node test-boot.js       # PWA wiring smoke test (manifest, icons, saveFile routing, sw coverage)
 node test-weekrange.js  # Program Hub week-range export parsing, across all builders
 node test-genpop.js     # Meet Peak v2 Gen Pop: balance, loads, attempts, Clean, real import into power-logs.html
 node test-lifterorder.js # Rearrange lifters: sheet, dropdown entry, persistence, reload, unload
-node test-dmnotes.js    # Manage Program Notes: PIN-only, editor, links, backups, Weekly notes regression
+node test-dmnotes.js    # Manage Program Notes: coach-only, editor, links, backups, Weekly notes regression
 node test-reimport.js   # Re-imports keep training maxes; CSV still wins for 1-rep maxes
 node test-managelayout.js # Manage tab: section order + every action from its new place
 node test-hubprefill.js # Hub builders prefilled from the loaded lifter (both pages)
 node test-hubanalytics.js # Hub analytics charts + parity with Power Logs' Analytics view
+node test-cloudsql.js   # supabase/schema.sql + selftest.sql on PGlite: the row-level security rules
+node test-cloudsync.js  # accounts + sync end to end, several jsdom devices on one PGlite database
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all ten. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all twelve. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of power-logs.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
-Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program (PIN-gated) swap
-`DM_PIN_HASH` in their in-memory copy of the page for `sha256(DM_PIN_SALT +
-"24682468")`, so the real PIN is never needed (see test-dmnotes.js). Any jsdom script that boots a page must end with
+Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:
+`beforeParse(w) { installCoach(w); }` from test-cloudfake.js, which plugs a
+stand-in into `window.__spotterCloud` (what `cloudApi()` uses instead of
+supabase-js). test-cloudfake.js's `pgServer()` is the real-rules version: every
+call runs as the signed-in user against supabase/schema.sql on PGlite. Any jsdom script that boots a page must end with
 `process.exit()`: both pages leave intervals running, so node never exits on its own.
 
 ## Adding a Program Hub builder

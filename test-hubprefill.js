@@ -2,13 +2,13 @@
  * Run: node test-hubprefill.js
  *
  * Part 1 drives program-hub.html (embedded) with spotter-lifter messages.
- * Part 2 checks power-logs.html sends them. Manage Program is PIN-gated; like
- * test-dmnotes.js, part 2 swaps DM_PIN_HASH for a throwaway 8-digit PIN.
+ * Part 2 checks power-logs.html sends them, signed in as a coach through the
+ * stand-in cloud in test-cloudfake.js (Manage Program is for coaches).
  */
 const fs = require("fs");
 const path = require("path");
-const crypto = require("crypto");
 const { JSDOM, VirtualConsole } = require("jsdom");
+const { installCoach } = require("./test-cloudfake");
 
 let failures = 0, checks = 0;
 const check = (name, cond, extra = "") => {
@@ -17,15 +17,16 @@ const check = (name, cond, extra = "") => {
   console.log(`${cond ? "  ok  " : " FAIL "} ${name}${extra && !cond ? " — " + extra : ""}`);
 };
 const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
-function boot(file, url, html) {
+function boot(file, url, setup) {
   const errors = [];
-  const dom = new JSDOM(html || fs.readFileSync(path.join(__dirname, file), "utf8"), {
+  const dom = new JSDOM(fs.readFileSync(path.join(__dirname, file), "utf8"), {
     runScripts: "dangerously",
     pretendToBeVisual: true,
     url,
     virtualConsole: new VirtualConsole()
       .on("jsdomError", e => errors.push(e.message))
       .on("error", m => errors.push(String(m))),
+    beforeParse(w) { if (setup) setup(w); },
   });
   dom.window.Element.prototype.scrollIntoView = function () {};
   dom.window.scrollTo = function () {};
@@ -108,11 +109,7 @@ const DEAD  = ["in-deadlift", "w-deadlift", "e-rdead", "d-max", "cb-dead", "lb-d
 
   /* ---------------------------------------------------- part 2: power logs */
   console.log("\nPower Logs sends the lifter");
-  const TEST_PIN = "24682468";
-  const src = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
-  const salt = (src.match(/var DM_PIN_SALT = "([^"]*)";/) || [])[1] || "";
-  const app = boot(null, "https://example.github.io/spotter/power-logs.html",
-    src.replace(/var DM_PIN_HASH = "[0-9a-f]{64}";/, `var DM_PIN_HASH = "${crypto.createHash("sha256").update(salt + TEST_PIN).digest("hex")}";`));
+  const app = boot("power-logs.html", "https://example.github.io/spotter/power-logs.html", installCoach);
   const aw = app.w, a$ = id => aw.document.getElementById(id);
   await new Promise(res => { if (aw.document.readyState === "complete") res(); else aw.addEventListener("load", res); setTimeout(res, 4000); });
   const input = a$("fileInput");
@@ -120,8 +117,6 @@ const DEAD  = ["in-deadlift", "w-deadlift", "e-rdead", "d-max", "cb-dead", "lb-d
   input.dispatchEvent(new aw.Event("change"));
   await tick(400);
   [...aw.document.querySelectorAll("#sideNav .nav-item")].find(n => /Manage program/.test(n.textContent)).click();
-  await tick();
-  a$("pinInput").value = TEST_PIN; a$("pinOk").click();
   await tick(100);
   check("Manage Program opens", a$("viewDayMgr").classList.contains("active"));
   async function setTM(label, v) {

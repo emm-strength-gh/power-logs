@@ -14,7 +14,9 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `program-hub.html` | The program builders (Gustav, Wendler, and the rest). Opens inside the app as the **Program Hub** tab in Manage Program, and also works standalone. Precached for offline use. |
 | `VBT.html` | Velocity Tracker — barbell velocity and RPE from a video clip. Opens inside the app from the **Velocity Tracker** nav button, and also works standalone. Precached for offline use. |
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
-| `sw.js` | Service worker. Offline caching, including Chart.js. |
+| `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
+| `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
+| `supabase/selftest.sql` | 47 checks on those rules. Paste and run after the schema; every row should say PASS. |
 | `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
 | `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the original logo). |
 | `.nojekyll` | Stops GitHub Pages running the files through Jekyll. |
@@ -22,11 +24,14 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-weekrange.js` | Program Hub week-range export tests across all builders — `node test-weekrange.js`. |
 | `test-genpop.js` | Meet Peak v2 · Gen Pop builder checks, plus a real import of its CSV into the app — `node test-genpop.js`. |
 | `test-lifterorder.js` | Rearranging lifters: the sheet, the dropdown entry, saving and reloading the order — `node test-lifterorder.js`. |
-| `test-dmnotes.js` | Manage Program's Notes card: PIN-only visibility, editing, links, backups, and that Weekly notes still work — `node test-dmnotes.js`. |
+| `test-dmnotes.js` | Manage Program's Notes card: coach-only, editing, links, backups, and that Weekly notes still work — `node test-dmnotes.js`. |
 | `test-reimport.js` | Re-importing a lifter's CSV or an older JSON backup keeps their training maxes; the CSV still sets the 1-rep maxes — `node test-reimport.js`. |
 | `test-hubanalytics.js` | Program Hub analytics: charts for each program, controls, and the same numbers as Power Logs' Analytics for the same CSV — `node test-hubanalytics.js`. |
 | `test-hubprefill.js` | Program Hub builders filled from the loaded lifter: every builder, typed values kept, Wendler/Massthetics TM %, and Power Logs sending it — `node test-hubprefill.js`. |
 | `test-managelayout.js` | Manage Program's Manage tab: section order, and every action from its place (add exercise, days & weeks, undo, import, replace/merge, clear, compare) — `node test-managelayout.js`. |
+| `test-cloudsql.js` | The database rules on a real (in-memory) Postgres: `supabase/selftest.sql`, re-running the schema, owner set-up — `node test-cloudsql.js`. |
+| `test-cloudsync.js` | Accounts + sync end to end: sign-in, upload, two devices, offline and conflicts, coach approval, a lifter's own login, sharing, removing a coach, deleting, sign-out — `node test-cloudsync.js`. |
+| `test-cloudfake.js` | Not a test: the stand-in Supabase the tests plug in (`window.__spotterCloud`). |
 | `test-vbt.js` | Velocity Tracker smoke test — `node test-vbt.js`. |
 | `make_icons.py` | Regenerates the icons from `icons/_source.png`. |
 
@@ -44,13 +49,15 @@ Safari specifically — Chrome and Firefox on iOS can't install to the home scre
 HTTPS is required for service workers, and Pages provides it.
 
 > Free-tier GitHub Pages makes the published site public even from a private repo.
-> No training data ships in these files and nothing leaves your phone, but if you
-> want the URL unreachable, Cloudflare Pages with Access is the free alternative.
+> No training data ships in these files. Signed in, it syncs to Supabase behind each
+> person's login; signed out, nothing leaves the device.
 
 ## Read this bit: where your training data lives
 
 The app keeps profiles, done/skip state, notes and custom items in `localStorage` on
-the phone. Nothing syncs anywhere. Two consequences:
+the device, and that stays the working copy even when you're signed in: every change
+saves here first, so the app works offline. Sign in (the person icon in the header)
+and it also syncs to the cloud (see *Accounts and sync*). Signed out, nothing syncs, and:
 
 - **The phone copy and the desktop copy are separate.** Same URL, different
   device, different data. Moving a lifter between them means exporting the JSON on
@@ -64,9 +71,52 @@ I added a `navigator.storage.persist()` request at boot, which asks iOS to mark 
 data as persistent rather than best-effort. Installed apps are usually granted it
 without a prompt. It meaningfully reduces the risk; it does not remove it.
 
-**So: keep exporting the JSON.** That file is the real backup, and it round-trips
-the full profile including progress. Worth doing at the end of each block, or any
-week where you've done a lot of editing.
+**Signed out: keep exporting the JSON.** That file is the real backup, and it
+round-trips the full profile including progress. Signed in, the cloud copy is the
+backup, but **Save progress (JSON)** still works whenever you want a file.
+
+## Accounts and sync
+
+Supabase (Postgres plus email-code sign-in) holds a copy of every signed-in person's
+data. There's no server of ours: the page talks to Supabase directly with its
+**publishable** key, which is public by design. What each account can see or change
+is enforced by the database's row-level security rules (`supabase/schema.sql`), not
+by the app, so a modified copy of the page can't get around them.
+
+- **Owner** (set by a private SQL script, so the email isn't in this public repo):
+  sees every lifter and approves coaches under **Coaches** in the account sheet (the
+  person icon shows a badge for requests); can remove a coach at any time.
+- **Coach**: signs in, taps **I'm a coach: request access**, and once approved gets
+  Manage Program for the lifters they upload or that another coach shares with them.
+  Manage Program → **Sharing** holds the lifter's own sign-in email, the list of
+  coaches (share by email, remove), and **Delete lifter for everyone**.
+- **Lifter**: signs in with the email their coach entered. Sees only their own program
+  (Overview, weeks, Analytics, 1-rep maxes, RPE Estimator, Velocity Tracker) and logs
+  it; no Manage Program, and a file can't replace a program their coach manages.
+- **Signed out**: the app works on local data as it always has, but Manage Program
+  needs a coach account. The old 8-digit PIN is gone: its hash shipped in this public
+  page, so it only ever slowed people down.
+
+How it syncs: each change is saved locally, then compared with what the server last
+held, and only the differences go up, as small rows (one per tick, exercise note,
+added item, weekly note), so two people editing the same lifter don't overwrite each
+other. When the same thing changes on two devices, the change that reaches the server
+last wins. Other devices' changes arrive live while the app is open, and whenever it's
+opened or brought back. Offline, changes wait on the device (the dot on the person
+icon turns amber) and go up when it's back online.
+
+On first sign-in each device keeps a copy of its data from before the sync
+(`spotter.preCloudBackup.v1`, saveable from the account sheet). A coach is asked once
+whether to upload the device's lifters. A lifter already on the device under the same
+name as one in the account is treated as the same lifter: the cloud's program wins,
+and ticks and notes found only on the device are kept and uploaded. While signed in,
+the Unload button becomes **Sign out & clear device**: synced lifters leave the
+device and come back on the next sign-in; lifters only on the device stay.
+
+Supabase's free plan pauses a project after a week without use; restore it from the
+Supabase dashboard (the app keeps working offline meanwhile). Sign-in emails go out
+through the owner's Gmail (SMTP with an app password, set in Supabase). The database
+set-up guide and the owner script live outside this repo.
 
 ## What changed inside the HTML
 
@@ -116,13 +166,16 @@ That's why the dropdown opens a sheet instead.
    a **Whole week** row that say what goes where ("Imported W1D1 → your W9D1").
 4. **Import:** import a CSV/JSON or build one in the Program Hub; once loaded,
    **Import a different program** and **Clear import** live here too.
+5. **Sharing** (signed in as a coach): the lifter's sign-in email, their coaches,
+   and deleting the lifter for everyone. A lifter only on this device gets an
+   **Upload** button instead.
 
 ## Notes in Manage Program
 
 Manage Program's top section has a **Notes** card under the two maxes cards: one
 free-text note per lifter, edited in the same sheet as Weekly notes (multi-line,
-links become tappable). It never appears on the Overview or the week pages, so it's
-only readable behind the Manage Program PIN, and leaving Manage Program locks it again.
+links become tappable). It never appears on the Overview or the week pages, and it
+syncs only between the lifter's coaches: the database never sends it to the lifter.
 It's stored separately from the program, so re-importing a lifter's CSV keeps it. It
 travels in **Save progress (JSON)** backups but never in CSV exports.
 
@@ -261,7 +314,9 @@ but can still stutter on a slow device.
 Chart.js is pinned at `4.4.1` on cdnjs and is **precached on install**, not just on
 first use. Without that, every analytics and chart view would be blank offline,
 which is most of what the app is for on a phone. Bricolage Grotesque and Inter are
-cached the same way.
+cached the same way, and so is supabase-js (pinned at `2.117.2` on jsdelivr), so a
+coach can still reach Manage Program offline. Calls to Supabase itself are never
+cached: the worker leaves them alone.
 
 The page still sends `Cache-Control: no-store` via `<meta http-equiv>`. Browsers
 ignore that tag for cache decisions and it has no effect on the Cache Storage API,
@@ -279,12 +334,17 @@ outright instead of just missing its Send button.
 
 Push a new `power-logs.html` and reopen. HTML is fetched network-first, so you get
 the new build whenever you're online, with the old one as offline fallback. Bump
-`CACHE_VERSION` in `sw.js` only if you add/rename files or change the Chart.js
-version.
+`CACHE_VERSION` in `sw.js` only if you add/rename files or change the Chart.js or
+supabase-js version.
+
+If you change `supabase/schema.sql`, paste it into Supabase's SQL Editor and run it
+(it's written to be re-run), then run `supabase/selftest.sql` there too. Do that
+**before** pushing an app build that depends on the change.
 
 **Updating never touches your data** — `localStorage` survives new builds. But if
 you ever need the nuclear option (Settings → Safari → Advanced → Website Data →
-remove the site), that *does* wipe it. Export first.
+remove the site), that *does* wipe it. Signed in, sign in again and it comes back
+from the cloud; signed out, export first.
 
 ## Known rough edges
 

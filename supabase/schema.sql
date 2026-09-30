@@ -1,4 +1,4 @@
--- EmmStrength Spotter: accounts + cloud sync.
+-- EmmStrength Power Logs: accounts + cloud sync.
 -- Paste the whole file into Supabase > SQL Editor and press Run.
 -- Safe to run again later (every statement replaces or skips what exists),
 -- which is how future schema changes will be delivered.

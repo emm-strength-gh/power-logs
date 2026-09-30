@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
-<title>Bar Speed — Spotter</title>
-<!-- Shares Spotter's manifest and icons on purpose: this is a page inside the
-     Spotter app, not a separate installable app. Installing from here and from
+<title>Bar Speed — Power Logs</title>
+<!-- Shares Power Logs' manifest and icons on purpose: this is a page inside the
+     Power Logs app, not a separate installable app. Installing from here and from
      power-logs.html gives the same home-screen app. -->
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#f1f3ee">
@@ -370,7 +370,7 @@ input[type=range].rng{width:100%;accent-color:var(--ink);min-height:30px;margin:
 <div class="app" id="app">
 
   <header class="tbar">
-    <a class="mark back" id="brand" href="./power-logs.html">‹ Spotter</a>
+    <a class="mark back" id="brand" href="./power-logs.html">‹ Power Logs</a>
     <button type="button" class="eject hid" id="ejectBtn" aria-label="Eject video">
       <span aria-hidden="true">⏏</span><span id="ejectLabel">Eject</span>
     </button>
@@ -3518,7 +3518,7 @@ if("serviceWorker" in navigator){
 </script>
 
 <!-- ============================================================
-     Spotter embed shim.
+     Power Logs embed shim.
      Only runs when loaded inside Power Logs (?embed=1). Opened on
      its own, this file is untouched — nothing below executes.
      Kept separate from the tool's own logic above.
@@ -3538,7 +3538,7 @@ if("serviceWorker" in navigator){
 
   document.documentElement.setAttribute("data-embedded", "1");
 
-  // Hide only the "‹ Spotter" back link — the app supplies its own Back button.
+  // Hide only the "‹ Power Logs" back link — the app supplies its own Back button.
   // The step trail (1-2-3-4) stays: that's the tool's own navigation.
   var base =
     "#brand{display:none !important}" +
@@ -3566,7 +3566,7 @@ if("serviceWorker" in navigator){
   });
   applyHostTheme(qp("theme"));   // honour the URL so there's no wrong-palette flash
 
-  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-19" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-vbt-ready", features: ["theme"], build: "vbt-20" }, "*"); } catch (e) {}
 })();
 </script>
 

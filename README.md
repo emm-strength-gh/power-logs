@@ -1,4 +1,4 @@
-# EmmStrength Spotter — iPhone home-screen app
+# EmmStrength Power Logs — iPhone home-screen app
 
 `power-logs.html` wrapped as an installable PWA. Runs full-screen with its own icon,
 works offline including charts, and exports JSON/CSV through the iOS share sheet.
@@ -267,7 +267,7 @@ The tracker is built to fit the screen with no page scroll:
   magnifier follows the circle's centre, with a crosshair for lining it up on the hub.
 - **Bar path:** on the replay and the exported video, the concentric part of each
   counted rep is drawn in yellow; descents, pauses and un-counted reps stay blue.
-- **Inside Spotter:** one-line header (details behind ⓘ), and the frame is sized to
+- **Inside Power Logs:** one-line header (details behind ⓘ), and the frame is sized to
   the rest of the window, so there's one scroll area at most.
 
 ## Tracking and defaults

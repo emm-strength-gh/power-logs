@@ -1,4 +1,4 @@
-/* Service worker for EmmStrength Spotter.
+/* Service worker for EmmStrength Power Logs.
  *
  * Strategy:
  *   HTML / navigation   -> network-first, cache fallback. Online you get the newest

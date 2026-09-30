@@ -21,7 +21,7 @@
 <!-- Same pinned Chart.js as power-logs.html (sw.js precaches this exact URL). -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
-/* Spotter embed: runs before the app's own initTheme(), which persists a theme to
+/* Power Logs embed: runs before the app's own initTheme(), which persists a theme to
    localStorage on every load. Embedded, that would create or overwrite the
    preference this file uses when opened on its own, so snapshot it here and the
    shim at the end of <body> puts it back. No-op when not embedded. */
@@ -297,7 +297,7 @@
 
   /* ---- built-view layout: sticky collapsed setup + action bar + two-pane ----
      Keeps the 1RM inputs reachable once a program is built. Standalone only:
-     embedded in Spotter the iframe is sized to its full content and the host
+     embedded in Power Logs the iframe is sized to its full content and the host
      page owns the scroll, so sticky/fixed here can't pin to the viewport —
      every rule below is gated behind :root:not([data-embedded]). */
   #ctxbar{
@@ -6446,7 +6446,7 @@ if("serviceWorker" in navigator){
 </script>
 
 <!-- ============================================================
-     Spotter embed shim.
+     Power Logs embed shim.
      Only active when loaded inside the Power Logs app (?embed=1).
      Opened directly this file is untouched — nothing below runs.
      Kept separate from the generator's own logic above.
@@ -6649,7 +6649,7 @@ if("serviceWorker" in navigator){
     });
   });
 
-  try { parent.postMessage({ type: "spotter-hub-ready", features: ["send", "height", "theme", "prefill"], build: "hub-7" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-hub-ready", features: ["send", "height", "theme", "prefill"], build: "hub-8" }, "*"); } catch (e) {}
 
   // ---- Send the built program straight into Manage Program's donor slot ----
   // Reuses the page's own export pipeline: syncExportScope() parses and validates

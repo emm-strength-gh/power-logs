@@ -8,6 +8,9 @@
  *                 runs as the signed-in user, so the database's row-level
  *                 security decides what each device may see and change, exactly
  *                 as it does live. server.device() gives one app its client.
+ *                 Its invoke("notify") runs supabase/functions/notify/index.ts
+ *                 here (types stripped), against the same database with the
+ *                 service role's view; pushes land in server.pushes.
  */
 const fs = require("fs");
 const path = require("path");
@@ -29,6 +32,8 @@ function coachCloud() {
       ? [{ user_id: user.id, email: user.email, role: "owner", coach_status: "none", display_name: "" }]
       : [],
     upsert: async (t, rows) => { calls.push(["upsert", t, rows]); },
+    remove: async (t, col, val) => { calls.push(["remove", t, col, val]); },
+    invoke: async (fn, body) => { calls.push(["invoke", fn, body]); return { sent: 0 }; },
     insert: async (t, rows) => { calls.push(["insert", t, rows]); },
     update: async (t, id, patch) => { calls.push(["update", t, id, patch]); },
     rpc: async (fn, args) => { calls.push(["rpc", fn, args]); return null; },
@@ -70,7 +75,71 @@ async function pgServer() {
   await db.exec(`insert into private.settings (owner_email) values ('${OWNER_EMAIL}')`);
 
   const listeners = new Set();
-  const ident = s => { if (!/^[a-z_]+$/.test(s)) throw new Error("bad identifier " + s); return s; };
+  const invocations = [], pushes = [];
+
+  // ---- supabase/functions/notify, run here. The admin client is a small
+  // query builder over the same database as the superuser (which, like the
+  // service role, isn't bound by row-level security); web-push just records.
+  function adminBuilder(table) {
+    const st = { op: "select", cols: "*", where: [], args: [], patch: null, single: false };
+    const b = {
+      select(cols) { if (st.op === "select") st.cols = cols || "*"; else st.returning = true; return b; },
+      update(patch) { st.op = "update"; st.patch = patch; return b; },
+      delete() { st.op = "delete"; return b; },
+      eq(c, v) { st.args.push(v); st.where.push(`${ident(c)} = $${st.args.length}`); return b; },
+      in(c, arr) { st.args.push(arr); st.where.push(`${ident(c)}::text = any($${st.args.length}::text[])`); return b; },
+      is(c, v) { st.where.push(`${ident(c)} is ${v === null ? "null" : "not null"}`); return b; },
+      maybeSingle() { st.single = true; return b; },
+      then(ok, bad) {
+        const w = st.where.length ? " where " + st.where.join(" and ") : "";
+        let sql;
+        if (st.op === "select") sql = `select ${st.cols.split(",").map(c => c.trim() === "*" ? "*" : ident(c.trim())).join(", ")} from public.${ident(table)}${w}`;
+        else if (st.op === "update") {
+          const cols = Object.keys(st.patch).map(ident), base = st.args.length;
+          st.args.push(...cols.map(c => param(st.patch[c])));
+          sql = `update public.${ident(table)} set ${cols.map((c, i) => `${c} = $${base + i + 1}`).join(", ")}${w} returning *`;
+        } else sql = `delete from public.${ident(table)}${w}`;
+        return db.query(sql, st.args).then(r => {
+          const rows = plain(r.rows);
+          return { data: st.single ? (rows[0] || null) : rows, error: null };
+        }).then(ok, bad);
+      },
+    };
+    return b;
+  }
+  let notifyHandler = null;
+  function loadNotify() {
+    const { stripTypeScriptTypes } = require("node:module");
+    const src = fs.readFileSync(path.join(__dirname, "supabase", "functions", "notify", "index.ts"), "utf8")
+      .replace(/^import .*$/gm, "");
+    // Node flags this API as experimental on every call; the tests don't need telling.
+    const warn = process.emitWarning;
+    process.emitWarning = () => {};
+    const js = stripTypeScriptTypes(src);
+    process.emitWarning = warn;
+    const env = { SUPABASE_URL: "http://local", SUPABASE_SERVICE_ROLE_KEY: "service", VAPID_PUBLIC_KEY: "pub", VAPID_PRIVATE_KEY: "priv" };
+    const Deno = { env: { get: k => env[k] }, serve: fn => { notifyHandler = fn; } };
+    const webpush = {
+      setVapidDetails() {},
+      async sendNotification(sub, payload) {
+        if (/gone/.test(sub.endpoint)) { const e = new Error("gone"); e.statusCode = 410; throw e; }
+        pushes.push({ endpoint: sub.endpoint, ...JSON.parse(payload) });
+      },
+    };
+    const createClient = () => ({
+      from: adminBuilder,
+      auth: { getUser: async token => ({ data: { user: token ? { id: token } : null } }) },
+    });
+    new Function("Deno", "webpush", "createClient", js)(Deno, webpush, createClient);
+  }
+  async function runNotify(uid, body) {
+    if (!notifyHandler) loadNotify();
+    const res = await notifyHandler(new Request("http://local/notify", {
+      method: "POST", headers: { Authorization: "Bearer " + uid, "Content-Type": "application/json" }, body: JSON.stringify(body),
+    }));
+    return res.json();
+  }
+  const ident = s => { if (!/^[a-z_][a-z0-9_]*$/.test(s)) throw new Error("bad identifier " + s); return s; };
   // PostgREST hands timestamps back as ISO strings.
   const plain = rows => rows.map(r => {
     const o = {};
@@ -126,14 +195,14 @@ async function pgServer() {
       async fetch(table, o = {}) {
         await online();
         const where = [], args = [];
-        if (o.since) { args.push(o.since); where.push(`updated_at > $${args.length}`); }
+        if (o.since) { args.push(o.since); where.push(`${ident(o.sinceCol || "updated_at")} > $${args.length}`); }
         if (o.ids) { args.push(o.ids); where.push(`id = any($${args.length}::uuid[])`); }
         if (o.lifterIds) { args.push(o.lifterIds); where.push(`lifter_id = any($${args.length}::uuid[])`); }
         const cols = (o.columns || "*").split(",").map(c => c === "*" ? c : ident(c.trim())).join(", ");
         const sql = `select ${cols} from public.${ident(table)}${where.length ? " where " + where.join(" and ") : ""} order by ${ident(o.orderBy || "updated_at")}`;
         return asUser(me(), async tx => plain((await tx.query(sql, args)).rows));
       },
-      async upsert(table, rows, onConflict) {
+      async upsert(table, rows, onConflict, skipExisting) {
         await online();
         const keys = onConflict.split(",").map(ident);
         await asUser(me(), async tx => {
@@ -141,7 +210,7 @@ async function pgServer() {
             const cols = Object.keys(row).map(ident);
             const set = cols.filter(c => !keys.includes(c)).map(c => `${c} = excluded.${c}`);
             await tx.query(`insert into public.${ident(table)} (${cols.join(", ")}) values (${cols.map((_, i) => "$" + (i + 1)).join(", ")})
-              on conflict (${keys.join(", ")}) do ${set.length ? "update set " + set.join(", ") : "nothing"}`, cols.map(c => param(row[c])));
+              on conflict (${keys.join(", ")}) do ${set.length && !skipExisting ? "update set " + set.join(", ") : "nothing"}`, cols.map(c => param(row[c])));
           }
         });
         changed(api);
@@ -170,6 +239,16 @@ async function pgServer() {
         changed(api);
         return r.rows[0].r;
       },
+      async remove(table, col, val) {
+        await online();
+        await asUser(me(), tx => tx.query(`delete from public.${ident(table)} where ${ident(col)} = $1`, [val]));
+      },
+      async invoke(fn, body) {
+        await online();
+        const r = await runNotify(me(), body);
+        invocations.push({ from: label, body, result: r });
+        return r;
+      },
       listen(fn) {
         const l = { from: api, fn };
         listeners.add(l);
@@ -182,7 +261,7 @@ async function pgServer() {
 
   // Straight to the database as the superuser, for checking what's stored.
   const sql = async (q, args) => plain((await db.query(q, args)).rows);
-  return { db, device, sql, OWNER_EMAIL, GOOD_CODE };
+  return { db, device, sql, invocations, pushes, runNotify, OWNER_EMAIL, GOOD_CODE };
 }
 
 module.exports = { coachCloud, installCoach, pgServer, OWNER_EMAIL, GOOD_CODE };

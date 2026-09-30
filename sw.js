@@ -121,6 +121,38 @@ self.addEventListener("fetch", event => {
   event.respondWith(cacheFirst(req, CACHE_SHELL));
 });
 
+/* ------------------------------------------------------ notifications */
+/* Sent by the Supabase notify function (supabase/functions/notify) as
+   { title, body, url, tag }. The text never includes a message itself, only
+   who or what, since banners show on a locked screen. */
+self.addEventListener("push", event => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch (e) { d = {}; }
+  event.waitUntil(self.registration.showNotification(d.title || "Power Logs", {
+    body: d.body || "",
+    tag: d.tag || undefined,          // same tag replaces instead of stacking (e.g. one lifter's messages)
+    icon: "./icons/icon-192.png",
+    badge: "./icons/icon-192.png",
+    data: { url: d.url || "./power-logs.html" },
+  }));
+});
+
+/* Tapping one opens the app at the right place: an open window is told
+   where to go (it syncs first); otherwise a new one starts there. */
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const url = new URL((event.notification.data && event.notification.data.url) || "./power-logs.html", self.registration.scope).href;
+  event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
+    for (const c of list) {
+      if (c.url.startsWith(self.registration.scope) && "focus" in c) {
+        c.postMessage({ type: "spotter-open", url });
+        return c.focus();
+      }
+    }
+    return self.clients.openWindow(url);
+  }));
+});
+
 /* -------------------------------------------------------------- strategies */
 async function networkFirst(req, cacheName) {
   const cache = await caches.open(cacheName);

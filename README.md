@@ -16,7 +16,8 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
 | `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
-| `supabase/selftest.sql` | 47 checks on those rules. Paste and run after the schema; every row should say PASS. |
+| `supabase/selftest.sql` | Checks on those rules (77 at present). Paste and run after the schema; every row should say PASS. |
+| `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
 | `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
 | `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the original logo). |
 | `.nojekyll` | Stops GitHub Pages running the files through Jekyll. |
@@ -31,7 +32,8 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-managelayout.js` | Manage Program's Manage tab: section order, and every action from its place (add exercise, days & weeks, undo, import, replace/merge, clear, compare) — `node test-managelayout.js`. |
 | `test-cloudsql.js` | The database rules on a real (in-memory) Postgres: `supabase/selftest.sql`, re-running the schema, owner set-up — `node test-cloudsql.js`. |
 | `test-cloudsync.js` | Accounts + sync end to end: sign-in, upload, two devices, offline and conflicts, coach approval, a lifter's own login, sharing, removing a coach, deleting, sign-out — `node test-cloudsync.js`. |
-| `test-cloudfake.js` | Not a test: the stand-in Supabase the tests plug in (`window.__spotterCloud`). |
+| `test-messaging.js` | Messages, finished sessions, new-week alerts and notifications end to end, with the notify function run in-process — `node test-messaging.js`. |
+| `test-cloudfake.js` | Not a test: the stand-in Supabase the tests plug in (`window.__spotterCloud`), and the in-process runner for the notify function. |
 | `test-vbt.js` | Velocity Tracker smoke test — `node test-vbt.js`. |
 | `make_icons.py` | Regenerates the icons from `icons/_source.png`. |
 
@@ -146,6 +148,40 @@ Six edits, all additive except the icon swap:
 5. **`applyTheme()`** also sets the status bar tint, so it follows your toggle
    rather than the OS setting.
 6. **Service worker registration** with auto-activation of new builds.
+
+## Messages and notifications
+
+Signed-in lifters and their coaches message each other in the app: **Messages** in
+the lifter's sidebar, plus an **Inbox** for coaches listing every lifter they coach
+(unread counts on both, and a red dot on the menu button on phones).
+
+- **One thread or one per coach:** the lifter chooses, with the switch at the top of
+  their Messages. On (the default): one thread with all their coaches. Off: a private
+  thread with each coach. The other kind stays readable as history.
+- **A coach who joins later** sees the shared thread only from when they joined.
+- **Finished sessions:** when a lifter has marked every exercise of a day Done or
+  Skipped, their coaches are notified once (re-ticking doesn't repeat it), and the
+  Inbox shows it.
+- **New weeks:** after a coach adds weeks, Manage Program shows **Notify [lifter]** at
+  the top. One press sends "A new week is in your program" and it turns into a note
+  until more weeks are added. It's shared by all the lifter's coaches, and the
+  database enforces once per batch of new weeks.
+- **Notifications** (banners on iPhone, Android and computers) are turned on per
+  device in the account sheet, where each person also picks which kinds they want.
+  They never include a message's text, only who or what. On iPhone they need the
+  home-screen app (iOS 16.4 or later).
+- Messages are cached on the device to read offline; ones written offline are sent
+  when it's back online.
+
+How the notifications travel: after saving a message or event, the app calls the
+`notify` Edge Function (`supabase/functions/notify/index.ts`) with just its id. The
+function looks it up, checks the caller made it and it hasn't been announced yet,
+works out who should hear about it, and sends a Web Push to each of their devices;
+the service worker (`sw.js`) shows it and opens the right screen when it's tapped.
+The Web Push **public** key is in `power-logs.html`; the private one is a secret on
+the function in Supabase, never in this repo. Setting the function up is a one-off
+done in the Supabase dashboard (the private setup guide covers it). Until it is,
+messages still work, just without banners.
 
 ## Rearranging lifters
 

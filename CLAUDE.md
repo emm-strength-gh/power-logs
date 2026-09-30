@@ -130,6 +130,20 @@ private script kept outside it (`private.settings`).
   not stored twice. Writes that come from the server go through `quietWrite` so
   they don't trigger another upload. Profiles carry `cloudId`; the local key is
   still the name (`localNameFor` suffixes clashes).
+- Messages (the "Messages" section of power-logs.html, below the account sheet):
+  thread `team` = lifter + all their coaches, else one per coach keyed by the
+  coach's user id; the lifter chooses (`lifter_settings.team_thread`, RPC
+  `set_team_thread`). A coach reads the team thread only from their
+  `lifter_coaches.created_at`. Not local-first like the log: cached in
+  `spotter.messages.v1` (`MSG`) with an outbox, synced after the log in
+  `syncNow()` (a messaging failure only sets `CLOUD.msgError`). Finished days
+  (`sessionCheck()`, from `setDone`/`setSkipped`) and new weeks
+  (`notify_new_week` RPC, once per batch, shared by coaches) are
+  `lifter_events`. Notifications: Web Push via the `notify` Edge Function
+  (`supabase/functions/notify/index.ts`), called by the app with just an id;
+  it claims `notified_at` so each thing is announced once. `sw.js` shows them
+  and opens `power-logs.html?open=messages|week&lifter=…` (`applyPendingOpen`).
+  VAPID public key in the page; the private key is a Supabase secret only.
 - Changing the database: edit `supabase/schema.sql` (keep it re-runnable), run
   `node test-cloudsql.js`, and have the user paste it into Supabase **before**
   deploying app code that needs it.
@@ -179,10 +193,11 @@ node test-hubprefill.js # Hub builders prefilled from the loaded lifter (both pa
 node test-hubanalytics.js # Hub analytics charts + parity with Power Logs' Analytics view
 node test-cloudsql.js   # supabase/schema.sql + selftest.sql on PGlite: the row-level security rules
 node test-cloudsync.js  # accounts + sync end to end, several jsdom devices on one PGlite database
+node test-messaging.js  # messages, finished sessions, new-week alerts, push (notify function run in-process)
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all twelve. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all thirteen. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of power-logs.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

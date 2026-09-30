@@ -172,6 +172,14 @@ language sql stable security definer set search_path = '' as $$
      and exists (select 1 from public.lifters l where l.id = lid and l.deleted_at is null);
 $$;
 
+-- A lifter can see their own coaches' names (as message senders).
+create or replace function private.coaches_me(uid uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (
+    select 1 from public.lifters l join public.lifter_coaches c on c.lifter_id = l.id
+    where l.lifter_user_id = auth.uid() and l.deleted_at is null and c.coach_id = uid);
+$$;
+
 -- Coaches of the same lifter can see each other's names in the share list.
 create or replace function private.shares_lifter_with(uid uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
@@ -358,7 +366,8 @@ grant select, insert, update on public.lifters, public.lifter_marks, public.lift
 -- their co-coaches. Nobody writes it directly: only the functions above.
 drop policy if exists read on public.accounts;
 create policy read on public.accounts for select to authenticated
-  using (user_id = (select auth.uid()) or (select private.is_owner()) or private.shares_lifter_with(user_id));
+  using (user_id = (select auth.uid()) or (select private.is_owner()) or private.shares_lifter_with(user_id)
+         or private.coaches_me(user_id));
 
 -- lifters: coaches create and edit; the lifter only reads. No deletes:
 -- deleting is setting deleted_at, so other devices hear about it.
@@ -409,7 +418,7 @@ create policy own on public.user_prefs for all to authenticated
 revoke execute on all functions in schema private from public, anon;
 grant execute on function private.is_owner(), private.is_coach(), private.coaches(uuid),
   private.can_see(uuid), private.can_log(uuid), private.can_coach_live(uuid),
-  private.shares_lifter_with(uuid) to authenticated;
+  private.shares_lifter_with(uuid), private.coaches_me(uuid) to authenticated;
 revoke execute on function public.request_coach_access(text), public.set_display_name(text),
   public.decide_coach(uuid, text), public.share_lifter(uuid, text),
   public.unshare_lifter(uuid, uuid) from public, anon;
@@ -434,6 +443,255 @@ begin
     foreach t in array array['lifters', 'lifter_coaches', 'lifter_marks', 'lifter_row_notes',
                              'lifter_custom', 'lifter_week_notes', 'lifter_coach_notes',
                              'accounts'] loop
+      if not exists (select 1 from pg_publication_tables
+                     where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
+        execute format('alter publication supabase_realtime add table public.%I', t);
+      end if;
+    end loop;
+  end if;
+end $$;
+
+---------------------------------------------------------------- messages + notifications
+-- One conversation per lifter. The lifter chooses (lifter_settings.team_thread):
+--   on  (default) one thread, 'team', with the lifter and all their coaches;
+--   off           one private thread per coach, keyed by that coach's user id.
+-- Whichever kind is switched off stays readable as history but takes no posts.
+-- A coach sees the team thread only from when they started coaching the
+-- lifter (lifter_coaches.created_at). The owner takes part only in lifters
+-- they coach, like anyone else: seeing every program isn't reading every chat.
+
+create table if not exists public.lifter_settings (
+  lifter_id      uuid primary key references public.lifters(id) on delete cascade,
+  team_thread    boolean not null default true,
+  -- Week labels the lifter has been told about ("Notify" in Manage program).
+  notified_weeks jsonb not null default '[]'::jsonb,
+  notified_by    uuid,
+  notified_at    timestamptz,
+  updated_at     timestamptz not null default now()
+);
+
+-- Ids come from the app, so a message queued offline can be retried safely.
+create table if not exists public.messages (
+  id          uuid primary key default gen_random_uuid(),
+  lifter_id   uuid not null references public.lifters(id) on delete cascade,
+  thread      text not null check (thread = 'team' or thread ~ '^[0-9a-f-]{36}$'),
+  sender_id   uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  body        text not null check (length(btrim(body)) between 1 and 4000),
+  created_at  timestamptz not null default now(),
+  notified_at timestamptz
+);
+create index if not exists messages_thread_idx on public.messages (lifter_id, thread, created_at);
+create index if not exists messages_created_idx on public.messages (created_at);
+
+create table if not exists public.message_reads (
+  user_id   uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  lifter_id uuid not null references public.lifters(id) on delete cascade,
+  thread    text not null,
+  read_at   timestamptz not null default now(),
+  primary key (user_id, lifter_id, thread)
+);
+
+-- Things worth a notification besides messages. Unique, so each finished day
+-- (and each batch of new weeks) notifies once however often it's re-ticked.
+create table if not exists public.lifter_events (
+  id          uuid primary key default gen_random_uuid(),
+  lifter_id   uuid not null references public.lifters(id) on delete cascade,
+  kind        text not null check (kind in ('session_done', 'new_week')),
+  week        text not null default '',
+  day         text not null default '',
+  created_by  uuid default auth.uid(),
+  created_at  timestamptz not null default now(),
+  notified_at timestamptz,
+  unique (lifter_id, kind, week, day)
+);
+create index if not exists lifter_events_created_idx on public.lifter_events (created_at);
+
+-- One row per device that turned notifications on. prefs: which kinds it wants.
+create table if not exists public.push_subscriptions (
+  endpoint   text primary key,
+  user_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  p256dh     text not null,
+  auth       text not null,
+  prefs      jsonb not null default '{"messages": true, "sessions": true, "weeks": true}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create or replace function private.is_athlete(lid uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.lifters l
+                 where l.id = lid and l.lifter_user_id = auth.uid() and l.deleted_at is null);
+$$;
+-- When this coach started coaching the lifter; null if they don't (or aren't a coach now).
+create or replace function private.coach_since(lid uuid) returns timestamptz
+language sql stable security definer set search_path = '' as $$
+  select c.created_at from public.lifter_coaches c
+  where c.lifter_id = lid and c.coach_id = auth.uid() and private.is_coach();
+$$;
+create or replace function private.team_on(lid uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce((select s.team_thread from public.lifter_settings s where s.lifter_id = lid), true);
+$$;
+create or replace function private.can_read_msg(lid uuid, th text, sent timestamptz) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select private.is_athlete(lid)
+      or (private.coach_since(lid) is not null
+          and ((th = 'team' and sent >= private.coach_since(lid)) or th = auth.uid()::text));
+$$;
+create or replace function private.can_post(lid uuid, th text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.lifters l where l.id = lid and l.deleted_at is null)
+     and case
+       when th = 'team' then private.team_on(lid)
+            and (private.is_athlete(lid) or private.coach_since(lid) is not null)
+       else not private.team_on(lid)
+            and ((private.is_athlete(lid) and exists (select 1 from public.lifter_coaches c
+                                                      where c.lifter_id = lid and c.coach_id::text = th))
+              or (private.coach_since(lid) is not null and th = auth.uid()::text))
+     end;
+$$;
+
+-- The server decides who sent it and when, not the app.
+create or replace function private.messages_guard() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  new.sender_id := auth.uid();
+  new.created_at := now();
+  new.notified_at := null;
+  new.body := btrim(new.body);
+  return new;
+end $$;
+drop trigger if exists messages_guard on public.messages;
+create trigger messages_guard before insert on public.messages
+  for each row execute function private.messages_guard();
+
+create or replace function private.events_guard() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  new.created_by := auth.uid();
+  new.created_at := now();
+  new.notified_at := null;
+  return new;
+end $$;
+drop trigger if exists events_guard on public.lifter_events;
+create trigger events_guard before insert on public.lifter_events
+  for each row execute function private.events_guard();
+
+drop trigger if exists touch on public.push_subscriptions;
+create trigger touch before insert or update on public.push_subscriptions
+  for each row execute function private.touch_at();
+
+-- Weeks already in a program aren't "new": settle them when a lifter appears,
+-- and for lifters that existed before this section was added.
+create or replace function private.program_weeks(p jsonb) returns jsonb
+language sql immutable set search_path = '' as $$
+  select coalesce(jsonb_agg(w ->> 'week'), '[]'::jsonb)
+  from jsonb_array_elements(case when jsonb_typeof(p -> 'weeks') = 'array' then p -> 'weeks' else '[]'::jsonb end) w;
+$$;
+create or replace function private.lifters_settings() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  insert into public.lifter_settings (lifter_id, notified_weeks)
+  values (new.id, private.program_weeks(new.program)) on conflict do nothing;
+  return new;
+end $$;
+drop trigger if exists lifters_settings on public.lifters;
+create trigger lifters_settings after insert on public.lifters
+  for each row execute function private.lifters_settings();
+insert into public.lifter_settings (lifter_id, notified_weeks)
+select id, private.program_weeks(program) from public.lifters
+on conflict do nothing;
+
+-- The lifter's own choice.
+create or replace function public.set_team_thread(p_lifter uuid, p_on boolean) returns boolean
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not private.is_athlete(p_lifter) then raise exception 'only the lifter chooses this'; end if;
+  insert into public.lifter_settings (lifter_id, team_thread) values (p_lifter, p_on)
+  on conflict (lifter_id) do update set team_thread = excluded.team_thread, updated_at = now();
+  return p_on;
+end $$;
+
+-- "Notify [lifter]" after adding weeks: at most once per batch of new weeks,
+-- shared by all their coaches, whatever the app sends.
+create or replace function public.notify_new_week(p_lifter uuid) returns uuid
+language plpgsql security definer set search_path = '' as $$
+declare cur jsonb; told jsonb; fresh text; ev uuid;
+begin
+  if not private.can_coach_live(p_lifter) then raise exception 'not your lifter'; end if;
+  select private.program_weeks(l.program) into cur from public.lifters l where l.id = p_lifter;
+  select s.notified_weeks into told from public.lifter_settings s where s.lifter_id = p_lifter;
+  select string_agg(w, ', ') into fresh
+  from jsonb_array_elements_text(cur) w where not coalesce(told, '[]'::jsonb) ? w;
+  if fresh is null then return null; end if;
+  insert into public.lifter_settings (lifter_id, notified_weeks, notified_by, notified_at)
+  values (p_lifter, cur, auth.uid(), now())
+  on conflict (lifter_id) do update
+    set notified_weeks = excluded.notified_weeks, notified_by = excluded.notified_by,
+        notified_at = excluded.notified_at, updated_at = now();
+  insert into public.lifter_events (lifter_id, kind, week)
+  values (p_lifter, 'new_week', fresh)
+  on conflict (lifter_id, kind, week, day) do nothing
+  returning id into ev;
+  return ev;
+end $$;
+
+do $$
+declare t text;
+begin
+  foreach t in array array['lifter_settings', 'messages', 'message_reads', 'lifter_events', 'push_subscriptions'] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('revoke all on public.%I from public, anon, authenticated', t);
+  end loop;
+end $$;
+grant select on public.lifter_settings to authenticated;
+grant select, insert on public.messages, public.lifter_events to authenticated;
+grant select, insert, update on public.message_reads to authenticated;
+grant select, insert, update, delete on public.push_subscriptions to authenticated;
+
+-- Lifters also see who coaches them (to pick a coach to message). Replaces the
+-- coaches-only version above, which runs before is_athlete() exists.
+drop policy if exists read on public.lifter_coaches;
+create policy read on public.lifter_coaches for select to authenticated
+  using (coach_id = (select auth.uid()) or private.coaches(lifter_id) or private.is_athlete(lifter_id));
+
+drop policy if exists read on public.lifter_settings;
+create policy read on public.lifter_settings for select to authenticated using (private.can_see(lifter_id));
+
+drop policy if exists read on public.messages;
+create policy read on public.messages for select to authenticated
+  using (private.can_read_msg(lifter_id, thread, created_at));
+drop policy if exists add on public.messages;
+create policy add on public.messages for insert to authenticated
+  with check (sender_id = (select auth.uid()) and private.can_post(lifter_id, thread));
+
+drop policy if exists own on public.message_reads;
+create policy own on public.message_reads for all to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()) and private.can_see(lifter_id));
+
+drop policy if exists read on public.lifter_events;
+create policy read on public.lifter_events for select to authenticated using (private.can_see(lifter_id));
+-- Only the lifter reports finishing a day; new weeks go through notify_new_week().
+drop policy if exists add on public.lifter_events;
+create policy add on public.lifter_events for insert to authenticated
+  with check (kind = 'session_done' and private.is_athlete(lifter_id));
+
+drop policy if exists own on public.push_subscriptions;
+create policy own on public.push_subscriptions for all to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
+revoke execute on all functions in schema private from public, anon;
+grant execute on function private.is_athlete(uuid), private.coach_since(uuid), private.team_on(uuid),
+  private.can_read_msg(uuid, text, timestamptz), private.can_post(uuid, text) to authenticated;
+revoke execute on function public.set_team_thread(uuid, boolean), public.notify_new_week(uuid) from public, anon;
+grant execute on function public.set_team_thread(uuid, boolean), public.notify_new_week(uuid) to authenticated;
+
+do $$
+declare t text;
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    foreach t in array array['messages', 'lifter_settings', 'lifter_events'] loop
       if not exists (select 1 from pg_publication_tables
                      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
         execute format('alter publication supabase_realtime add table public.%I', t);

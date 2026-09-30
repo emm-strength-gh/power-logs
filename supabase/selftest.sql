@@ -79,6 +79,7 @@ declare
   u  uuid := '5e1f7e57-0000-4000-8000-000000000007';  -- lifter who hasn't confirmed yet
   a  uuid := '5e1f7e57-0000-4000-8000-0000000000a1';
   b  uuid := '5e1f7e57-0000-4000-8000-0000000000b1';
+  m  uuid := '5e1f7e57-0000-4000-8000-0000000000c1';
   r text; v text;
 begin
   insert into auth.users (instance_id, id, aud, role, email, email_confirmed_at,
@@ -211,6 +212,81 @@ begin
   perform pg_temp.ok('...but nobody can log on it any more',
     pg_temp.act(u, format($q$insert into public.lifter_marks (lifter_id, rid, state) values (%L, 'r1', 'done')$q$, b)) like 'refused%'
     and pg_temp.act(c1, format($q$insert into public.lifter_coach_notes (lifter_id, body) values (%L, 'x')$q$, b)) like 'refused%');
+
+  -- Messages. A fresh lifter M, coached by c1, logged by l; c2 (re-approved) joins later.
+  perform pg_temp.act(o, format($q$select public.decide_coach(%L, 'approved')$q$, c2));
+  perform pg_temp.act(c1, format($q$insert into public.lifters (id, name, lifter_email) values (%L, 'SELFTEST M', 'lifter@selftest.invalid')$q$, m));
+  r := pg_temp.act(l, format($q$insert into public.messages (lifter_id, thread, body) values (%L, 'team', 'hi coach')$q$, m));
+  perform pg_temp.ok('the lifter posts in the team thread (on by default)', r = 'ok 1', r);
+  r := pg_temp.act(c1, format($q$insert into public.messages (lifter_id, thread, body, sender_id) values (%L, 'team', 'hi Sam', %L)$q$, m, l));
+  perform pg_temp.ok('their coach replies there', r = 'ok 1', r);
+  perform pg_temp.ok('...stamped as the coach, whatever the app claims',
+    (select sender_id from public.messages where lifter_id = m and body = 'hi Sam') = c1);
+  r := pg_temp.act(x, format($q$insert into public.messages (lifter_id, thread, body) values (%L, 'team', 'spam')$q$, m));
+  perform pg_temp.ok('a stranger cannot post', r like 'refused%', r);
+  perform pg_temp.ok('...or read', pg_temp.cnt(x, 'select * from public.messages') = 0);
+  r := pg_temp.act(c1, format($q$insert into public.messages (lifter_id, thread, body) values (%L, %L, 'psst')$q$, m, c1));
+  perform pg_temp.ok('no private thread while the team thread is on', r like 'refused%', r);
+  -- One transaction has one now(): move these messages an hour back so "before c2 joined" is real.
+  update public.messages set created_at = created_at - interval '1 hour' where lifter_id = m;
+  update public.lifter_coaches set created_at = created_at - interval '2 hours' where lifter_id = m;
+  perform pg_temp.val(c1, format($q$select public.share_lifter(%L, 'c2@selftest.invalid')$q$, m));
+  perform pg_temp.ok('a coach who joins later does not see the earlier team messages',
+    pg_temp.cnt(c2, format('select * from public.messages where lifter_id = %L', m)) = 0);
+  r := pg_temp.act(c2, format($q$insert into public.messages (lifter_id, thread, body) values (%L, 'team', 'welcome')$q$, m));
+  perform pg_temp.ok('...but joins the conversation from then on',
+    r = 'ok 1' and pg_temp.cnt(c1, format('select * from public.messages where lifter_id = %L', m)) = 3
+    and pg_temp.cnt(l, format('select * from public.messages where lifter_id = %L', m)) = 3
+    and pg_temp.cnt(c2, format('select * from public.messages where lifter_id = %L', m)) = 1, r);
+  v := pg_temp.val(c1, format($q$select public.set_team_thread(%L, false)::text$q$, m));
+  perform pg_temp.ok('only the lifter switches the team thread', v like 'refused%', v);
+  v := pg_temp.val(l, format($q$select public.set_team_thread(%L, false)::text$q$, m));
+  perform pg_temp.ok('the lifter switches to one thread per coach', v = 'false', v);
+  r := pg_temp.act(l, format($q$insert into public.messages (lifter_id, thread, body) values (%L, 'team', 'x')$q$, m));
+  perform pg_temp.ok('the team thread is then history only', r like 'refused%', r);
+  r := pg_temp.act(l, format($q$insert into public.messages (lifter_id, thread, body) values (%L, %L, 'just you')$q$, m, c1));
+  perform pg_temp.ok('the lifter writes to one coach privately', r = 'ok 1', r);
+  r := pg_temp.act(c1, format($q$insert into public.messages (lifter_id, thread, body) values (%L, %L, 'got it')$q$, m, c1));
+  perform pg_temp.ok('that coach answers in their own thread', r = 'ok 1', r);
+  r := pg_temp.act(c1, format($q$insert into public.messages (lifter_id, thread, body) values (%L, %L, 'x')$q$, m, c2));
+  perform pg_temp.ok('...but not in another coach''s', r like 'refused%', r);
+  perform pg_temp.ok('the other coach cannot read it',
+    pg_temp.cnt(c2, format('select * from public.messages where lifter_id = %L and thread = %L', m, c1)) = 0);
+  r := pg_temp.act(x, format($q$insert into public.messages (lifter_id, thread, body) values (%L, %L, 'x')$q$, m, x));
+  perform pg_temp.ok('nobody else gets a thread of their own', r like 'refused%', r);
+  perform pg_temp.ok('the lifter sees all of it', pg_temp.cnt(l, format('select * from public.messages where lifter_id = %L', m)) = 5);
+  perform pg_temp.ok('the lifter sees who coaches them',
+    pg_temp.cnt(l, format('select * from public.lifter_coaches where lifter_id = %L', m)) = 2);
+  perform pg_temp.ok('the lifter sees their coaches'' names',
+    pg_temp.cnt(l, format('select * from public.accounts where user_id in (%L, %L)', c1, c2)) = 2);
+
+  -- Finished sessions and new weeks
+  r := pg_temp.act(l, format($q$insert into public.lifter_events (lifter_id, kind, week, day) values (%L, 'session_done', '1', '1')$q$, m));
+  perform pg_temp.ok('the lifter reports a finished day', r = 'ok 1', r);
+  r := pg_temp.act(l, format($q$insert into public.lifter_events (lifter_id, kind, week, day) values (%L, 'session_done', '1', '1') on conflict do nothing$q$, m));
+  perform pg_temp.ok('...once: the same day again does nothing', r = 'ok 0', r);
+  r := pg_temp.act(c1, format($q$insert into public.lifter_events (lifter_id, kind, week, day) values (%L, 'session_done', '1', '2')$q$, m));
+  perform pg_temp.ok('a coach cannot report it for them', r like 'refused%', r);
+  r := pg_temp.act(c1, format($q$insert into public.lifter_events (lifter_id, kind, week) values (%L, 'new_week', '9')$q$, m));
+  perform pg_temp.ok('nobody writes a new-week alert directly', r like 'refused%', r);
+  perform pg_temp.act(c1, format($q$update public.lifters set program = '{"weeks":[{"week":"1","days":[]}]}' where id = %L$q$, m));
+  v := pg_temp.val(c1, format('select public.notify_new_week(%L)::text', m));
+  perform pg_temp.ok('a coach notifies about a new week', v ~ '^[0-9a-f-]{36}$', v);
+  v := pg_temp.val(c2, format('select coalesce(public.notify_new_week(%L)::text, %L)', m, 'none'));
+  perform pg_temp.ok('...once, for all the coaches', v = 'none', v);
+  v := pg_temp.val(l, format('select public.notify_new_week(%L)::text', m));
+  perform pg_temp.ok('the lifter cannot send it', v like 'refused%', v);
+  perform pg_temp.act(c1, format($q$update public.lifters set program = '{"weeks":[{"week":"1","days":[]},{"week":"2","days":[]}]}' where id = %L$q$, m));
+  v := pg_temp.val(c2, format('select public.notify_new_week(%L)::text', m));
+  perform pg_temp.ok('adding another week allows one more', v ~ '^[0-9a-f-]{36}$', v);
+
+  -- Notification sign-ups and read markers
+  r := pg_temp.act(l, $q$insert into public.push_subscriptions (endpoint, p256dh, auth) values ('https://push.example/l', 'k', 'a')$q$);
+  perform pg_temp.ok('a device signs up for notifications', r = 'ok 1', r);
+  r := pg_temp.act(l, format($q$insert into public.push_subscriptions (endpoint, user_id, p256dh, auth) values ('https://push.example/x', %L, 'k', 'a')$q$, x));
+  perform pg_temp.ok('...only for its own account', r like 'refused%' and pg_temp.cnt(x, 'select * from public.push_subscriptions') = 0, r);
+  r := pg_temp.act(c1, format($q$insert into public.message_reads (lifter_id, thread) values (%L, 'team')$q$, m));
+  perform pg_temp.ok('read markers are per person', r = 'ok 1' and pg_temp.cnt(l, 'select * from public.message_reads') = 0, r);
 
   -- Signed out, and personal settings
   r := pg_temp.act(null, 'select * from public.lifters');

@@ -469,6 +469,9 @@ create table if not exists public.lifter_settings (
   notified_at    timestamptz,
   updated_at     timestamptz not null default now()
 );
+-- When the owner last cleared each thread ({ thread: time }): devices drop
+-- their cached copies of anything older.
+alter table public.lifter_settings add column if not exists cleared jsonb not null default '{}'::jsonb;
 
 -- Ids come from the app, so a message queued offline can be retried safely.
 create table if not exists public.messages (
@@ -612,6 +615,33 @@ begin
   return p_on;
 end $$;
 
+-- Who may read a thread's messages at all (for its read markers, "Seen").
+create or replace function private.in_thread(lid uuid, th text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select private.is_athlete(lid)
+      or (private.coach_since(lid) is not null and (th = 'team' or th = auth.uid()::text));
+$$;
+
+-- "Clear" (the owner only): deletes every message in one thread, for
+-- everyone. The team thread goes whole, all coaches' messages included; a
+-- private thread only if it's the owner's own. Can't be undone.
+create or replace function public.clear_thread(p_lifter uuid, p_thread text) returns integer
+language plpgsql security definer set search_path = '' as $$
+declare n integer;
+begin
+  if not private.is_owner() then raise exception 'only the owner can clear a conversation'; end if;
+  if private.coach_since(p_lifter) is null then raise exception 'you are not in this conversation'; end if;
+  if p_thread <> 'team' and p_thread <> auth.uid()::text then raise exception 'not your conversation'; end if;
+  delete from public.messages where lifter_id = p_lifter and thread = p_thread;
+  get diagnostics n = row_count;
+  delete from public.message_reads where lifter_id = p_lifter and thread = p_thread;
+  insert into public.lifter_settings (lifter_id, cleared)
+  values (p_lifter, jsonb_build_object(p_thread, now()))
+  on conflict (lifter_id) do update
+    set cleared = public.lifter_settings.cleared || jsonb_build_object(p_thread, now()), updated_at = now();
+  return n;
+end $$;
+
 -- "Notify [lifter]" after adding weeks: at most once per batch of new weeks,
 -- shared by all their coaches, whatever the app sends.
 create or replace function public.notify_new_week(p_lifter uuid) returns uuid
@@ -665,6 +695,10 @@ drop policy if exists add on public.messages;
 create policy add on public.messages for insert to authenticated
   with check (sender_id = (select auth.uid()) and private.can_post(lifter_id, thread));
 
+-- Everyone in a thread sees how far the others have read it ("Seen").
+drop policy if exists seen on public.message_reads;
+create policy seen on public.message_reads for select to authenticated
+  using (private.in_thread(lifter_id, thread));
 drop policy if exists own on public.message_reads;
 create policy own on public.message_reads for all to authenticated
   using (user_id = (select auth.uid()))
@@ -683,15 +717,15 @@ create policy own on public.push_subscriptions for all to authenticated
 
 revoke execute on all functions in schema private from public, anon;
 grant execute on function private.is_athlete(uuid), private.coach_since(uuid), private.team_on(uuid),
-  private.can_read_msg(uuid, text, timestamptz), private.can_post(uuid, text) to authenticated;
-revoke execute on function public.set_team_thread(uuid, boolean), public.notify_new_week(uuid) from public, anon;
-grant execute on function public.set_team_thread(uuid, boolean), public.notify_new_week(uuid) to authenticated;
+  private.can_read_msg(uuid, text, timestamptz), private.can_post(uuid, text), private.in_thread(uuid, text) to authenticated;
+revoke execute on function public.set_team_thread(uuid, boolean), public.notify_new_week(uuid), public.clear_thread(uuid, text) from public, anon;
+grant execute on function public.set_team_thread(uuid, boolean), public.notify_new_week(uuid), public.clear_thread(uuid, text) to authenticated;
 
 do $$
 declare t text;
 begin
   if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
-    foreach t in array array['messages', 'lifter_settings', 'lifter_events'] loop
+    foreach t in array array['messages', 'lifter_settings', 'lifter_events', 'message_reads'] loop
       if not exists (select 1 from pg_publication_tables
                      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
         execute format('alter publication supabase_realtime add table public.%I', t);

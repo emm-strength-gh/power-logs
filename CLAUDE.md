@@ -144,6 +144,11 @@ private script kept outside it (`private.settings`).
   it claims `notified_at` so each thing is announced once. `sw.js` shows them
   and opens `power-logs.html?open=messages|week&lifter=…` (`applyPendingOpen`).
   VAPID public key in the page; the private key is a Supabase secret only.
+  "Seen": `message_reads` are readable by everyone in the thread
+  (`private.in_thread`); mine go to `MSG.reads`, others' to `MSG.seen`
+  (`seenLine()`; a coach's marker counts only for messages after they joined).
+  "Clear": owner-only RPC `clear_thread` deletes a thread's messages and stamps
+  `lifter_settings.cleared[thread]`, which other devices use to drop their copies.
 - Changing the database: edit `supabase/schema.sql` (keep it re-runnable), run
   `node test-cloudsql.js`, and have the user paste it into Supabase **before**
   deploying app code that needs it.

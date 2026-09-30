@@ -16,7 +16,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
 | `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
-| `supabase/selftest.sql` | Checks on those rules (77 at present). Paste and run after the schema; every row should say PASS. |
+| `supabase/selftest.sql` | Checks on those rules (87 at present). Paste and run after the schema; every row should say PASS. |
 | `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
 | `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
 | `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the original logo). |
@@ -172,6 +172,13 @@ the lifter's sidebar, plus an **Inbox** for coaches listing every lifter they co
   home-screen app (iOS 16.4 or later).
 - Messages are cached on the device to read offline; ones written offline are sent
   when it's back online.
+- **Seen:** under your latest message, "Seen" (private thread) or "Seen by Tom,
+  Jordan" (shared thread) once they've opened it. A coach who joined after it was sent
+  isn't counted.
+- **Clear (owner only):** the Clear button on a thread deletes every message in it for
+  everyone, after an "are you sure". In the shared thread that includes the other
+  coaches' messages; otherwise it's only the owner's own private thread with that
+  lifter. It can't be undone.
 
 How the notifications travel: after saving a message or event, the app calls the
 `notify` Edge Function (`supabase/functions/notify/index.ts`) with just its id. The

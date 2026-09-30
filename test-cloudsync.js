@@ -281,9 +281,29 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   C.$("dmMaxes").querySelector(".dmn-edit").click();
   C.$("wkNoteArea").value = "Private: push him"; C.$("wkNoteArea").dispatchEvent(new C.w.Event("input"));
   C.$("wkNoteDone").click();
-  const block = C.$("dmBody").querySelector(".dm-blockinput");
+  const block = C.$("dmBody").querySelector('input[aria-label="Block or program title"]');
   block.value = "Prep v2"; block.dispatchEvent(new C.w.Event("blur"));
   check("the coach's program edit reaches Tom", await until(() => D.store("spotter.profiles.v1").Tom.block === "Prep v2"));
+
+  console.log("\nThe coach renames Tom");
+  const nameIn = () => C.$("dmBody").querySelector('input[aria-label="Lifter name"]');
+  check("Manage program has the lifter's name to edit", !!nameIn() && nameIn().value === "Tom");
+  nameIn().value = "  Tommy  "; nameIn().dispatchEvent(new C.w.Event("blur"));
+  check("renamed in the database", await until(async () => (await lifters()).some(l => l.name === "Tommy")));
+  check("...and on the coach's device, still selected", await until(() => C.names().includes("Tommy") && !C.names().includes("Tom") && C.$("lifterSelect").value === "Tommy"), C.names().join());
+  check("Tom's phone follows, with his ticks still attached", await until(() => D.names().includes("Tommy") && !D.names().includes("Tom")
+    && (D.store("spotter.done.v1").Tommy || {})[tomRid] === true && !("Tom" in D.store("spotter.profiles.v1"))), D.names().join());
+  check("...and it's still what he's looking at", D.$("lifterSelect").value === "Tommy");
+  A.sync(); await A.settle();
+  check("the owner's device follows too", A.names().includes("Tommy"), A.names().join());
+  A.pick("Sam"); await tick();
+  A.nav("Manage program"); await tick(100);
+  const aName = A.$("dmBody").querySelector('input[aria-label="Lifter name"]');
+  aName.value = "Tommy"; aName.dispatchEvent(new A.w.Event("blur")); await tick(200);
+  check("a name already taken here is refused", aName.value === "Sam" && /already a lifter called/.test(A.$("toastMsg").textContent) && (await lifters()).some(l => l.name === "Sam"));
+  A.nav("Overview");
+  nameIn().value = "Tom"; nameIn().dispatchEvent(new C.w.Event("blur"));
+  check("renaming back works the same way", await until(() => D.names().includes("Tom") && C.names().includes("Tom")) && await until(async () => (await lifters()).some(l => l.name === "Tom")));
   await D.settle();
   check("Manage notes never reach Tom", !(D.store("spotter.dmNotes.v1") || {}).Tom);
   check("...and the database wouldn't give them to him", (await D.dev.fetch("lifter_coach_notes", {})).length === 0);

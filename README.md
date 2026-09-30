@@ -205,7 +205,8 @@ That's why the dropdown opens a sheet instead.
 
 ## The Manage tab, top to bottom
 
-1. **Program:** block/title, **Export CSV**, **Compare two programs**.
+1. **Program:** the lifter's name (a coach can rename them; a synced lifter is renamed on
+   every device, theirs included), block/title, **Export CSV**, **Compare two programs**.
 2. **Edit a day:** pick the week and day (Undo on the right).
    - **+ Add exercise** sits at the foot of the day's list and opens the form in place.
    - **Days & weeks** (add a day or week, delete the day or week) sits right under it.

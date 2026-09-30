@@ -175,6 +175,9 @@ the lifter's sidebar, plus an **Inbox** for coaches listing every lifter they co
 - **Seen:** under your latest message, "Seen" (private thread) or "Seen by Tom,
   Jordan" (shared thread) once they've opened it. A coach who joined after it was sent
   isn't counted.
+- **Your name:** the owner and coaches set how they appear (messages, "Seen by",
+  Coaches and Sharing lists, notification banners) under **Your name** in the account
+  sheet. Without one it's the start of their email. Lifters go by their `#Name`.
 - **Clear (owner only):** the Clear button on a thread deletes every message in it for
   everyone, after an "are you sure". In the shared thread that includes the other
   coaches' messages; otherwise it's only the owner's own private thread with that

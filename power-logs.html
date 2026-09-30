@@ -1465,7 +1465,7 @@
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
   // major.minor.patch: minor goes up with each release (it carried on from the
   // old build counter, 30), patch for a fix to one.
-  var APP_VERSION = "1.33.0";
+  var APP_VERSION = "1.34.0";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -6643,6 +6643,8 @@
       api.fetch("lifters", { columns: "id,name,lifter_email,lifter_user_id,created_by,updated_at,deleted_at" }),
       api.fetch("user_prefs", {})
     ]).then(function (r) {
+      var names = function (list) { return stableJSON((list || []).map(function (x) { return [x.user_id, x.display_name || ""]; })); };
+      if (names(r[0]) !== names(CLOUD.accounts)) cloudChanged = true;
       CLOUD.accounts = r[0] || [];
       var mine = accountById(me);
       var wasCoach = isCoach();
@@ -7091,6 +7093,40 @@
     if (title) s.appendChild(el("h3", null, title));
     return s;
   }
+  // How the owner and coaches appear to others: message senders, "Seen by …",
+  // the Coaches and Sharing lists, notification banners. (Lifters go by their
+  // program's #Name.) Without one, it's the start of their email.
+  function buildNameSection() {
+    var sec = acctSec("Your name");
+    var cur = (CLOUD.account && CLOUD.account.display_name) || "";
+    sec.appendChild(el("p", null, "Shown to your lifters and other coaches in messages and notifications" + (cur ? "." : ". Until you set one, it\u2019s the start of your email.")));
+    var inp = el("input", "acct-input");
+    inp.id = "acctName"; inp.maxLength = 80; inp.autocomplete = "name"; inp.value = cur;
+    inp.placeholder = "e.g. Coach Emm"; inp.setAttribute("aria-label", "Your name");
+    sec.appendChild(inp);
+    var acts = el("div", "acct-acts");
+    var save = acctButton("btn-solid sm", "Save name", function () {
+      var v = inp.value.trim().replace(/\s+/g, " ");
+      if (v === cur) { toast("That\u2019s already your name."); return; }
+      save.disabled = true;
+      cloudApi().rpc("set_display_name", { p_name: v }).then(function () {
+        CLOUD.account.display_name = v;
+        var mine = accountById(me());
+        if (mine) mine.display_name = v;
+        saveCloud();
+        toast(v ? "You\u2019re \u201C" + v + "\u201D now." : "Name removed.");
+        if (inMessages) renderMessages();
+        if (inInbox) renderInbox();
+        return syncNow();
+      }, function (err) {
+        toast("Couldn\u2019t save it" + (navigator.onLine === false ? " while offline." : ": " + err.message));
+      }).then(function () { renderAcct(true); });
+    });
+    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); save.click(); } });
+    acts.appendChild(save);
+    sec.appendChild(acts);
+    return sec;
+  }
   function buildCoachesSection() {
     var sec = acctSec("Coaches"), me = CLOUD.user.id, rank = { pending: 0, approved: 1, declined: 2, revoked: 3 };
     var label = { pending: "Asking to be a coach", approved: "Coach", declined: "Declined", revoked: "Removed" };
@@ -7181,7 +7217,8 @@
 
     $("acctTitle").textContent = "Account";
     var whoRow = el("div", "acct-who");
-    whoRow.appendChild(el("span", null, CLOUD.user.email));
+    var myName = (CLOUD.account && CLOUD.account.display_name) || "";
+    whoRow.appendChild(el("span", null, myName ? myName + " \u00B7 " + CLOUD.user.email : CLOUD.user.email));
     whoRow.appendChild(el("span", "acct-role" + (isCoach() ? " coach" : ""), roleLabel()));
     body.appendChild(whoRow);
     var st = el("p", "acct-status" + (CLOUD.lastError && navigator.onLine !== false ? " err" : ""), syncLine());
@@ -7232,6 +7269,7 @@
       }
     }
     body.appendChild(sec);
+    if (isCoach() || a.coach_status === "pending") body.appendChild(buildNameSection());
 
     if (isCoach()) {
       var lo = localOnlyNames();

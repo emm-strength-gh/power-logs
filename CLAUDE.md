@@ -147,6 +147,9 @@ private script kept outside it (`private.settings`).
   "Seen": `message_reads` are readable by everyone in the thread
   (`private.in_thread`); mine go to `MSG.reads`, others' to `MSG.seen`
   (`seenLine()`; a coach's marker counts only for messages after they joined).
+  Names: owner/coaches set `accounts.display_name` ("Your name" in the account
+  sheet, RPC `set_display_name`), used by `coachName()` and the notify function;
+  lifters are always their program's `#Name`.
   "Clear": owner-only RPC `clear_thread` deletes a thread's messages and stamps
   `lifter_settings.cleared[thread]`, which other devices use to drop their copies.
 - Changing the database: edit `supabase/schema.sql` (keep it re-runnable), run

@@ -1539,7 +1539,7 @@
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
   // major.minor.patch: minor goes up with each release (it carried on from the
   // old build counter, 30), patch for a fix to one.
-  var APP_VERSION = "1.39.0";
+  var APP_VERSION = "1.40.0";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -3749,10 +3749,26 @@
     clear(noticeHost);
     if (notice) noticeHost.appendChild(notice);
 
-    // ---- Program: block / title, export, compare ----
-    var secB = el("div", "dm-sec");
-    secB.appendChild(el("p", "dm-sec-cap", "Program"));
-    var cardB = el("div", "dm-card");
+    // ---- Lifter and program: name, block / title, export, compare (collapsible) ----
+    var progKey = "spotter.dmProgramCollapsed", progCollapsed = false;
+    try { progCollapsed = localStorage.getItem(progKey) === "1"; } catch (e) {}
+    var progCard = el("div", "pn-card dm-progcard" + (progCollapsed ? "" : " open"));
+    var progToggle = el("button", "pn-toggle");
+    progToggle.type = "button";
+    var progLab = el("span", "pn-labels");
+    progLab.appendChild(el("span", "pn-title", "Lifter and program"));
+    // Collapsed, it still says whose program this is.
+    var progSub = el("span", "pn-sub", p.name + (p.block ? " \u00b7 " + p.block : ""));
+    progLab.appendChild(progSub);
+    progToggle.appendChild(progLab);
+    var progChev = el("span", "pn-chev");
+    progChev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+    progToggle.appendChild(progChev);
+    progToggle.onclick = function () {
+      progCard.classList.toggle("open");
+      try { localStorage.setItem(progKey, progCard.classList.contains("open") ? "0" : "1"); } catch (e) {}
+    };
+    var cardB = el("div", "pn-body");
     var editWrap = el("div", "dm-blockedit");
     editWrap.appendChild(el("label", null, "Lifter name"));
     var ninp = el("input", "dm-blockinput");
@@ -3773,6 +3789,7 @@
       var v = binp.value.trim();
       if (v !== (p.block || "")) {
         setBlock(p.name, v);
+        progSub.textContent = p.name + (p.block ? " \u00b7 " + p.block : "");
         renderPicker();   // dropdown shows "Name · Block"
         renderSidebar();  // block pill in the sidebar
         pushLifterToHub();
@@ -3796,8 +3813,9 @@
     cmpBtn.onclick = openCompare;
     progActs.appendChild(cmpBtn);
     cardB.appendChild(progActs);
-    secB.appendChild(cardB);
-    body.appendChild(secB);
+    progCard.appendChild(progToggle);
+    progCard.appendChild(cardB);
+    body.appendChild(progCard);
 
     // ---- Edit a day (with the imported day beside it when there is one) ----
     var secT = el("div", "dm-sec");

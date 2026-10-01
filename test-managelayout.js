@@ -110,10 +110,31 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   check("the close button closes it too", !dlg.classList.contains("show") && liveCharts().length === 0);
 
   console.log("\nLayout without an import");
-  check("sections: Program, Edit a day, Import (Sharing moved to a dialog)", caps().join(" | ") === "Program | Edit a day | Import from another program", caps().join(" | "));
-  const progCard = body().querySelector(".dm-sec .dm-card");
-  check("Program card holds Export CSV and Compare two programs",
-    !!btn("Export CSV", progCard) && !!btn("Compare two programs", progCard));
+  check("sections: the Lifter and program card, then Edit a day and Import", caps().join(" | ") === "Edit a day | Import from another program" &&
+    body().firstElementChild.classList.contains("dm-progcard"), caps().join(" | "));
+  const progCard = body().querySelector(".dm-progcard");
+  check("the card holds the lifter's name, block, Export CSV and Compare two programs",
+    !!progCard && !!btn("Export CSV", progCard) && !!btn("Compare two programs", progCard) &&
+    !!progCard.querySelector('input[aria-label="Lifter name"]') && !!progCard.querySelector('input[aria-label="Block or program title"]'));
+
+  console.log("\nThe Lifter and program card collapses");
+  const progSub = () => progCard.querySelector(".pn-sub").textContent;
+  check("it's titled Lifter and program, and open to start with", progCard.querySelector(".pn-title").textContent === "Lifter and program" && progCard.classList.contains("open"));
+  check("collapsed or not, its header says whose program it is", progSub() === NAME + " · B", progSub());
+  progCard.querySelector(".pn-toggle").click();
+  check("the header collapses it", !progCard.classList.contains("open"));
+  check("...and the choice is remembered", w.localStorage.getItem("spotter.dmProgramCollapsed") === "1");
+  const blockIn = progCard.querySelector('input[aria-label="Block or program title"]');
+  blockIn.value = "B2"; blockIn.dispatchEvent(new w.Event("blur")); await tick(50);
+  check("changing the block updates the header too", progSub() === NAME + " · B2", progSub());
+  [...doc.querySelectorAll("#sideNav .nav-item")].find(n => /Overview/.test(n.textContent)).click(); await tick(50);
+  await openManage();
+  check("it stays collapsed when you come back", !body().querySelector(".dm-progcard").classList.contains("open"));
+  body().querySelector(".dm-progcard .pn-toggle").click();
+  check("and opens again", body().querySelector(".dm-progcard").classList.contains("open") && w.localStorage.getItem("spotter.dmProgramCollapsed") === "0");
+  const blockIn2 = body().querySelector('.dm-progcard input[aria-label="Block or program title"]');
+  blockIn2.value = "B"; blockIn2.dispatchEvent(new w.Event("blur")); await tick(50);
+  console.log("");
   check("one column, no replace/merge on screen", body().querySelectorAll(".dm-cmp-col").length === 1 && !/Replace|Merge/.test(body().textContent));
   check("old static Compare row is gone", !$("cmpOpenBtn"));
 
@@ -167,7 +188,7 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   console.log("\nImport, replace and merge");
   await loadInto("donorInput", mk("Donor", [1], [1, 2, 3], ["Pause squat", "Larsen press", "Row"]), "donor.csv");
   check("sections now include Use the imported program", caps().join(" | ") ===
-    "Program | Edit a day | Use the imported program | Imported program", caps().join(" | "));
+    "Edit a day | Use the imported program | Imported program", caps().join(" | "));
   check("imported day shows beside the current one", body().querySelectorAll(".dm-cmp-col").length === 2);
   const swap = body().querySelector(".dm-swap");
   const swapRows = [...swap.querySelectorAll(".dm-swap-row")];

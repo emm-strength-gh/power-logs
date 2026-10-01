@@ -85,7 +85,12 @@ the `.vN` suffix if you ever change a stored shape incompatibly.
   callbacks) and ride in the JSON export (`weekNotes`, `manageNotes`).
 - `trainingMaxes` does live on the profile, and it has no CSV form, so
   `ingestText()` carries it over from the lifter being replaced, and
-  `ingestJSON()` keeps the device's copy when an older export lacks it. The CSV
+  `ingestJSON()` keeps the device's copy when an older export lacks it. It holds
+  only the numbers typed by hand; every other lift's training max is computed as
+  `p.tmPct`% (90 until a 100/95/90/85/80% button is pressed) of its 1-rep max, to
+  the nearest 0.5 kg (`trainingMaxesOf(p)`, which the card and the Hub use), so
+  defaults follow the 1-rep maxes and a lift without one has none. `tmPct` is
+  carried over by re-imports like `trainingMaxes`. The CSV
   stays the source of truth for everything it does carry (rows, `#Block`, `#Max`).
 - `ORDER` (`spotter.lifterOrder.v1`): lifter names in the user's arranged
   dropdown order. Always enumerate lifters through `lifterNames()`, never
@@ -203,6 +208,7 @@ node test-taper.js      # Taper builder: each lifter type's last heavy days, lig
 node test-lifterorder.js # Rearrange lifters: sheet, dropdown entry, persistence, reload, unload
 node test-dmnotes.js    # Manage Program Notes: coach-only, editor, links, backups, Weekly notes regression
 node test-reimport.js   # Re-imports keep training maxes; CSV still wins for 1-rep maxes
+node test-trainingmax.js # Training maxes: 90% default, 100-80% buttons, typed numbers win, Hub + backups
 node test-managelayout.js # Manage tab: section order + every action from its new place
 node test-hubprefill.js # Hub builders prefilled from the loaded lifter (both pages)
 node test-hubanalytics.js # Hub analytics charts + parity with Power Logs' Analytics view
@@ -212,7 +218,7 @@ node test-messaging.js  # messages, finished sessions, new-week alerts, push (no
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all fourteen. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all fifteen. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of power-logs.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

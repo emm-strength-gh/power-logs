@@ -33,9 +33,9 @@ function boot(file, url, setup) {
   return { w: dom.window, errors, real: () => errors.filter(e => !/Not implemented|HTMLCanvasElement|getContext|Chart is not defined/i.test(e)) };
 }
 
-const SQUAT = ["in-squat", "w-squat", "e-rsquat", "sq-max", "cb-squat", "lb-squat", "ls-squat", "fm-squat", "cv-squat", "dm-squat", "gp-squat"];
-const BENCH = ["in-bench", "w-bench", "e-rbench", "bn-max", "b2-max", "ksb-max", "cb-bench", "ls-bench", "fm-bench", "cv-bench", "gp-bench"];
-const DEAD  = ["in-deadlift", "w-deadlift", "e-rdead", "d-max", "cb-dead", "lb-dead", "ls-dead", "fm-dead", "cv-dead", "dm-dead", "gp-dead"];
+const SQUAT = ["in-squat", "w-squat", "e-rsquat", "sq-max", "cb-squat", "lb-squat", "ls-squat", "fm-squat", "cv-squat", "dm-squat", "gp-squat", "tp-squat"];
+const BENCH = ["in-bench", "w-bench", "e-rbench", "bn-max", "b2-max", "ksb-max", "cb-bench", "ls-bench", "fm-bench", "cv-bench", "gp-bench", "tp-bench"];
+const DEAD  = ["in-deadlift", "w-deadlift", "e-rdead", "d-max", "cb-dead", "lb-dead", "ls-dead", "fm-dead", "cv-dead", "dm-dead", "gp-dead", "tp-dead"];
 
 (async () => {
   /* ------------------------------------------------------------ part 1: hub */
@@ -52,7 +52,7 @@ const DEAD  = ["in-deadlift", "w-deadlift", "e-rdead", "d-max", "cb-dead", "lb-d
 
   send({ name: "Test Lifter", block: "Block 9", cls: "74", bodyweight: "74kg",
          trainingMaxes: { Squat: "175", Bench: "145", Deadlift: "220", OHP: "80", "Squat equipped": "205" } });
-  check("every builder's name filled (15)", lifterInputs("name").length === 15 && lifterInputs("name").every(i => i.value === "Test Lifter"));
+  check("every builder's name filled (16)", lifterInputs("name").length === 16 && lifterInputs("name").every(i => i.value === "Test Lifter"));
   check("every builder's block filled", lifterInputs("block").every(i => i.value === "Block 9"));
   check("every builder's class filled", lifterInputs("class").every(i => i.value === "74"));
   check("squat fields take the squat training max", all(SQUAT, "175"), vals(SQUAT).join(","));
@@ -63,7 +63,7 @@ const DEAD  = ["in-deadlift", "w-deadlift", "e-rdead", "d-max", "cb-dead", "lb-d
   check("bodyweight filled as a number", $("e-bw").value === "74", $("e-bw").value);
   check("Wendler and Massthetics use them as-is (TM 100%)", $("w-tm").value === "100" && $("dm-tm").value === "100", $("w-tm").value + " / " + $("dm-tm").value);
   const notes = [...w.document.querySelectorAll(".view:not(#view-hub) > .card .prefill-note")];
-  check("each builder says where the numbers came from", notes.length === 15 && notes.every(n => !n.hidden && /Filled from Test Lifter/.test(n.textContent)));
+  check("each builder says where the numbers came from", notes.length === 16 && notes.every(n => !n.hidden && /Filled from Test Lifter/.test(n.textContent)));
   check("the two TM builders explain the 100%", /TM % is set to 100%/.test($("view-wendler").querySelector(".prefill-note").textContent) &&
     /TM % is set to 100%/.test($("view-mdl").querySelector(".prefill-note").textContent) &&
     !/TM %/.test($("view-gpop").querySelector(".prefill-note").textContent));

@@ -19,7 +19,7 @@ edges in more depth than this file.
 | File | Role | Standalone? |
 |---|---|---|
 | [power-logs.html](power-logs.html) | **The main app** ("Power Logs"). Lifter profiles, weekly program view, done/skip tracking, notes, custom items, Manage Program (day/week editing, coaches only), accounts + cloud sync, Analytics, Compare, plate calculator, rest timer, warm-up calculator, JSON/CSV import-export. Hosts the other three apps in iframes. | Yes — this is the PWA entry point (`start_url`). |
-| [program-hub.html](program-hub.html) | Program **builders**: Meet Peak v2 Gen Pop (balanced 16-week peak, first card), Gustav, Wendler, equipped lifting, single-lift (squat/bench/deadlift), combined, Lilliebridge, KSB, CVBT, MDL, fatigue-managed, etc. Generates a CSV program. | Yes, and also opens inside Power Logs as the **Program Hub** tab in Manage Program. |
+| [program-hub.html](program-hub.html) | Program **builders**: Meet Peak v2 Gen Pop (balanced 16-week peak, first card), Taper (2 weeks: last heavy week + taper, three lifter types), Gustav, Wendler, equipped lifting, single-lift (squat/bench/deadlift), combined, Lilliebridge, KSB, CVBT, MDL, fatigue-managed, etc. Generates a CSV program. | Yes, and also opens inside Power Logs as the **Program Hub** tab in Manage Program. |
 | [VBT.html](VBT.html) | **Velocity Tracker**. Loads a video clip, tracks the barbell path frame-by-frame, computes bar speed/RPE per rep, detects stalls/grinds, exports an annotated MP4 (custom `mp4Mux` muxer + WebCodecs) or CSV. | Yes, and opens inside Power Logs from the **Velocity Tracker** nav button. |
 | [rpe-estimator.html](rpe-estimator.html) | RPE ↔ %1RM load-chart tool (Chart.js). | Yes, and opens inside Power Logs (RPE Estimator in the sidebar). |
 
@@ -199,6 +199,7 @@ npm install         # one-time: jsdom, and PGlite (in-memory Postgres) for the c
 node test-boot.js       # PWA wiring smoke test (manifest, icons, saveFile routing, sw coverage)
 node test-weekrange.js  # Program Hub week-range export parsing, across all builders
 node test-genpop.js     # Meet Peak v2 Gen Pop: balance, loads, attempts, Clean, real import into power-logs.html
+node test-taper.js      # Taper builder: each lifter type's last heavy days, light sessions, rest, volume cut, Clean, import
 node test-lifterorder.js # Rearrange lifters: sheet, dropdown entry, persistence, reload, unload
 node test-dmnotes.js    # Manage Program Notes: coach-only, editor, links, backups, Weekly notes regression
 node test-reimport.js   # Re-imports keep training maxes; CSV still wins for 1-rep maxes
@@ -211,7 +212,7 @@ node test-messaging.js  # messages, finished sessions, new-week alerts, push (no
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all thirteen. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all fourteen. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of power-logs.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

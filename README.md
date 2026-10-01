@@ -23,6 +23,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `.nojekyll` | Stops GitHub Pages running the files through Jekyll. |
 | `test-boot.js` | Smoke test — `npm install jsdom && node test-boot.js`. |
 | `test-weekrange.js` | Program Hub week-range export tests across all builders — `node test-weekrange.js`. |
+| `test-taper.js` | Taper builder: last heavy day per lift for each lifter type, light sessions, rest days, volume cut, Clean, and a real import — `node test-taper.js`. |
 | `test-genpop.js` | Meet Peak v2 · Gen Pop builder checks, plus a real import of its CSV into the app — `node test-genpop.js`. |
 | `test-lifterorder.js` | Rearranging lifters: the sheet, the dropdown entry, saving and reloading the order — `node test-lifterorder.js`. |
 | `test-dmnotes.js` | Manage Program's Notes card: coach-only, editing, links, backups, and that Weekly notes still work — `node test-dmnotes.js`. |

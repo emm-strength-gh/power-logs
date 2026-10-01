@@ -47,7 +47,7 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
     if (b) b.click();
     return !!b;
   };
-  const card = () => $("dmMaxes").querySelector(".dmn-card");
+  const card = () => $("dmMaxes").querySelector(".dmn-sec");
   const stored = () => JSON.parse(w.localStorage.getItem("spotter.dmNotes.v1") || "{}");
   const type = text => { $("wkNoteArea").value = text; $("wkNoteArea").dispatchEvent(new w.Event("input")); };
 
@@ -59,9 +59,9 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   await tick(100);
   check("Manage Program opens, no PIN", $("viewDayMgr").classList.contains("active"));
 
-  console.log("\nThe Notes card");
+  console.log("\nThe Notes section");
   const titles = [...$("dmMaxes").querySelectorAll(".pn-title")].map(t => t.textContent);
-  check("sits in the top section, after the two maxes cards", titles.join(" | ") === "1-rep maxes | Training maxes | Notes", titles.join(" | "));
+  check("lives in the one Maxes and notes card, below the maxes", titles.join(" | ") === "Maxes and notes" && !!$("dmMaxes").querySelector(".mn-grid ~ .mn-hr + .dmn-sec"), titles.join(" | "));
   check("starts empty with an Add button", !card().querySelector(".dmn-text") && card().querySelector(".dmn-edit").textContent === "Add notes");
   card().querySelector(".dmn-edit").click();
   check("opens the notes sheet", $("wkNoteScrim").classList.contains("show"));
@@ -78,7 +78,6 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   const a = box && box.querySelector("a");
   check("links are tappable (and stop before the comma)", !!a && a.getAttribute("href") === "https://example.com/clip" && a.target === "_blank",
     a && a.outerHTML);
-  check("collapsed preview is the first line", (card().querySelector(".pn-sub") || {}).textContent === "Goal: 200 squat");
   check("button now says Edit", card().querySelector(".dmn-edit").textContent === "Edit notes");
   box.click();
   check("tapping the note edits it, with the text loaded", $("wkNoteScrim").classList.contains("show") && $("wkNoteArea").value === NOTE);

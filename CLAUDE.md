@@ -90,7 +90,9 @@ the `.vN` suffix if you ever change a stored shape incompatibly.
   `p.tmPct`% (90 until a 100/95/90/85/80% button is pressed) of its 1-rep max, to
   the nearest 0.5 kg (`trainingMaxesOf(p)`, which the card and the Hub use), so
   defaults follow the 1-rep maxes and a lift without one has none. `tmPct` is
-  carried over by re-imports like `trainingMaxes`. The CSV
+  carried over by re-imports like `trainingMaxes`. Manage Program shows 1-rep maxes, training
+  maxes and the Notes in one card (`buildMaxesNotesCard()`); one undo step
+  (`mnSnap`/`mnRestore`) restores both max stores and `tmPct` together. The CSV
   stays the source of truth for everything it does carry (rows, `#Block`, `#Max`).
 - `ORDER` (`spotter.lifterOrder.v1`): lifter names in the user's arranged
   dropdown order. Always enumerate lifters through `lifterNames()`, never

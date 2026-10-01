@@ -101,6 +101,7 @@ const BUILDERS = [
   { view: "cvbt",     fn: "buildCvbt",            weeks: 10, f: { "cv-name": "T", "cv-block": "B", "cv-squat": 205, "cv-bench": 165, "cv-dead": 242.5 } },
   { view: "mdl",      fn: "buildMdl",             weeks: 8,  f: { "dm-name": "T", "dm-block": "B", "dm-dead": 242.5, "dm-squat": 205 } },
   { view: "gpop",     fn: "buildGpop",            weeks: 16, f: { "gp-name": "T", "gp-block": "B", "gp-squat": 205, "gp-bench": 165, "gp-dead": 242.5 } },
+  { view: "taper",    fn: "buildTaper",           weeks: 2,  f: { "tp-name": "T", "tp-block": "B", "tp-squat": 205, "tp-bench": 165, "tp-dead": 242.5 } },
 ];
 
 /* rows of a CSV body, keyed by week */
@@ -162,8 +163,11 @@ for (const b of BUILDERS) {
   check(`weeks ${mid}-${hi}`, rng.length > 0 && rng.every(w => span.has(w)) &&
     new Set(rng).size === span.size, `${rng.length} rows / ${new Set(rng).size} weeks`);
   captured = null; window.exportActive();
-  check("filename carries the range",
-    captured && captured.fname.includes(mid === hi ? `_w${mid}.csv` : `_w${mid}-${hi}.csv`),
+  // A range that is the whole program (a 2-week builder) is just the full export.
+  const whole = mid === 1 && hi === nWeeks;
+  check(whole ? "a range covering every week exports under the plain name" : "filename carries the range",
+    captured && (whole ? !/_w\d/.test(captured.fname)
+                       : captured.fname.includes(mid === hi ? `_w${mid}.csv` : `_w${mid}-${hi}.csv`)),
     captured && captured.fname);
 
   /* --- header + metadata survive filtering */

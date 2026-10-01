@@ -59,6 +59,7 @@
     --ksb:#2FA88C;
     --fmgd:#6B87A6;
     --gpop:#C9824E;
+    --taper:#8E8CF0;
     --build-dim:#28365a; --develop-dim:#54472a; --peak-dim:#54322a;
     --build-ink:#cdd9f4; --develop-ink:#f0dcaf; --peak-ink:#f3c2b8;
     --good:#5FB37A;
@@ -74,7 +75,7 @@
   :root[data-theme="light"]{
     --bg:#F1F2F5; --panel:#FFFFFF; --panel-2:#EAECEF; --hair:#DADDE2;
     --ink:#1B1E24; --muted:#5B626D; --muted-2:#949AA4;
-    --build:#3B6BD0; --develop:#B5791A; --peak:#D2402B; --wend:#2C86A8; --equip:#7E5FC0; --dlpk:#1E8E80; --sqpk:#C04E86; --bnpk:#3F8A52; --sbd:#B0821F; --lilb:#C4552F; --bnpk2:#4E5DC4; --lsbd:#9A3A94; --cvbt:#6B8420; --mdl:#A02C49; --ksb:#227A65; --fmgd:#4F6C8A; --gpop:#A0612E;
+    --build:#3B6BD0; --develop:#B5791A; --peak:#D2402B; --wend:#2C86A8; --equip:#7E5FC0; --dlpk:#1E8E80; --sqpk:#C04E86; --bnpk:#3F8A52; --sbd:#B0821F; --lilb:#C4552F; --bnpk2:#4E5DC4; --lsbd:#9A3A94; --cvbt:#6B8420; --mdl:#A02C49; --ksb:#227A65; --fmgd:#4F6C8A; --gpop:#A0612E; --taper:#4A47A3;
     --build-dim:#DCE6FA; --develop-dim:#F5E6C4; --peak-dim:#F7D8D1;
     --build-ink:#274a88; --develop-ink:#6c4c0d; --peak-ink:#8c2c1d;
     --good:#3E9E63;
@@ -398,6 +399,7 @@
   .btn-ksb{background:var(--ksb)}
   .btn-fmgd{background:var(--fmgd)}
   .btn-gpop{background:var(--gpop)}
+  .btn-taper{background:var(--taper)}
   #view-lilliebridge .opt input[type=checkbox]{accent-color:var(--lilb)}
   #view-equipped .view-title .slash{color:var(--equip)}
   #view-deadlift .view-title .slash{color:var(--dlpk)}
@@ -414,6 +416,10 @@
   #view-mdl .view-title .slash{color:var(--mdl)}
   #view-fmgd .opt input[type=radio]{accent-color:var(--fmgd)}
   #view-gpop .view-title .slash{color:var(--gpop)}
+  #view-taper .view-title .slash{color:var(--taper)}
+  #view-taper .opt{flex-wrap:wrap;min-width:0;max-width:100%}
+  #view-taper .opt select{min-width:0;max-width:100%}
+  .tp-typehint{font-size:13px;color:var(--muted);margin:8px 0 0;line-height:1.5}
   #view-gpop .opt input[type=checkbox]{accent-color:var(--gpop)}
 
   /* ===================== iOS / PWA standalone ===================== */
@@ -463,6 +469,13 @@
         <h3>Meet Peak v2 · Gen Pop</h3>
         <p>A balanced 16-week meet peak for any set of maxes &mdash; no lift is prioritised. Percentages set the loads and RPE caps govern them, a week-10 calibration re-sets the peak, and the attempts follow the elite 9-for-9 pattern with a PR on every third. Includes a Clean export that hides the percentages.</p>
         <span class="btn-primary gc-go btn-gpop">Open builder</span>
+      </button>
+      <button class="gen-card" data-go="taper">
+        <span class="accent" style="background:linear-gradient(90deg,var(--peak),var(--taper))"></span>
+        <span class="gc-tag">Squat + Bench + Deadlift · 2 weeks · meet taper</span>
+        <h3>Taper</h3>
+        <p>The last heavy week and a one-week taper into a Saturday meet. Each lift tapers on its own clock &mdash; deadlift stops heavy first, bench last &mdash; and the timing shifts for a regular, super heavy, or novice or female lifter.</p>
+        <span class="btn-primary gc-go btn-taper">Open builder</span>
       </button>
       <button class="gen-card" data-go="gustav">
         <span class="accent" style="background:linear-gradient(90deg,var(--build),var(--develop),var(--peak))"></span>
@@ -1073,6 +1086,46 @@
         <button class="btn-primary btn-gpop" id="gp-generate">Build the program</button>
         <button class="btn-ghost" id="gp-reset" style="display:none">Clear</button>
         <span class="msg" id="gp-msg"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="view" id="view-taper">
+    <button class="backlink" data-go="hub">&larr; All builders</button>
+    <h2 class="view-title">Taper <span class="slash">/</span> 2 weeks</h2>
+    <p class="view-sub">The last two weeks before a meet: <strong>one last heavy week, then a one-week taper</strong>, with no separate deload in between &mdash; the taper is the deload. Volume comes down by about half while the bar stays heavy, then each lift drops to light, fast work and you rest. Day numbers are weekdays (1 = Monday) and the meet is <strong>week 2, day 6 (Saturday)</strong>.</p>
+    <p class="view-sub" style="margin-top:-6px"><strong>Each lift tapers on its own clock.</strong> The deadlift stops heavy first and gets the most room, the squat sits in the middle, and the bench stays heavy longest and gets the shortest rest. How far out each one stops depends on the lifter, so pick the type below.</p>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--peak)"></i>Last heavy week · wk 1</span>
+      <span><i class="dot" style="background:var(--deload-badge)"></i>Taper &amp; meet · wk 2</span>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <div class="card-head">
+        <h2>Lifter &amp; competition 1RMs</h2>
+        <span class="hint">kg · weights = % × 1RM</span>
+      </div>
+      <div class="grid">
+        <div class="field span"><label>Name</label><input id="tp-name" type="text" placeholder="e.g. Emm"></div>
+        <div class="field"><label>Block</label><input id="tp-block" type="text" placeholder="e.g. Nationals taper"></div>
+        <div class="field"><label>Class</label><input id="tp-class" type="text" placeholder="e.g. 74kg"></div>
+        <div class="field"><label>Squat 1RM <span class="unit">kg</span></label><input id="tp-squat" class="maxin" type="number" inputmode="decimal" placeholder="200"></div>
+        <div class="field"><label>Bench 1RM <span class="unit">kg</span></label><input id="tp-bench" class="maxin" type="number" inputmode="decimal" placeholder="140"></div>
+        <div class="field"><label>Deadlift 1RM <span class="unit">kg</span></label><input id="tp-dead" class="maxin" type="number" inputmode="decimal" placeholder="230"></div>
+      </div>
+      <div class="opts">
+        <label class="opt"><span>Lifter type</span>
+          <select id="tp-type">
+            <option value="regular" selected>Regular lifter</option>
+            <option value="heavy">Super heavy lifter</option>
+            <option value="light">Novice or female lifter</option>
+          </select>
+        </label>
+      </div>
+      <p class="tp-typehint" id="tp-typehint"></p>
+      <div class="row-actions">
+        <button class="btn-primary btn-taper" id="tp-generate">Build the taper</button>
+        <button class="btn-ghost" id="tp-reset" style="display:none">Clear</button>
+        <span class="msg" id="tp-msg"></span>
       </div>
     </div>
   </div>
@@ -4939,12 +4992,144 @@ function gpopCSV(opts, rows, clean){
   return out;
 }
 
+/* ===================== Taper (2 weeks: last heavy week + taper) =====================
+   Built from the taper research notes (Travis 2020/2021 reviews and surveys,
+   Pritchard 2016, Israetel, Nuckols, Androulakis-Korakakis): go straight from
+   the last heavy week into the taper, cut volume ~40-50% while the bar stays
+   heavy, and stagger the lifts. Deadlift stops heavy first, then squat; bench
+   stays heavy longest and gets the shortest rest.
+   Day numbers are weekdays (1 = Monday) and the meet is week 2, day 6
+   (Saturday), so each slot is a fixed number of days out.
+   Rows: [week, day, lift, % of 1RM, sets, reps, RPE, kind]
+     H last heavy single · B its back-offs · V other work · L last, light session */
+const TAPER_TYPES = {
+  // Survey norms: heavy squat/deadlift 7-10 days out, bench under 7; last
+  // session deadlift ~6, squat ~4, bench ~3-4 days out; 2-3 days' rest.
+  regular: { label:"Regular lifter", rest:[4,5], rows:[
+    [1,1,"Squat",85,3,3,7.5,"V"],     [1,1,"Bench",85,3,3,7.5,"V"],
+    [1,3,"Deadlift",90,1,1,8,"H"],    [1,3,"Deadlift",80,2,2,7,"B"],   [1,3,"Bench",82.5,3,3,7,"V"],
+    [1,5,"Squat",92.5,1,1,8.5,"H"],   [1,5,"Squat",82.5,2,2,7,"B"],    [1,5,"Bench",87.5,2,2,8,"V"],
+    [2,1,"Bench",90,1,1,8,"H"],       [2,1,"Bench",82.5,2,2,7,"B"],    [2,1,"Deadlift",72.5,3,1,5.5,"L"],
+    [2,2,"Squat",77.5,3,2,6,"L"],
+    [2,3,"Bench",77.5,3,3,6,"L"] ] },
+  // Bigger, stronger lifters shed fatigue more slowly: every lift's last heavy
+  // day moves earlier (Israetel), loads come down sooner, and rest is 3 days.
+  heavy: { label:"Super heavy lifter", rest:[3,4,5], rows:[
+    [1,1,"Deadlift",90,1,1,8,"H"],    [1,1,"Deadlift",80,2,2,7,"B"],   [1,1,"Bench",85,3,3,7.5,"V"],
+    [1,3,"Squat",90,1,1,8,"H"],       [1,3,"Squat",82.5,2,2,7,"B"],    [1,3,"Bench",82.5,3,2,7,"V"],
+    [1,5,"Bench",90,1,1,8,"H"],       [1,5,"Bench",82.5,2,2,7,"B"],    [1,5,"Squat",80,2,2,6.5,"V"],
+    [2,1,"Squat",75,3,2,5.5,"L"],     [2,1,"Bench",80,2,2,6.5,"V"],    [2,1,"Deadlift",70,3,1,5,"L"],
+    [2,2,"Bench",75,3,3,5.5,"L"] ] },
+  // Smaller and newer lifters, and women, recover faster and lose their edge
+  // sooner: a shorter taper (7-10 days), heavy work kept closer to the meet.
+  light: { label:"Novice or female lifter", rest:[4,5], rows:[
+    [1,1,"Squat",85,4,3,7.5,"V"],     [1,1,"Bench",85,4,3,7.5,"V"],
+    [1,3,"Deadlift",85,3,2,7.5,"V"],  [1,3,"Bench",85,3,3,7.5,"V"],
+    [1,5,"Squat",87.5,3,2,8,"V"],     [1,5,"Bench",87.5,3,2,8,"V"],
+    [1,6,"Deadlift",90,1,1,8,"H"],    [1,6,"Deadlift",82.5,2,2,7,"B"],
+    [2,1,"Squat",92.5,1,1,8.5,"H"],   [2,1,"Squat",85,2,2,7.5,"B"],    [2,1,"Bench",82.5,2,2,7,"V"],
+    [2,2,"Bench",92.5,1,1,8.5,"H"],   [2,2,"Bench",85,2,2,7.5,"B"],
+    [2,3,"Squat",80,3,2,6,"L"],       [2,3,"Bench",80,3,3,6,"L"] ] },
+};
+const TAPER_MEET_DAY = 6;
+const taperDaysOut = (w, d) => (2 - w) * 7 + (TAPER_MEET_DAY - d);
+const TAPER_WORD = { Squat:"squat", Bench:"bench", Deadlift:"pull" };
+// Where each lift's last heavy day and last session fall, read off the rows.
+function taperTimeline(type){
+  const t = { heavy:{}, last:{}, rest:TAPER_TYPES[type].rest.length };
+  for(const [w, d, lift, , , , , kind] of TAPER_TYPES[type].rows){
+    const out = taperDaysOut(w, d);
+    if(kind === "H") t.heavy[lift] = out;
+    t.last[lift] = t.last[lift] == null ? out : Math.min(t.last[lift], out);
+  }
+  return t;
+}
+function taperProgram(maxes, opts){
+  const type = TAPER_TYPES[opts && opts.type] ? opts.type : "regular";
+  const T = TAPER_TYPES[type];
+  const r25 = w => Math.max(20, Math.round(w/2.5)*2.5);
+  const rows = [], seen = {};
+  const push = (w, d, ex, lift, wt, sets, reps, rpe, cue, pct, tail) => rows.push({
+    Week:w, Day:d, Exercise:ex, "Weight (kg)":wt, Sets:sets, Reps:reps,
+    Rpe:(rpe === "" || rpe == null) ? "" : String(rpe),
+    _lift:lift, _cue:cue || "", _pct:pct || "", _tail:tail || "", _tailClean:tail || "" });
+  const tl = taperTimeline(type);
+  for(const [w, d, lift, p, sets, reps, rpe, kind] of T.rows){
+    const out = taperDaysOut(w, d), first = !seen[w + "-" + d];
+    seen[w + "-" + d] = true;
+    const pause = lift === "Bench" ? "1s pause" : "";
+    let cue = "", tail = pause;
+    if(kind === "H"){
+      cue = "Last heavy " + TAPER_WORD[lift] + " · " + out + " days out";
+      tail = ["stop at RPE " + rpe + ", no grind", "competition commands & kit", pause,
+              tl.last[lift] === out ? "your last " + TAPER_WORD[lift] + " before the meet" : ""].filter(Boolean).join(" · ");
+    } else if(kind === "B"){
+      cue = "Back-offs";
+    } else if(kind === "L"){
+      cue = "Last " + TAPER_WORD[lift] + " session · " + out + " days out";
+      tail = [lift === "Deadlift" ? "light, fast singles · skip it if your back feels worked" : "light and fast, nothing heavy from here", pause].filter(Boolean).join(" · ");
+    } else if(first){
+      cue = out + " days out";
+    }
+    push(w, d, lift, lift, fmtW(r25(maxes[lift]*p/100)), sets, reps, rpe, cue, p + "%", tail);
+  }
+  for(const d of T.rest) push(2, d, "Rest", "", "", "", "", "", "", "", "Complete rest · " + taperDaysOut(2, d) + (taperDaysOut(2, d) === 1 ? " day out" : " days out") + " · sleep, eat, pack your kit");
+  push(2, TAPER_MEET_DAY, "Meet day", "", "", "", "", "", "MEET", "", "Saturday · warm up the way you rehearsed");
+  rows.sort((a, b) => (a.Week - b.Week) || (a.Day - b.Day));
+  return { rows, type, timeline:tl,
+    maxLines:[ {label:"Squat 1RM", val:fmtW(maxes.Squat)},
+               {label:"Bench 1RM", val:fmtW(maxes.Bench)},
+               {label:"Deadlift 1RM", val:fmtW(maxes.Deadlift)} ],
+    weekCount:2 };
+}
+/* Program notes as "# " lines (shown in Power Logs' Program notes card). No
+   user-typed text in them. Clean says the same without the percentages. */
+function taperNotes(o, clean){
+  const T = TAPER_TYPES[o.type], tl = taperTimeline(o.type), m = o.maxes;
+  const why = {
+    regular:"The usual stagger: heavy squat and deadlift finish 7-10 days out, heavy bench inside the last week.",
+    heavy:"Bigger, stronger lifters shed fatigue more slowly, so every lift stops heavy earlier and there is an extra rest day. If your last heavy pull was already done before this block, treat the week 1 single as a moderate one.",
+    light:"Smaller and newer lifters, and women, recover faster and lose their edge sooner, so the taper is shorter and heavy work stays closer to the meet." }[o.type];
+  const lastTxt = ["Deadlift","Squat","Bench"].map(l => TAPER_WORD[l] + " " + tl.last[l] + " days out").join(", ");
+  const n = ["TAPER · 2 weeks: the last heavy week, then a one-week taper straight into the meet. No separate deload week: the taper is the deload.",
+             "Meet = Week 2 Day 6 (Saturday). Day numbers are weekdays: 1 = Monday, 3 = Wednesday, 5 = Friday. Sunday meet? Move every session one day later.",
+             T.label + ". " + why,
+             "Each lift tapers on its own clock. Last heavy single: deadlift " + tl.heavy.Deadlift + " days out, squat " + tl.heavy.Squat + ", bench " + tl.heavy.Bench +
+               ". The deadlift gets the most room, the bench stays heavy longest.",
+             "Last session of each lift: " + lastTxt + ". Then " + tl.rest + " days of complete rest."];
+  n.push(clean
+    ? "Volume comes down by about half while the bar stays heavy; after each lift's last heavy day it drops to light, fast work."
+    : "Volume comes down about 40-50% while the bar stays heavy (singles at 90-92.5%); after each lift's last heavy day it drops to 70-80%.");
+  if(!clean) n.push("Loads are % of the 1RMs entered (Squat " + fmtW(m.Squat) + " · Bench " + fmtW(m.Bench) +
+                    " · Deadlift " + fmtW(m.Deadlift) + "), rounded to 2.5 kg. Use maxes you could hit today.");
+  n.push("The RPE column is a ceiling. A heavy single that moves slower than its RPE is your last one: don't chase it, and never grind in these two weeks.",
+         "No accessories. Competition technique on every rep: commands, pauses, depth, and the belt, sleeves and wraps you'll wear on the day.",
+         "Don't add rest days. A week fully off is a common cause of bad meets, and the bench is the first lift to fade.",
+         "Sleep an extra hour a night and eat to recover, not to diet. One bad night before the meet costs very little.");
+  return n;
+}
+function taperCSV(opts, rows, clean){
+  const q = v => csvRow([v[0]||"",v[1]||"",v[2]||"",v[3]||"",v[4]||"",v[5]||"",v[6]||""]);
+  let out="";
+  out += q(["#Program","Taper (2 weeks)"]);
+  out += q(["#Name",opts.name]);
+  out += q(["#Block",opts.block]);
+  if(opts.cls) out += q(["#Class",opts.cls]);
+  out += q(["#Max","Squat",fmtW(opts.maxes.Squat)]);
+  out += q(["#Max","Bench",fmtW(opts.maxes.Bench)]);
+  out += q(["#Max","Deadlift",fmtW(opts.maxes.Deadlift)]);
+  for(const n of taperNotes(opts, clean)) out += "# " + n + "\r\n";
+  out += csvRow(["Week","Day","Exercise","Weight (kg)","Sets","Reps","RPE","Notes"]);
+  for(const r of rows) out += csvRow([r.Week,r.Day,r.Exercise,r["Weight (kg)"],r.Sets,r.Reps,r.Rpe,r.Notes]);
+  return out;
+}
+
 /* ===================== shared preview engine ===================== */
 function escapeHTML(s){ return String(s).replace(/[&<>]/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c])); }
 function sanitize(s){ return (s||"").trim().replace(/[^\w.-]+/g,"_").replace(/^_+|_+$/g,""); }
 
 let ctx = null;                          // active preview context
-const CTX = { gustav:null, wendler:null, equipped:null, deadlift:null, squat:null, bench:null, combined:null, lilliebridge:null, bench2:null, lilliesbd:null, ksb:null, fmgd:null, cvbt:null, mdl:null, gpop:null }; // last-built context per generator
+const CTX = { gustav:null, wendler:null, equipped:null, deadlift:null, squat:null, bench:null, combined:null, lilliebridge:null, bench2:null, lilliesbd:null, ksb:null, fmgd:null, cvbt:null, mdl:null, gpop:null, taper:null }; // last-built context per generator
 
 function splitCSV(text){
   // -> { meta:[raw # lines], header:[cells], body:[[cells]...], idx:{col->index} }
@@ -5493,6 +5678,7 @@ const EMPTY_TXT = {
   lilliesbd:{ big:"No program yet", sub:"Enter squat, bench &amp; deadlift 1RMs, then build the 14-week Lilliebridge SBD program." },
   lilliebridge:{ big:"No block yet", sub:"Enter squat &amp; deadlift 1RMs, then build the 14-week Lilliebridge block." },
   gpop:    { big:"No program yet", sub:"Enter squat, bench &amp; deadlift 1RMs, then build the 16-week Gen Pop meet peak." },
+  taper:   { big:"No taper yet", sub:"Enter squat, bench &amp; deadlift 1RMs, pick the lifter type, then build the 2-week taper." },
 };
 function showView(name){
   document.querySelectorAll(".view").forEach(v=> v.classList.remove("active"));
@@ -6266,6 +6452,61 @@ function buildGpop(){
   $("gp-reset").style.display = "inline-block";
   mountCtx(c, true);
 }
+function buildTaper(){
+  const sq = parseFloat($("tp-squat").value);
+  const bp = parseFloat($("tp-bench").value);
+  const dl = parseFloat($("tp-dead").value);
+  let ok = true;
+  [["tp-squat",sq],["tp-bench",bp],["tp-dead",dl]].forEach(([id,v])=>{
+    const good = Number.isFinite(v) && v>=20;
+    $(id).closest(".field").classList.toggle("invalid", !good);
+    if(!good) ok = false;
+  });
+  if(!ok){ $("tp-msg").textContent = "Enter all three 1RMs in kg (20 kg or more)."; return; }
+  $("tp-msg").textContent = "";
+  const name  = $("tp-name").value.trim()  || "Lifter";
+  const block = $("tp-block").value.trim() || "Taper";
+  const cls   = $("tp-class").value.trim();
+  const type  = TAPER_TYPES[$("tp-type").value] ? $("tp-type").value : "regular";
+  const maxes = { Squat:sq, Bench:bp, Deadlift:dl };
+  const opts  = { name, block, cls, maxes, type };
+  const built = taperProgram(maxes, opts);
+  const c = {
+    program:"taper",
+    meta:{ name, block, cls, maxLines: built.maxLines },
+    variants:[
+      {id:"program", label:"Program", csv:taperCSV(opts, gpopRender(built.rows, {})),                showRPE:true, suffix:""},
+      {id:"clean",   label:"Clean",   csv:taperCSV(opts, gpopRender(built.rows, {pct:false}), true), showRPE:true, suffix:"_clean"},
+    ],
+    active:"program", weekCount:2, mapTitle:"Taper map",
+    phaseOf:(w)=> w===1 ? "peak" : "deload",
+    ribbon:[
+      {label:"Last heavy week", dotColor:"var(--peak)",         weeks:[1]},
+      {label:"Taper + meet",    dotColor:"var(--deload-badge)", weeks:[2]},
+    ],
+    weekTitle:(w)=> w===1 ? "Week 1 · Last heavy week" : "Week 2 · Taper & meet",
+  };
+  CTX.taper = c;
+  $("tp-reset").style.display = "inline-block";
+  mountCtx(c, true);
+}
+// Under the Lifter type menu: what the chosen type changes.
+function taperHint(){
+  const type = TAPER_TYPES[$("tp-type").value] ? $("tp-type").value : "regular", tl = taperTimeline(type);
+  $("tp-typehint").textContent = "Last heavy single: deadlift " + tl.heavy.Deadlift + " days out, squat " + tl.heavy.Squat +
+    ", bench " + tl.heavy.Bench + ". Then light sessions and " + tl.rest + " days of complete rest before the meet.";
+}
+function taperReset(){
+  ["tp-name","tp-block","tp-class","tp-squat","tp-bench","tp-dead"].forEach(id=> $(id).value="");
+  $("tp-type").value = "regular";
+  taperHint();
+  document.querySelectorAll("#view-taper .field.invalid").forEach(f=> f.classList.remove("invalid"));
+  CTX.taper = null; ctx = null;
+  $("tp-reset").style.display = "none"; $("tp-msg").textContent = "";
+  $("results").style.display = "none"; $("empty").style.display = "block";
+  $("empty").innerHTML = `<div class="big">${EMPTY_TXT.taper.big}</div>${EMPTY_TXT.taper.sub}`;
+  $("tp-name").focus();
+}
 function gpopReset(){
   ["gp-name","gp-block","gp-class","gp-squat","gp-bench","gp-dead"].forEach(id=> $(id).value="");
   $("gp-bump").value = "2.5";
@@ -6310,6 +6551,10 @@ $("lb-generate").onclick  = buildLilliebridge;
 $("lb-reset").onclick     = lilliebridgeReset;
 $("gp-generate").onclick  = buildGpop;
 $("gp-reset").onclick     = gpopReset;
+$("tp-generate").onclick  = buildTaper;
+$("tp-reset").onclick     = taperReset;
+$("tp-type").onchange     = taperHint;
+taperHint();
 $("btn-export").onclick   = exportActive;
 
 /* Collapsed Setup bar + sticky action bar (standalone; see #ctxbar CSS). */
@@ -6373,6 +6618,7 @@ const CVBT_FIELDS    = ["cv-name","cv-block","cv-class","cv-squat","cv-bench","c
 const MDL_FIELDS     = ["dm-name","dm-block","dm-class","dm-dead","dm-squat"];
 const LSBD_FIELDS    = ["ls-name","ls-block","ls-class","ls-squat","ls-bench","ls-dead"];
 const GPOP_FIELDS    = ["gp-name","gp-block","gp-class","gp-squat","gp-bench","gp-dead"];
+const TAPER_FIELDS   = ["tp-name","tp-block","tp-class","tp-squat","tp-bench","tp-dead"];
 document.addEventListener("keydown", e=>{
   if(e.key !== "Enter") return;
   const id = document.activeElement.id;
@@ -6391,6 +6637,7 @@ document.addEventListener("keydown", e=>{
   else if(MDL_FIELDS.includes(id)) buildMdl();
   else if(LSBD_FIELDS.includes(id)) buildLillieSBD();
   else if(GPOP_FIELDS.includes(id)) buildGpop();
+  else if(TAPER_FIELDS.includes(id)) buildTaper();
 });
 
 /* ===================== theme (light / dark) ===================== */
@@ -6526,9 +6773,9 @@ if("serviceWorker" in navigator){
   // blank, still at its default, or still holding what the previous fill put
   // there, so anything typed here is never overwritten.
   var LIFTER_FIELDS = {
-    squat:    ["in-squat", "w-squat", "e-rsquat", "sq-max", "cb-squat", "lb-squat", "ls-squat", "fm-squat", "cv-squat", "dm-squat", "gp-squat"],
-    bench:    ["in-bench", "w-bench", "e-rbench", "bn-max", "b2-max", "ksb-max", "cb-bench", "ls-bench", "fm-bench", "cv-bench", "gp-bench"],
-    deadlift: ["in-deadlift", "w-deadlift", "e-rdead", "d-max", "cb-dead", "lb-dead", "ls-dead", "fm-dead", "cv-dead", "dm-dead", "gp-dead"],
+    squat:    ["in-squat", "w-squat", "e-rsquat", "sq-max", "cb-squat", "lb-squat", "ls-squat", "fm-squat", "cv-squat", "dm-squat", "gp-squat", "tp-squat"],
+    bench:    ["in-bench", "w-bench", "e-rbench", "bn-max", "b2-max", "ksb-max", "cb-bench", "ls-bench", "fm-bench", "cv-bench", "gp-bench", "tp-bench"],
+    deadlift: ["in-deadlift", "w-deadlift", "e-rdead", "d-max", "cb-dead", "lb-dead", "ls-dead", "fm-dead", "cv-dead", "dm-dead", "gp-dead", "tp-dead"],
     press:    ["w-press"],
     esquat:   ["e-esquat"], ebench: ["e-ebench"], edead: ["e-edead"],
     bw:       ["e-bw"]
@@ -6649,7 +6896,7 @@ if("serviceWorker" in navigator){
     });
   });
 
-  try { parent.postMessage({ type: "spotter-hub-ready", features: ["send", "height", "theme", "prefill"], build: "hub-8" }, "*"); } catch (e) {}
+  try { parent.postMessage({ type: "spotter-hub-ready", features: ["send", "height", "theme", "prefill"], build: "hub-9" }, "*"); } catch (e) {}
 
   // ---- Send the built program straight into Manage Program's donor slot ----
   // Reuses the page's own export pipeline: syncExportScope() parses and validates

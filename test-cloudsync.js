@@ -167,9 +167,11 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   A.$("wkAddText").value = "Band pull-aparts"; A.$("wkAddBtn").click(); await tick();
   const noteRid = Object.keys(A.store("spotter.notes.v1").Sam)[0];
   A.nav("Manage program"); await tick(100);
+  A.$("dmMaxesBtn").click();
   A.$("dmMaxes").querySelector(".dmn-edit").click();
   A.$("wkNoteArea").value = "Coach-only: watch depth"; A.$("wkNoteArea").dispatchEvent(new A.w.Event("input"));
   A.$("wkNoteDone").click();
+  A.$("maxesClose").click();
   A.sync();
   check("exercise note arrives", await until(() => (B.store("spotter.notes.v1").Sam || {})[noteRid] === "Felt fast"));
   check("weekly note arrives", await until(() => (B.store("spotter.weekNotes.v1").Sam || {})["1"] === "Good week"));
@@ -244,13 +246,17 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
 
   console.log("\nThe coach gives Tom his own login");
   C.nav("Manage program"); await tick(100);
-  const share = [...C.$("dmBody").querySelectorAll(".dm-sec")].find(s => s.querySelector(".dm-sec-cap").textContent === "Sharing");
-  check("Manage program has a Sharing section", !!share);
+  check("Manage program has a Sharing button, saying Tom has no login yet", !!C.$("dmShareBtn") && /No login for Tom/.test(C.$("dmShareBtn").textContent), C.$("dmShareBtn") && C.$("dmShareBtn").textContent);
+  C.$("dmShareBtn").click(); await tick(50);
+  const share = C.$("dmShare");
+  check("...which opens a Sharing dialog for Tom", C.$("shareScrim").classList.contains("show") && C.$("shareFor").textContent === "Tom" && !!share.querySelector('input[type="email"]'));
   const emailIn = share.querySelector('input[type="email"]');
   emailIn.value = "Tom@Test.invalid"; emailIn.dispatchEvent(new C.w.Event("blur"));
   check("the lifter's email is saved (lower-cased)", await until(async () => (await lifters()).find(l => l.name === "Tom").lifter_email === "tom@test.invalid"));
   await C.settle();
-  check("and shown as waiting for them", /Waiting for Tom to sign in/.test(C.$("dmBody").textContent));
+  check("and shown as waiting for them", /Waiting for Tom to sign in/.test(C.$("dmShare").textContent));
+  C.$("shareClose").click();
+  check("the Sharing button says so too", /Waiting for Tom · 1 coach/.test(C.$("dmShareBtn").textContent), C.$("dmShareBtn").textContent);
 
   /* ------------------------------------------------------------- a lifter */
   console.log("\nTom signs in on his phone");
@@ -272,15 +278,20 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   check("but Overview, Analytics, RPE Estimator, Velocity Tracker and weeks", ["Overview", "Analytics", "RPE Estimator", "Velocity Tracker", "Week 1"].every(n => D.navs().includes(n)), D.navs().join());
   check("no upload prompt for a lifter", !D.$("confirmScrim").classList.contains("show"));
   C.sync(); await C.settle();
-  check("the coach sees he has signed in", await until(() => /Tom has signed in/.test(C.$("dmBody").textContent)));
+  check("the coach sees he has signed in", await until(() => /Tom signed in · 1 coach/.test(C.$("dmShareBtn").textContent)), C.$("dmShareBtn").textContent);
+  C.$("dmShareBtn").click(); await tick(50);
+  check("...and in the Sharing dialog", /Tom has signed in/.test(C.$("dmShare").textContent));
+  C.$("shareClose").click();
 
   D.nav("Week 1"); await tick();
   D.rows()[0].click();
   const tomRid = Object.keys(D.store("spotter.done.v1").Tom)[0];
   check("Tom's tick reaches his coach", await until(() => (C.store("spotter.done.v1").Tom || {})[tomRid] === true));
+  C.$("dmMaxesBtn").click();
   C.$("dmMaxes").querySelector(".dmn-edit").click();
   C.$("wkNoteArea").value = "Private: push him"; C.$("wkNoteArea").dispatchEvent(new C.w.Event("input"));
   C.$("wkNoteDone").click();
+  C.$("maxesClose").click();
   const block = C.$("dmBody").querySelector('input[aria-label="Block or program title"]');
   block.value = "Prep v2"; block.dispatchEvent(new C.w.Event("blur"));
   check("the coach's program edit reaches Tom", await until(() => D.store("spotter.profiles.v1").Tom.block === "Prep v2"));
@@ -331,7 +342,9 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   check("the email the coach gave Tom is cleared", await until(async () => (await lifters()).find(l => l.name === "Tom").lifter_email === null));
   check("...but Tom's program stays, with the owner", (await lifters()).find(l => l.name === "Tom").deleted_at === null && (A.sync(), await A.settle(), A.names().includes("Tom")));
   A.pick("Tom"); await tick(); A.nav("Manage program"); await tick(100);
-  check("...where Sharing shows no email now", /Add the email Tom signs in with/.test(A.$("dmBody").textContent));
+  A.$("dmShareBtn").click(); await tick(50);
+  check("...where Sharing shows no email now", /Add the email Tom signs in with/.test(A.$("dmShare").textContent) && /No login for Tom/.test(A.$("dmShareBtn").textContent));
+  A.$("shareClose").click();
   A.nav("Overview");
   D.sync(); await D.settle();
   check("and Tom's phone loses it", !D.names().includes("Tom"), D.names().join());
@@ -339,9 +352,11 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   console.log("\nThe owner deletes Sam for everyone");
   A.pick("Sam"); await tick();
   A.nav("Manage program"); await tick(100);
-  A.btn("Delete lifter for everyone", A.$("dmBody")).click(); await tick();
+  A.$("dmShareBtn").click(); await tick(50);
+  A.btn("Delete lifter for everyone", A.$("dmShare")).click(); await tick();
   A.$("confirmYes").click();
   check("gone from the phone", await until(() => !A.names().includes("Sam")));
+  check("...and the Sharing dialog it was done from has closed", !A.$("shareScrim").classList.contains("show"));
   check("marked deleted in the database", await until(async () => !!(await lifters()).find(l => l.name === "Sam").deleted_at));
   B.sync(); await B.settle();
   check("gone from the PC", !B.names().includes("Sam"), B.names().join());

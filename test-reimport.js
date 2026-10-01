@@ -53,7 +53,9 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   async function openManage() {
     navTo("Manage program");
     await tick(100);
-    return $("viewDayMgr").classList.contains("active");
+    $("dmMaxesBtn").click();          // the maxes live in a dialog
+    await tick(50);
+    return $("viewDayMgr").classList.contains("active") && $("maxesScrim").classList.contains("show");
   }
   const field = label => $("dmMaxes").querySelector(`input[aria-label="${label}"]`);
   async function setField(label, value) {

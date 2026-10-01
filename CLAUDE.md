@@ -91,7 +91,13 @@ the `.vN` suffix if you ever change a stored shape incompatibly.
   the nearest 0.5 kg (`trainingMaxesOf(p)`, which the card and the Hub use), so
   defaults follow the 1-rep maxes and a lift without one has none. `tmPct` is
   carried over by re-imports like `trainingMaxes`. Manage Program shows 1-rep maxes, training
-  maxes and the Notes in one card (`buildMaxesNotesCard()`); one undo step
+  maxes and the Notes in one dialog (`buildMaxesNotesBody()`, opened from the "Maxes
+  and notes" button), Sharing in another (`buildShareSection()`), and the program charts plus the
+  progression/load views in a third (`fillAnalyticsDialog()`: `renderDMCharts()` +
+  `renderDMAnalytics()`, drawn only while it's open, freed on close); the buttons are
+  `renderDMMaxes()`'s `#dmTools` row, which also refills an open dialog (`fillDialog`).
+  Both scrims sit before the note editor and confirmations in the DOM so those open on
+  top. One undo step
   (`mnSnap`/`mnRestore`) restores both max stores and `tmPct` together. The CSV
   stays the source of truth for everything it does carry (rows, `#Block`, `#Max`).
 - `ORDER` (`spotter.lifterOrder.v1`): lifter names in the user's arranged

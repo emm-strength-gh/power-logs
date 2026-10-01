@@ -745,7 +745,22 @@
   @media (max-width: 520px) { .mn-addform { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .mn-addform .chip { grid-column: 1 / -1; justify-self: start; } }
   .dm-build { margin: 28px 0 0; font-size: 11px; color: var(--faint); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .04em; }
   .view-maxes { margin: 0 0 18px; }
-  .dm-maxes { margin: 2px 0 16px; }
+  .dm-tools { display: flex; flex-wrap: wrap; gap: 10px; margin: 2px 0 16px; }
+  .dm-tool { flex: 1 1 210px; min-width: 0; display: flex; align-items: center; gap: 11px; padding: 13px 14px; text-align: left; background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .dm-tool:hover { border-color: var(--border-strong); }
+  .dm-tool-ic { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--bg); color: var(--pine); }
+  .dm-tool-ic svg { width: 18px; height: 18px; }
+  .dm-tool-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .dm-tool-tx b { font-family: "Bricolage Grotesque", sans-serif; font-weight: 600; font-size: 15px; }
+  .dm-tool-tx span { font-size: 12px; color: var(--muted); line-height: 1.35; white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .dm-tool-chev { flex: none; color: var(--faint); display: grid; place-items: center; }
+  .dm-tool-chev svg { width: 18px; height: 18px; }
+  /* Phones: two tiles to a row (the third takes the row below, full width). */
+  @media (max-width: 520px) { .dm-tool { flex-basis: calc(50% - 5px); } }
+  @media (max-width: 480px) { .dm-tool { padding: 12px 11px; gap: 8px; } .dm-tool-ic { display: none; } }
+  .dm-sharebody { padding: 2px 0 0; }
+  #dmAnalyticsScrim .dm-charts { margin-top: 4px; padding-top: 0; border-top: 0; }
+  .dm-an-sec { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--border); }
   .dm-maxes .dm-selrow { margin-bottom: 10px; }
   .dm-maxes .dm-blockhint { margin-top: 0; }
   .view-maxes:empty { display: none; }
@@ -1148,22 +1163,15 @@
         </button>
         <h1 class="section-head">Manage program</h1>
         <div id="dmNotice"></div>
-        <div id="dmMaxes" class="view-maxes dm-maxes"></div>
+        <div id="dmTools" class="dm-tools"></div>
         <div class="seg dm-tabs" id="dmTabs" role="tablist" aria-label="Manage program sections">
           <button type="button" class="seg-btn active" data-tab="manage" role="tab" aria-selected="true">Manage program</button>
-          <button type="button" class="seg-btn" data-tab="analytics" role="tab" aria-selected="false">Analytics</button>
           <button type="button" class="seg-btn" data-tab="warmup" role="tab" aria-selected="false">Warm up Calculator</button>
           <button type="button" class="seg-btn" data-tab="hub" role="tab" aria-selected="false">Program Hub</button>
         </div>
         <div id="dmPaneManage" role="tabpanel" aria-label="Manage program">
           <p class="section-sub">Edit this lifter's program day by day, or import another program and copy days or whole weeks across.</p>
           <div id="dmBody"></div>
-          <div id="dmCharts" class="dm-charts"></div>
-        </div>
-        <div id="dmPaneAnalytics" class="hidden" role="tabpanel" aria-label="Analytics">
-          <p class="dm-an-intro">Progression and load-management views for the whole loaded program. Estimated 1RM and volume are built from the programmed sets; adherence and ACWR use what you've actually ticked off as Done and Skipped.</p>
-          <div id="dmAnControls" class="dm-selrow"></div>
-          <div id="dmAnBody" class="dm-an-charts"></div>
         </div>
         <div id="dmPaneWarmup" class="hidden" role="tabpanel" aria-label="Warm up Calculator">
           <p class="dm-an-intro">An elite-style meet-day ramp from an empty 20 kg bar up through your opener, second, and third attempt (your 1RM). Bench gets a couple of extra warm-up steps since it's less fatiguing; deadlift gets fewer since it's usually the last, most taxing lift of the day.</p>
@@ -1262,6 +1270,52 @@
       </section>
     </div>
   </main>
+</div>
+
+<!-- Before the note editor and the confirmations, so they open on top of these. -->
+<div class="modal-scrim" id="dmAnalyticsScrim">
+  <div class="modal modal-lg acct-modal" role="dialog" aria-modal="true" aria-labelledby="dmAnalyticsTitle">
+    <div class="modal-head">
+      <h2 id="dmAnalyticsTitle">Analytics</h2>
+      <button class="icon-x" id="dmAnalyticsClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="note-context" id="dmAnalyticsFor"></p>
+    <div id="dmCharts" class="dm-charts"></div>
+    <div class="dm-sec dm-an-sec">
+      <p class="dm-sec-cap">Progression and load</p>
+      <p class="dm-an-intro">Progression and load-management views for the whole loaded program. Estimated 1RM and volume are built from the programmed sets; adherence and ACWR use what you've actually ticked off as Done and Skipped.</p>
+      <div id="dmAnControls" class="dm-selrow"></div>
+      <div id="dmAnBody" class="dm-an-charts"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-scrim" id="maxesScrim">
+  <div class="modal modal-lg acct-modal" role="dialog" aria-modal="true" aria-labelledby="maxesTitle">
+    <div class="modal-head">
+      <h2 id="maxesTitle">Maxes and notes</h2>
+      <button class="icon-x" id="maxesClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="note-context" id="maxesFor"></p>
+    <div id="dmMaxes"></div>
+  </div>
+</div>
+
+<div class="modal-scrim" id="shareScrim">
+  <div class="modal acct-modal" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+    <div class="modal-head">
+      <h2 id="shareTitle">Sharing</h2>
+      <button class="icon-x" id="shareClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="note-context" id="shareFor"></p>
+    <div id="dmShare"></div>
+  </div>
 </div>
 
 <div class="modal-scrim" id="noteScrim">
@@ -1485,7 +1539,7 @@
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
   // major.minor.patch: minor goes up with each release (it carried on from the
   // old build counter, 30), patch for a fix to one.
-  var APP_VERSION = "1.38.0";
+  var APP_VERSION = "1.39.0";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -1534,7 +1588,7 @@
   var dmNlChart = null, dmTopChart = null, dmFatChart = null;
 
   // Manage-program tabs + the additional Analytics tab (e1RM / adherence / ACWR / volume)
-  var dmTab = "manage";              // 'manage' | 'analytics' | 'warmup'
+  var dmTab = "manage";              // 'manage' | 'warmup' | 'hub'
   var dmAnGran = "weekly";           // Analytics-tab granularity: 'weekly' | 'daily'
   var dmAnFormula = "epley";         // estimated-1RM formula: 'epley' | 'brzycki'
   var dmAcwrSource = "completed";    // ACWR daily-load source: 'completed' | 'prescribed'
@@ -3381,28 +3435,103 @@
   // hand from every tab — Analytics reads these for NL and intensity, and the
   // Warm-up Calculator and Program Hub both want the same numbers. Uses the same
   // collapsible shell and shared collapsed-state key as the Overview card.
-  // Maxes feed the NL and average-intensity charts, so a change has to redraw
-  // whichever Manage-program tab is open, not just the section list.
+  // Maxes feed the NL and average-intensity charts, so a change redraws the
+  // section list, and (through renderDMMaxes) any dialog that's open.
   function refreshAfterMaxChange() {
     renderDayMgr(); renderSidebar(); renderOverview();
-    if (dmTab === "analytics") renderDMAnalytics();
-    pushLifterToHub();   // the maxes cards stay visible above the Program Hub tab
+    pushLifterToHub();   // the maxes dialog's numbers feed the Program Hub's builders
   }
 
+  // Above Manage Program's tabs: Sharing (coaches) and Maxes and notes, each
+  // a button that opens a dialog. Redrawing this also refreshes an open dialog,
+  // so a change made inside one shows straight away.
+  var ICON_SHARE = '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>';
+  var ICON_ANALYTICS = '<path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="6" rx="1"/><rect x="12" y="7" width="3" height="10" rx="1"/><rect x="17" y="13" width="3" height="4" rx="1"/>';
+  var ICON_MAXES = '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/>';
+  function shareAvailable(p) { return !!(p && CLOUD.user && isCoach() && canManage(p.name)); }
+  function shareSummary(p) {
+    if (!p.cloudId) return "Only on this device";
+    var meta = CLOUD.lifterMeta[p.cloudId] || {};
+    var n = CLOUD.links.filter(function (l) { return l.lifter_id === p.cloudId; }).length;
+    var who = !meta.email ? "No login for " + p.name : (meta.linked ? p.name + " signed in" : "Waiting for " + p.name);
+    return who + " \u00B7 " + n + " coach" + (n === 1 ? "" : "es");
+  }
+  function toolButton(id, title, sub, icon, fn) {
+    var b = el("button", "dm-tool");
+    b.type = "button"; b.id = id;
+    var ic = el("span", "dm-tool-ic");
+    ic.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + icon + '</svg>';
+    var tx = el("span", "dm-tool-tx");
+    tx.appendChild(el("b", null, title));
+    tx.appendChild(el("span", null, sub));
+    var ch = el("span", "dm-tool-chev");
+    ch.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>';
+    b.appendChild(ic); b.appendChild(tx); b.appendChild(ch);
+    b.onclick = fn;
+    return b;
+  }
   function renderDMMaxes() {
-    var host = $("dmMaxes"); if (!host) return;
+    var host = $("dmTools"); if (!host) return;
     clear(host);
-    var p = PROFILES[current]; if (!p) { host.style.display = "none"; return; }
+    var p = PROFILES[current];
+    if (!p) { host.style.display = "none"; $("maxesScrim").classList.remove("show"); $("shareScrim").classList.remove("show"); closeDMAnalytics(); return; }
     host.style.display = "";
     if (!p.maxes) p.maxes = {};
     if (!p.trainingMaxes) p.trainingMaxes = {};
 
-    host.appendChild(buildMaxesNotesCard());
+    if (shareAvailable(p)) host.appendChild(toolButton("dmShareBtn", "Sharing", shareSummary(p), ICON_SHARE, openShare));
+    host.appendChild(toolButton("dmMaxesBtn", "Maxes and notes", mnSummary(p), ICON_MAXES, openMaxes));
+    host.appendChild(toolButton("dmAnalyticsBtn", "Analytics", "Program charts, estimated 1RM, adherence and load", ICON_ANALYTICS, openDMAnalytics));
+    fillMaxesDialog();
+    fillShareDialog();
+    fillAnalyticsDialog();
   }
+  // (Re)build an open dialog's content, keeping its scroll position.
+  function fillDialog(scrimId, bodyId, forId, build) {
+    var scrim = $(scrimId);
+    if (!scrim.classList.contains("show")) return;
+    var p = PROFILES[current], content = p && build(p);
+    if (!content) { scrim.classList.remove("show"); return; }
+    var modal = scrim.querySelector(".modal"), top = modal.scrollTop, body = $(bodyId);
+    clear(body);
+    body.appendChild(content);
+    $(forId).textContent = p.name;
+    modal.scrollTop = top;
+  }
+  function fillMaxesDialog() { fillDialog("maxesScrim", "dmMaxes", "maxesFor", function () { return buildMaxesNotesBody(); }); }
+  function fillShareDialog() { fillDialog("shareScrim", "dmShare", "shareFor", function (p) { return shareAvailable(p) ? buildShareSection(p) : null; }); }
+  function openMaxes() { if (!PROFILES[current]) return; $("maxesScrim").classList.add("show"); fillMaxesDialog(); }
+  function openShare() { if (!shareAvailable(PROFILES[current])) return; $("shareScrim").classList.add("show"); fillShareDialog(); }
+  function closeDialog(id) {
+    $(id).classList.remove("show");
+    if (cloudRedrawPending) cloudRefreshUI();   // a sync redraw that waited for it
+  }
+  // Analytics: the program charts and the progression/load views, built while the
+  // dialog is showing so Chart.js can size its canvases, and freed when it closes.
+  function fillAnalyticsDialog() {
+    var scrim = $("dmAnalyticsScrim");
+    if (!scrim.classList.contains("show")) return;
+    var p = PROFILES[current];
+    if (!p) { closeDMAnalytics(); return; }
+    var modal = scrim.querySelector(".modal"), top = modal.scrollTop;
+    $("dmAnalyticsFor").textContent = p.name;
+    renderDMCharts();
+    renderDMAnalytics();
+    modal.scrollTop = top;
+  }
+  function openDMAnalytics() { if (!PROFILES[current]) return; $("dmAnalyticsScrim").classList.add("show"); fillAnalyticsDialog(); }
+  function closeDMAnalytics() {
+    destroyDMCharts();
+    destroyDMAnalyticsCharts();
+    closeDialog("dmAnalyticsScrim");
+  }
+  function closeMaxes() { closeDialog("maxesScrim"); }
+  function closeShare() { closeDialog("shareScrim"); }
 
-  // Manage Program's numbers in one card: the 1-rep maxes (they drive the
+  // Manage Program's numbers in one dialog: the 1-rep maxes (they drive the
   // charts) beside the training maxes (for programming only; a percentage of
-  // the 1-rep maxes unless typed), then the Notes. One card, one collapse.
+  // the 1-rep maxes unless typed), then the Notes: one dialog, opened from
+  // the "Maxes and notes" button on Manage Program.
   function mnSnap(p) { return { maxes: deepClone(p.maxes || {}), tm: deepClone(p.trainingMaxes || {}), pct: p.tmPct }; }
   // One undo step restores every number and the percentage together.
   function mnRestore(name, s) {
@@ -3427,28 +3556,11 @@
       if (m[k] != null && m[k] !== "") { any = true; return m[k]; }
       return "–";
     });
-    return any ? "1RM " + s.join(" · ") + "  |  Training maxes at " + tmPctOf(p) + "%" : "Add your 1-rep maxes";
+    return any ? "1RM " + s.join(" · ") + "\nTraining maxes at " + tmPctOf(p) + "%" : "Add your 1-rep maxes";
   }
-  function buildMaxesNotesCard() {
-    var p = PROFILES[current], pct = tmPctOf(p), key = "spotter.maxesNotesCollapsed";
-    var collapsed = false;
-    try { collapsed = localStorage.getItem(key) === "1"; } catch (e) {}
-    var card = el("div", "pn-card mx-card mn-card" + (collapsed ? "" : " open"));
-    var toggle = el("button", "pn-toggle");
-    var lab = el("span", "pn-labels");
-    lab.appendChild(el("span", "pn-title", "Maxes and notes"));
-    lab.appendChild(el("span", "pn-sub", mnSummary(p)));
-    toggle.appendChild(lab);
-    var chev = el("span", "pn-chev");
-    chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
-    toggle.appendChild(chev);
-    toggle.onclick = function () {
-      card.classList.toggle("open");
-      try { localStorage.setItem(key, card.classList.contains("open") ? "0" : "1"); } catch (e) {}
-    };
-    card.appendChild(toggle);
-
-    var body = el("div", "pn-body");
+  function buildMaxesNotesBody() {
+    var p = PROFILES[current], pct = tmPctOf(p);
+    var body = el("div", "mn-body");
     function undoable(label, restoredLabel, before) {
       pushUndoAction({ label: label, restoredLabel: restoredLabel, restore: function () { return mnRestore(p.name, before); } });
       refreshAfterMaxChange();
@@ -3587,8 +3699,7 @@
     body.appendChild(el("p", "mn-hint", "1-rep maxes drive the charts: a lift left blank is left out of the Number of lifts and intensity charts. Training maxes are for programming only; type one to set it yourself, or tap the arrow to put it back on the percentage."));
     body.appendChild(el("div", "mn-hr"));
     body.appendChild(buildNotesSection());
-    card.appendChild(body);
-    return card;
+    return body;
   }
 
   // The Notes part of that card: one note per lifter, kept out of the Overview
@@ -3619,7 +3730,7 @@
     var p = PROFILES[current];
     renderDMMaxes();                 // lives above the tab bar, so it redraws separately
     var body = $("dmBody"); clear(body);
-    if (!p) { body.appendChild(el("div", "dm-empty", "Load a lifter first.")); renderDMCharts(); return; }
+    if (!p) { body.appendChild(el("div", "dm-empty", "Load a lifter first.")); return; }
 
     // Top to bottom: the program itself (title, export, compare); the day editor,
     // with the imported day beside it when there is one; every replace/merge in
@@ -3791,16 +3902,11 @@
 
     if (donor) body.appendChild(buildSwapSection());
     body.appendChild(buildImportSection());
-    // Sharing last: set up once per lifter, not part of day-to-day editing.
-    var secShare = buildShareSection(p);
-    if (secShare) body.appendChild(secShare);
 
     // Build stamp — lets a stale deploy be spotted immediately.
     var stamp = el("p", "dm-build");
     stamp.textContent = "Power Logs " + APP_VERSION + " · Program Hub build " + HUB_BUILD;
     body.appendChild(stamp);
-
-    renderDMCharts();   // program charts live below the manage-program controls
 
     // "+ Add exercise" at the foot of the day's list, opening the form in place.
     function buildAddExercise() {
@@ -4193,8 +4299,6 @@
     if (dmUndoOwner !== current) { dmUndoStack = []; dmUndoOwner = current; }   // fresh lifter, fresh undo history
     showView("viewDayMgr");
     dmTab = "manage";                                  // always land on the Manage tab
-    destroyDMAnalyticsCharts();
-    $("dmPaneAnalytics").classList.add("hidden");
     $("dmPaneWarmup").classList.add("hidden");
     $("dmPaneHub").classList.add("hidden");
     $("dmPaneManage").classList.remove("hidden");
@@ -4680,11 +4784,14 @@
     };
   }
 
-  function renderDMCharts() {
-    var wrap = $("dmCharts"); if (!wrap) return;
+  function destroyDMCharts() {
     if (dmNlChart) { dmNlChart.destroy(); dmNlChart = null; }
     if (dmTopChart) { dmTopChart.destroy(); dmTopChart = null; }
     if (dmFatChart) { dmFatChart.destroy(); dmFatChart = null; }
+  }
+  function renderDMCharts() {
+    var wrap = $("dmCharts"); if (!wrap) return;
+    destroyDMCharts();
     clear(wrap);
 
     var p = PROFILES[current]; if (!p) return;
@@ -5653,18 +5760,15 @@
   }
 
   function setDMTab(tab) {
-    dmTab = (tab === "analytics" || tab === "warmup" || tab === "hub") ? tab : "manage";
+    dmTab = (tab === "warmup" || tab === "hub") ? tab : "manage";
     Array.prototype.forEach.call(document.querySelectorAll("#dmTabs .seg-btn"), function (b) {
       var on = b.getAttribute("data-tab") === dmTab;
       b.classList.toggle("active", on);
       b.setAttribute("aria-selected", on ? "true" : "false");
     });
-    var mp = $("dmPaneManage"), ap = $("dmPaneAnalytics"), wp = $("dmPaneWarmup"), hp = $("dmPaneHub");
-    mp.classList.add("hidden"); ap.classList.add("hidden"); wp.classList.add("hidden"); hp.classList.add("hidden");
-    if (dmTab === "analytics") {
-      ap.classList.remove("hidden");
-      renderDMAnalytics();                 // build while visible so Chart.js sizes correctly
-    } else if (dmTab === "warmup") {
+    var mp = $("dmPaneManage"), wp = $("dmPaneWarmup"), hp = $("dmPaneHub");
+    mp.classList.add("hidden"); wp.classList.add("hidden"); hp.classList.add("hidden");
+    if (dmTab === "warmup") {
       wp.classList.remove("hidden");
     } else if (dmTab === "hub") {
       hp.classList.remove("hidden");
@@ -5672,7 +5776,6 @@
       pushLifterToHub();                   // already loaded: bring its builders up to date
     } else {
       mp.classList.remove("hidden");
-      renderDMCharts();                    // refresh (e.g. after a theme change) without rebuilding dmBody
     }
   }
 
@@ -7454,14 +7557,12 @@
     body.appendChild(so);
   }
 
-  // Manage program → Sharing: the lifter's own login, co-coaches, deleting.
+  // Manage program → Sharing (a dialog): the lifter's own login, co-coaches, deleting.
   function buildShareSection(p) {
-    if (!CLOUD.user || !isCoach() || !canManage(p.name)) return null;
+    if (!shareAvailable(p)) return null;
     var api = cloudApi();
-    var sec = el("div", "dm-sec");
-    sec.appendChild(el("p", "dm-sec-cap", "Sharing"));
-    var card = el("div", "dm-card");
-    sec.appendChild(card);
+    var sec = el("div", "dm-sharebody");
+    var card = sec;
     if (!p.cloudId) {
       card.appendChild(el("p", "dm-import-hint", "Only on this device. Upload it to your account to sync it, share it with another coach, and let " + p.name + " log it on their own phone."));
       var ua = el("div", "dm-actions");
@@ -7551,6 +7652,7 @@
         if (!ok) return;
         api.update("lifters", id, { deleted_at: new Date().toISOString() }).then(function () {
           var nm = p.name;
+          closeShare();
           removeLocalLifter(nm);
           writeAllStores();
           saveCloud();
@@ -8335,7 +8437,7 @@
       var cur = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
       localStorage.setItem(STORE_THEME, cur); applyTheme(cur);
       if (inAnalytics) renderAnalytics();   // recolour charts for the new theme
-      if (inDayMgr) { if (dmTab === "analytics") renderDMAnalytics(); else renderDMCharts(); }
+      if (inDayMgr) fillAnalyticsDialog();   // recolour an open Analytics dialog
       if (inCompare) renderCompareBody();
       pushThemeToEmbeds();   // keep the embedded tools' palettes in step
     };
@@ -8417,6 +8519,19 @@
     $("unloadBtn").onclick = unloadAll;
     $("acctBtn").onclick = openAcct;
     $("emptySignIn").onclick = openAcct;
+    $("maxesClose").onclick = closeMaxes;
+    $("shareClose").onclick = closeShare;
+    $("dmAnalyticsClose").onclick = closeDMAnalytics;
+    (function () {
+      var scrim = $("dmAnalyticsScrim"), downSelf = false;
+      scrim.onpointerdown = function (e) { downSelf = (e.target === scrim); };
+      scrim.onclick = function (e) { if (downSelf && e.target === scrim) closeDMAnalytics(); };
+    })();
+    ["maxesScrim", "shareScrim"].forEach(function (id) {
+      var scrim = $(id), downSelf = false;
+      scrim.onpointerdown = function (e) { downSelf = (e.target === scrim); };
+      scrim.onclick = function (e) { if (downSelf && e.target === scrim) closeDialog(id); };
+    });
     $("msgBack").onclick = openOverview;
     $("inboxBack").onclick = openOverview;
     $("acctClose").onclick = closeAcct;
@@ -8530,6 +8645,9 @@
         else if ($("aboutScrim").classList.contains("show")) $("aboutScrim").classList.remove("show");
         else if ($("noteScrim").classList.contains("show")) closeNote();
         else if ($("wkNoteScrim").classList.contains("show")) closeNoteEditor();
+        else if ($("maxesScrim").classList.contains("show")) closeMaxes();
+        else if ($("shareScrim").classList.contains("show")) closeShare();
+        else if ($("dmAnalyticsScrim").classList.contains("show")) closeDMAnalytics();
         else if ($("orderScrim").classList.contains("show")) closeOrder();
         else if ($("toolsScrim").classList.contains("show")) closeTools();
         else closeNav();

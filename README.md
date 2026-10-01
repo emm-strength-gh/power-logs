@@ -225,7 +225,11 @@ That's why the dropdown opens a sheet instead.
 
 ## Notes in Manage Program
 
-Manage Program's top section has a **Notes** card under the two maxes cards: one
+Manage Program's top section is one **Maxes and notes** card. Each lift is a row with
+its 1-rep max beside its training max; a row of 100/95/90/85/80% buttons sets the
+percentage the training maxes follow (grey numbers follow it, dark ones were typed by
+hand, and the small arrow puts a typed one back); **Add another lift** takes a 1-rep
+max, a training max, or both. Below that sits the **Notes** section: one
 free-text note per lifter, edited in the same sheet as Weekly notes (multi-line,
 links become tappable). It never appears on the Overview or the week pages, and it
 syncs only between the lifter's coaches: the database never sends it to the lifter.

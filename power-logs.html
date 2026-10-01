@@ -717,17 +717,32 @@
   .hub-stale { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--clay); border-radius: 10px;
                background: var(--clay-soft, rgba(179,71,50,.08)); color: var(--ink); font-size: 13px; line-height: 1.55; }
   .hub-stale code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-  .mx-field { position: relative; }
-  .mx-field .add-weight { width: 120px; }
-  .mx-field.auto .add-weight { color: var(--muted); }
-  .mx-pcts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 12px; max-width: 420px; }
-  .mx-pcts-lab { flex: 1 1 100%; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .mn-lab { font-size: 12.5px; font-weight: 600; color: var(--muted); margin: 12px 0 8px; }
+  .mx-pcts { display: flex; gap: 6px; margin: 0 0 4px; max-width: 420px; }
   .mx-pcts button { flex: 1 1 0; min-width: 0; padding-left: 0; padding-right: 0; text-align: center; }
-  .mx-rm { position: absolute; right: -4px; top: 20px; width: 22px; height: 22px; border-radius: 50%;
-           display: grid; place-items: center; font-size: 15px; line-height: 1; color: var(--faint);
-           background: var(--surface); border: 1px solid var(--border-strong); }
-  .mx-rm:hover { color: var(--clay); border-color: var(--clay); }
-  .mx-newname { width: 150px; }
+  .mn-grid { display: grid; grid-template-columns: minmax(64px, max-content) minmax(0, 1fr) minmax(0, 1fr); gap: 8px 10px; align-items: center; margin: 14px 0 0; max-width: 520px; }
+  .mn-col { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); text-align: center; }
+  .mn-lift { display: flex; align-items: center; gap: 4px; min-width: 0; max-width: 130px; font-size: 13.5px; font-weight: 600; color: var(--muted); }
+  .mn-lname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mn-cell { position: relative; display: block; }
+  .mn-in { width: 100%; box-sizing: border-box; text-align: center; font-family: inherit; font-size: 15px; color: var(--ink); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 999px; padding: 9px 12px; }
+  .mn-in:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(46,90,78,.12); }
+  .mn-in::placeholder { color: var(--faint); }
+  .mn-cell.auto .mn-in { color: var(--faint); }
+  .mn-reset { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; color: var(--muted); background: transparent; }
+  .mn-reset:hover { color: var(--pine); background: var(--bg); }
+  .mn-reset svg { width: 15px; height: 15px; }
+  .mn-rm { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; line-height: 1; color: var(--faint); background: transparent; border: 1px solid var(--border-strong); }
+  .mn-rm:hover { color: var(--clay); border-color: var(--clay); }
+  .mn-add { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; padding: 4px 2px; font-size: 13.5px; font-weight: 600; color: var(--muted); background: transparent; }
+  .mn-add:hover { color: var(--ink); }
+  .mn-add svg { width: 15px; height: 15px; }
+  .mn-addform { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; align-items: center; margin-top: 8px; max-width: 560px; }
+  .mn-addform.hidden { display: none; }
+  .mn-hint { font-size: 12px; color: var(--faint); margin: 12px 0 0; line-height: 1.5; max-width: 560px; }
+  .mn-hr { border-top: 1px solid var(--border); margin: 16px 0 12px; }
+  .mn-sechead { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+  @media (max-width: 520px) { .mn-addform { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .mn-addform .chip { grid-column: 1 / -1; justify-self: start; } }
   .dm-build { margin: 28px 0 0; font-size: 11px; color: var(--faint); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .04em; }
   .view-maxes { margin: 0 0 18px; }
   .dm-maxes { margin: 2px 0 16px; }
@@ -1470,7 +1485,7 @@
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
   // major.minor.patch: minor goes up with each release (it carried on from the
   // old build counter, 30), patch for a fix to one.
-  var APP_VERSION = "1.37.0";
+  var APP_VERSION = "1.38.0";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -2910,15 +2925,7 @@
     safeWrite(STORE_PROFILES, PROFILES);
     return true;
   }
-  // Swap a whole maxes object — used by undo so one step restores every field.
-  function setAllMaxesOn(targetName, storeKey, maxesClone) {
-    var p = PROFILES[targetName]; if (!p) return false;
-    p[storeKey] = deepClone(maxesClone || {});
-    safeWrite(STORE_PROFILES, PROFILES);
-    return true;
-  }
   function setMax(targetName, lift, value) { return setMaxOn(targetName, "maxes", lift, value); }
-  function setAllMaxes(targetName, maxesClone) { return setAllMaxesOn(targetName, "maxes", maxesClone); }
   // Training maxes are a percentage of the 1-rep maxes (p.tmPct, 90 until chosen)
   // unless a number was typed for that lift (p.trainingMaxes, only those typed
   // ones). So they follow the 1-rep maxes, and a lift with no 1-rep max has no
@@ -2957,16 +2964,7 @@
     safeWrite(STORE_PROFILES, PROFILES);
     return true;
   }
-  function tmSnapshot(p) { return { tm: deepClone(p.trainingMaxes || {}), pct: p.tmPct }; }
-  function tmRestore(targetName, snap) {
-    var p = PROFILES[targetName]; if (!p) return false;
-    p.trainingMaxes = deepClone(snap.tm);
-    if (snap.pct == null) delete p.tmPct; else p.tmPct = snap.pct;
-    safeWrite(STORE_PROFILES, PROFILES);
-    return true;
-  }
   function setTrainingMax(targetName, lift, value) { return setMaxOn(targetName, "trainingMaxes", lift, value); }
-  function setAllTrainingMaxes(targetName, maxesClone) { return setAllMaxesOn(targetName, "trainingMaxes", maxesClone); }
   // Accepts a plain positive number. Blank is allowed and means "no max on file".
   function normalizeMax(v) {
     v = String(v == null ? "" : v).trim();
@@ -3399,54 +3397,47 @@
     if (!p.maxes) p.maxes = {};
     if (!p.trainingMaxes) p.trainingMaxes = {};
 
-    // The real competition 1-rep maxes: feed the analytics below.
-    host.appendChild(buildMaxesCard({
-      storeKey: "maxes",
-      title: "1-rep maxes",
-      noun: "max",
-      collapseKey: "spotter.maxesCollapsed",
-      hint: "Used to work out Number of lifts (reps at \u226550% of 1RM) and average intensity. Leave one blank if you don\u2019t have it \u2014 those lifts are simply left out of those two charts.",
-      setOne: setMax,
-      setAll: setAllMaxes
-    }));
-    // A second, Manage-Program-only record. Editable exactly like the 1-rep
-    // maxes, but kept purely for reference \u2014 it doesn't drive the charts.
-    var tmPct = tmPctOf(p);
-    host.appendChild(buildMaxesCard({
-      storeKey: "trainingMaxes",
-      title: "Training maxes",
-      noun: "training max",
-      collapseKey: "spotter.trainingMaxesCollapsed",
-      hint: "A separate set to program from. It starts at " + tmPct + "% of the 1-rep maxes and follows them; type a number to set one yourself, or clear it to go back to " + tmPct + "%. Recorded here for reference only; it doesn\u2019t change the charts.",
-      setOne: setTrainingMax,
-      setAll: setAllTrainingMaxes,
-      // What each box shows, which are still following the percentage, and the
-      // percentage buttons (all with undo, which restores the percentage too).
-      shown: trainingMaxesOf,
-      isAuto: function (lift) { return !tmIsTyped(p, lift) && tmDefault(p, lift) !== ""; },
-      autoOf: function (lift) { return tmDefault(p, lift); },
-      removable: function (lift) { return tmIsTyped(p, lift) && tmDefault(p, lift) === ""; },
-      snap: function () { return tmSnapshot(p); },
-      restore: function (snap) { return tmRestore(p.name, snap); },
-      pctButtons: { presets: TM_PRESETS, current: tmPct, apply: setTmPct }
-    }));
-    host.appendChild(buildNotesCard());
+    host.appendChild(buildMaxesNotesCard());
   }
 
-  // Manage Program's Notes card: same collapsible shell as the maxes cards,
-  // with the note shown like Weekly notes and edited in the same sheet.
-  function buildNotesCard() {
-    var p = PROFILES[current], text = getDMNote(p.name);
-    var key = "spotter.dmNotesCollapsed";
+  // Manage Program's numbers in one card: the 1-rep maxes (they drive the
+  // charts) beside the training maxes (for programming only; a percentage of
+  // the 1-rep maxes unless typed), then the Notes. One card, one collapse.
+  function mnSnap(p) { return { maxes: deepClone(p.maxes || {}), tm: deepClone(p.trainingMaxes || {}), pct: p.tmPct }; }
+  // One undo step restores every number and the percentage together.
+  function mnRestore(name, s) {
+    var p = PROFILES[name]; if (!p) return false;
+    p.maxes = deepClone(s.maxes);
+    p.trainingMaxes = deepClone(s.tm);
+    if (s.pct == null) delete p.tmPct; else p.tmPct = s.pct;
+    safeWrite(STORE_PROFILES, PROFILES);
+    return true;
+  }
+  // Squat, bench and deadlift always, then any other lift with either number.
+  function mnLifts(p) {
+    var out = ["Squat", "Bench", "Deadlift"];
+    Object.keys(p.maxes || {}).concat(Object.keys(p.trainingMaxes || {})).forEach(function (k) {
+      if (out.indexOf(k) === -1) out.push(k);
+    });
+    return out;
+  }
+  function mnSummary(p) {
+    var m = p.maxes || {}, any = false;
+    var s = ["Squat", "Bench", "Deadlift"].map(function (k) {
+      if (m[k] != null && m[k] !== "") { any = true; return m[k]; }
+      return "–";
+    });
+    return any ? "1RM " + s.join(" · ") + "  |  Training maxes at " + tmPctOf(p) + "%" : "Add your 1-rep maxes";
+  }
+  function buildMaxesNotesCard() {
+    var p = PROFILES[current], pct = tmPctOf(p), key = "spotter.maxesNotesCollapsed";
     var collapsed = false;
     try { collapsed = localStorage.getItem(key) === "1"; } catch (e) {}
-    var card = el("div", "pn-card dmn-card" + (collapsed ? "" : " open"));
+    var card = el("div", "pn-card mx-card mn-card" + (collapsed ? "" : " open"));
     var toggle = el("button", "pn-toggle");
     var lab = el("span", "pn-labels");
-    lab.appendChild(el("span", "pn-title", "Notes"));
-    // First line as a preview, so a collapsed card still says what's in it.
-    var first = text.split(/\r?\n/).filter(function (l) { return l.trim(); })[0];
-    if (first) lab.appendChild(el("span", "pn-sub", first.trim()));
+    lab.appendChild(el("span", "pn-title", "Maxes and notes"));
+    lab.appendChild(el("span", "pn-sub", mnSummary(p)));
     toggle.appendChild(lab);
     var chev = el("span", "pn-chev");
     chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
@@ -3457,95 +3448,47 @@
     };
     card.appendChild(toggle);
 
-    var cbody = el("div", "pn-body");
-    cbody.appendChild(el("p", "dm-blockhint", "Only visible here in Manage Program — never on the Overview or the week pages."));
-    if (text) {
-      var box = el("div", "dmn-text");
-      appendLinkified(box, text);
-      // Tapping the note edits it, but a tap on a link should just follow the link.
-      box.addEventListener("click", function (e) {
-        if (e.target.closest && e.target.closest("a")) return;
-        openDMNote();
-      });
-      cbody.appendChild(box);
+    var body = el("div", "pn-body");
+    function undoable(label, restoredLabel, before) {
+      pushUndoAction({ label: label, restoredLabel: restoredLabel, restore: function () { return mnRestore(p.name, before); } });
+      refreshAfterMaxChange();
     }
-    var edit = el("button", "chip sm dmn-edit", text ? "Edit notes" : "Add notes");
-    edit.type = "button";
-    edit.onclick = openDMNote;
-    cbody.appendChild(edit);
-    card.appendChild(cbody);
-    return card;
-  }
 
-  // Builds one editable maxes card. `cfg.storeKey` picks which store on the
-  // profile it reads and writes ("maxes" or "trainingMaxes"); `cfg.setOne`/
-  // `cfg.setAll` are the matching mutators, so undo restores the right store.
-  function buildMaxesCard(cfg) {
-    var p = PROFILES[current];
-    var store = p[cfg.storeKey] || (p[cfg.storeKey] = {});
-    // What the boxes show: the stored values, or (training maxes) those plus
-    // the percentage-of-1RM defaults. Undo snapshots and restores likewise.
-    var shown = cfg.shown ? cfg.shown(p) : store;
-    var snap = cfg.snap || function () { return deepClone(store); };
-    var restoreTo = cfg.restore || function (b) { return cfg.setAll(p.name, b); };
+    // The percentage the training maxes follow.
+    body.appendChild(el("p", "mn-lab", "Training maxes follow your 1-rep maxes at"));
+    var pcts = el("div", "mx-pcts");
+    TM_PRESETS.forEach(function (pc) {
+      var b = el("button", "chip sm" + (pc === pct ? " primary" : ""), pc + "%");
+      b.type = "button";
+      b.setAttribute("aria-pressed", pc === pct ? "true" : "false");
+      b.title = pc + "% of each 1-rep max";
+      b.onclick = function () {
+        var before = mnSnap(p);
+        setTmPct(p.name, pc);
+        undoable("Training maxes set to " + pc + "% of the 1-rep maxes.", "Training maxes restored.", before);
+      };
+      pcts.appendChild(b);
+    });
+    body.appendChild(pcts);
 
-    var collapsed = false;
-    try { collapsed = localStorage.getItem(cfg.collapseKey) === "1"; } catch (e) {}
-    var card = el("div", "pn-card mx-card" + (collapsed ? "" : " open"));
-    var toggle = el("button", "pn-toggle");
-    var lab = el("span", "pn-labels");
-    lab.appendChild(el("span", "pn-title", cfg.title));
-    var summary = ["Squat", "Bench", "Deadlift"]
-      .filter(function (k) { return shown[k] != null && shown[k] !== ""; })
-      .map(function (k) { return k.charAt(0) + " " + shown[k]; });
-    if (summary.length) lab.appendChild(el("span", "pn-sub", summary.join("  \u00b7  ")));
-    toggle.appendChild(lab);
-    var chev = el("span", "pn-chev");
-    chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
-    toggle.appendChild(chev);
-    toggle.onclick = function () {
-      card.classList.toggle("open");
-      try { localStorage.setItem(cfg.collapseKey, card.classList.contains("open") ? "0" : "1"); } catch (e) {}
-    };
-    card.appendChild(toggle);
+    // One row per lift: 1-rep max, training max.
+    var grid = el("div", "mn-grid");
+    grid.appendChild(el("span"));
+    grid.appendChild(el("span", "mn-col", "1-rep max"));
+    grid.appendChild(el("span", "mn-col", "Training max"));
+    var tm = trainingMaxesOf(p);
 
-    var cbody = el("div", "pn-body");
-    cbody.appendChild(el("p", "dm-blockhint", cfg.hint));
-    if (cfg.pctButtons) {
-      var pcts = el("div", "mx-pcts");
-      pcts.appendChild(el("span", "mx-pcts-lab", "Set all to"));
-      cfg.pctButtons.presets.forEach(function (pc) {
-        var b = el("button", "chip sm" + (pc === cfg.pctButtons.current ? " primary" : ""), pc + "%");
-        b.type = "button";
-        b.setAttribute("aria-pressed", pc === cfg.pctButtons.current ? "true" : "false");
-        b.title = pc + "% of each 1-rep max";
-        b.onclick = function () {
-          var before = snap();
-          cfg.pctButtons.apply(p.name, pc);
-          pushUndoAction({
-            label: "Training maxes set to " + pc + "% of the 1-rep maxes.",
-            restoredLabel: "Training maxes restored.",
-            restore: function () { return restoreTo(before); }
-          });
-          refreshAfterMaxChange();
-        };
-        pcts.appendChild(b);
-      });
-      cbody.appendChild(pcts);
-    }
-    var mxRow = el("div", "dm-selrow");
-    var MX_CORE = ["Squat", "Bench", "Deadlift"];
-    var mxExtra = Object.keys(shown).filter(function (k) { return MX_CORE.indexOf(k) === -1; });
-
-    function maxField(lift, removable) {
-      var f = el("span", "add-field mx-field");
-      f.appendChild(el("label", null, lift));
-      var inp = el("input", "add-weight");
+    // kind "max" edits the 1-rep max, "tm" the training max.
+    function cell(lift, kind) {
+      var tmKind = kind === "tm", noun = tmKind ? "training max" : "max";
+      var typed = tmKind && tmIsTyped(p, lift), auto = tmKind && !typed && tmDefault(p, lift) !== "";
+      var wrap = el("span", "mn-cell" + (auto ? " auto" : ""));
+      var inp = el("input", "mn-in");
       inp.type = "text"; inp.setAttribute("inputmode", "decimal"); inp.autocomplete = "off";
-      inp.placeholder = "e.g. 180";
-      inp.value = (shown[lift] != null) ? String(shown[lift]) : "";
-      if (cfg.isAuto && cfg.isAuto(lift)) { f.classList.add("auto"); inp.title = "Following the percentage of the 1-rep max. Type a number to set it yourself."; }
-      inp.setAttribute("aria-label", lift + " " + cfg.noun + " in kg");
+      inp.placeholder = "–";
+      inp.value = tmKind ? (tm[lift] != null ? String(tm[lift]) : "") : ((p.maxes && p.maxes[lift] != null) ? String(p.maxes[lift]) : "");
+      if (auto) inp.title = "Following the percentage of the 1-rep max. Type a number to set it yourself.";
+      inp.setAttribute("aria-label", lift + " " + noun + " in kg");
       var orig = inp.value;
       inp.addEventListener("input", function () {
         // digits and a single dot only
@@ -3554,83 +3497,122 @@
         if (i !== -1) v = v.slice(0, i + 1) + v.slice(i + 1).replace(/\./g, "");
         inp.value = v;
       });
-      var commitMax = function () {
+      var commit = function () {
         var v = normalizeMax(inp.value);
         if (v === null) {
           inp.value = orig;                      // put back what was there
-          toast(lift + " " + cfg.noun + " must be a number above 0, or blank.");
+          toast(lift + " " + noun + " must be a number above 0, or blank.");
           return;
         }
         if (v === orig) { inp.value = v; return; }
-        var before = snap();
-        var back = (v === "" && cfg.autoOf) ? cfg.autoOf(lift) : "";   // cleared, so it follows the percentage again
-        cfg.setOne(p.name, lift, v);
+        var before = mnSnap(p);
+        var back = (tmKind && v === "") ? tmDefault(p, lift) : "";   // cleared: follows the percentage again
+        (tmKind ? setTrainingMax : setMax)(p.name, lift, v);
         orig = v; inp.value = v;
-        pushUndoAction({
-          label: v ? (lift + " " + cfg.noun + " set to " + v + " kg.")
-            : (back ? (lift + " " + cfg.noun + " back to " + tmPctOf(p) + "% (" + back + " kg).") : (lift + " " + cfg.noun + " cleared.")),
-          restoredLabel: lift + " " + cfg.noun + " restored.",
-          restore: function () { return restoreTo(before); }
-        });
-        refreshAfterMaxChange();
+        undoable(v ? (lift + " " + noun + " set to " + v + " kg.")
+                   : (back ? (lift + " " + noun + " back to " + pct + "% (" + back + " kg).") : (lift + " " + noun + " cleared.")),
+                 lift + " " + noun + " restored.", before);
       };
-      inp.addEventListener("blur", commitMax);
+      inp.addEventListener("blur", commit);
       inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
-      f.appendChild(inp);
-      if (removable && (!cfg.removable || cfg.removable(lift))) {
-        var rm = el("button", "mx-rm", "\u00d7");
-        rm.type = "button"; rm.title = "Remove " + lift; rm.setAttribute("aria-label", "Remove " + lift + " " + cfg.noun);
-        rm.onclick = function () {
-          var before = snap();
-          cfg.setOne(p.name, lift, "");
-          pushUndoAction({
-            label: "Removed the " + lift + " " + cfg.noun + ".",
-            restoredLabel: lift + " " + cfg.noun + " restored.",
-            restore: function () { return restoreTo(before); }
-          });
-          refreshAfterMaxChange();
+      wrap.appendChild(inp);
+      // A typed training max can go back to following the percentage.
+      if (typed && tmDefault(p, lift) !== "") {
+        var rs = el("button", "mn-reset");
+        rs.type = "button";
+        rs.title = "Back to " + pct + "% of the 1-rep max (" + tmDefault(p, lift) + ")";
+        rs.setAttribute("aria-label", "Put the " + lift + " training max back to " + pct + "%");
+        rs.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>';
+        rs.onclick = function () {
+          var before = mnSnap(p);
+          setTrainingMax(p.name, lift, "");
+          undoable(lift + " training max back to " + pct + "% (" + tmDefault(p, lift) + " kg).", lift + " training max restored.", before);
         };
-        f.appendChild(rm);
+        wrap.appendChild(rs);
       }
-      mxRow.appendChild(f);
-      return inp;
+      return wrap;
     }
-    MX_CORE.forEach(function (l) { maxField(l, false); });
-    mxExtra.forEach(function (l) { maxField(l, true); });
-    cbody.appendChild(mxRow);
+    mnLifts(p).forEach(function (lift, i) {
+      var name = el("span", "mn-lift");
+      name.appendChild(el("span", "mn-lname", lift));
+      name.title = lift;
+      if (i >= 3) {
+        var rm = el("button", "mn-rm", "×");
+        rm.type = "button"; rm.title = "Remove " + lift; rm.setAttribute("aria-label", "Remove " + lift);
+        rm.onclick = function () {
+          var before = mnSnap(p);
+          setMax(p.name, lift, ""); setTrainingMax(p.name, lift, "");
+          undoable("Removed " + lift + ".", lift + " restored.", before);
+        };
+        name.appendChild(rm);
+      }
+      grid.appendChild(name);
+      grid.appendChild(cell(lift, "max"));
+      grid.appendChild(cell(lift, "tm"));
+    });
+    body.appendChild(grid);
 
-    // Add a value for a lift outside the big three (e.g. "Squat equipped").
-    var mxAdd = el("div", "dm-addday");
-    mxAdd.appendChild(el("label", null, "Add another lift:"));
-    var mxName = el("input", "add-weight mx-newname");
-    mxName.type = "text"; mxName.placeholder = "Lift name"; mxName.autocomplete = "off";
-    mxName.setAttribute("aria-label", "Name of the lift to add a " + cfg.noun + " for");
-    mxAdd.appendChild(mxName);
-    var mxVal = el("input", "add-weight add-num mx-newval");
-    mxVal.type = "text"; mxVal.setAttribute("inputmode", "decimal"); mxVal.placeholder = "kg"; mxVal.autocomplete = "off";
-    mxVal.setAttribute("aria-label", cfg.noun + " in kg");
-    mxAdd.appendChild(mxVal);
-    var mxBtn = el("button", "chip sm", "Add max");
-    mxBtn.type = "button";
-    mxBtn.onclick = function () {
-      var lift = mxName.value.trim();
-      if (!lift) { mxName.focus(); toast("Name the lift first."); return; }
-      if (shown[lift] != null) { mxName.focus(); toast("There's already a " + cfg.noun + " for \u201C" + lift + "\u201D."); return; }
-      var v = normalizeMax(mxVal.value);
-      if (v === null || v === "") { mxVal.focus(); toast("Enter a " + cfg.noun + " above 0."); return; }
-      var before = snap();
-      cfg.setOne(p.name, lift, v);
-      pushUndoAction({
-        label: "Added a " + lift + " " + cfg.noun + " of " + v + " kg.",
-        restoredLabel: lift + " " + cfg.noun + " removed again.",
-        restore: function () { return restoreTo(before); }
-      });
-      refreshAfterMaxChange();
+    // Another lift: a 1-rep max, a training max, or both (e.g. OHP for Wendler).
+    var addBtn = el("button", "mn-add");
+    addBtn.type = "button";
+    addBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';
+    addBtn.appendChild(document.createTextNode("Add another lift"));
+    var form = el("div", "mn-addform hidden");
+    var nName = el("input", "mn-in mn-newname");
+    nName.type = "text"; nName.placeholder = "Lift name"; nName.autocomplete = "off"; nName.setAttribute("aria-label", "Name of the lift to add");
+    var nMax = el("input", "mn-in mn-newmax");
+    nMax.type = "text"; nMax.setAttribute("inputmode", "decimal"); nMax.placeholder = "1-rep max"; nMax.autocomplete = "off"; nMax.setAttribute("aria-label", "1-rep max in kg for the new lift");
+    var nTm = el("input", "mn-in mn-newtm");
+    nTm.type = "text"; nTm.setAttribute("inputmode", "decimal"); nTm.placeholder = "Training max"; nTm.autocomplete = "off"; nTm.setAttribute("aria-label", "Training max in kg for the new lift");
+    var go = el("button", "chip sm primary", "Add lift");
+    go.type = "button";
+    addBtn.onclick = function () { form.classList.toggle("hidden"); if (!form.classList.contains("hidden")) nName.focus(); };
+    go.onclick = function () {
+      var lift = nName.value.trim().replace(/\s+/g, " ");
+      if (!lift) { nName.focus(); toast("Name the lift first."); return; }
+      if (RESERVED_NAME.test(lift) || mnLifts(p).indexOf(lift) !== -1) { nName.focus(); toast("There’s already a “" + lift + "” here."); return; }
+      var m = normalizeMax(nMax.value), t = normalizeMax(nTm.value);
+      if (m === null || t === null) { toast("Enter numbers above 0, in kg."); return; }
+      if (m === "" && t === "") { nMax.focus(); toast("Enter a 1-rep max, a training max, or both."); return; }
+      var before = mnSnap(p);
+      if (m !== "") setMax(p.name, lift, m);
+      if (t !== "") setTrainingMax(p.name, lift, t);
+      undoable("Added " + lift + ".", lift + " removed again.", before);
     };
-    mxAdd.appendChild(mxBtn);
-    cbody.appendChild(mxAdd);
-    card.appendChild(cbody);
+    [nName, nMax, nTm].forEach(function (i) { i.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); go.click(); } }); });
+    form.appendChild(nName); form.appendChild(nMax); form.appendChild(nTm); form.appendChild(go);
+    body.appendChild(addBtn);
+    body.appendChild(form);
+
+    body.appendChild(el("p", "mn-hint", "1-rep maxes drive the charts: a lift left blank is left out of the Number of lifts and intensity charts. Training maxes are for programming only; type one to set it yourself, or tap the arrow to put it back on the percentage."));
+    body.appendChild(el("div", "mn-hr"));
+    body.appendChild(buildNotesSection());
+    card.appendChild(body);
     return card;
+  }
+
+  // The Notes part of that card: one note per lifter, kept out of the Overview
+  // and week views, shown like Weekly notes and edited in the same sheet.
+  function buildNotesSection() {
+    var p = PROFILES[current], text = getDMNote(p.name);
+    var sec = el("div", "dmn-sec");
+    sec.appendChild(el("p", "mn-sechead", "Notes"));
+    if (text) {
+      var box = el("div", "dmn-text");
+      appendLinkified(box, text);
+      // Tapping the note edits it, but a tap on a link should just follow the link.
+      box.addEventListener("click", function (e) {
+        if (e.target.closest && e.target.closest("a")) return;
+        openDMNote();
+      });
+      sec.appendChild(box);
+    }
+    var edit = el("button", "chip sm dmn-edit", text ? "Edit notes" : "Add notes");
+    edit.type = "button";
+    edit.onclick = openDMNote;
+    sec.appendChild(edit);
+    sec.appendChild(el("p", "dm-blockhint", "Only visible here in Manage Program — never on the Overview or the week pages."));
+    return sec;
   }
 
   function renderDayMgr() {

@@ -68,8 +68,8 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   await edit(oneRm("Squat"), "195"); await edit(oneRm("Bench"), "160"); await edit(oneRm("Deadlift"), "245");
   check("each is 90% of its 1RM", vals() === "175.5 / 144 / 220.5", vals());
   check("still nothing stored: they follow the 1RMs", !prof().trainingMaxes || Object.keys(prof().trainingMaxes).length === 0);
-  check("the summary line shows them", /S 175\.5\s+·\s+B 144\s+·\s+D 220\.5/.test($("dmMaxes").textContent));
-  check("they're marked as following the percentage", ["Squat", "Bench", "Deadlift"].every(l => tm(l).closest(".mx-field").classList.contains("auto")));
+  check("the header summarises the 1-rep maxes and the percentage", /1RM 195 · 160 · 245\s+\|\s+Training maxes at 90%/.test($("dmMaxes").querySelector(".pn-sub").textContent), $("dmMaxes").querySelector(".pn-sub").textContent);
+  check("they're marked as following the percentage", ["Squat", "Bench", "Deadlift"].every(l => tm(l).closest(".mn-cell").classList.contains("auto")));
   await edit(oneRm("Squat"), "200");
   check("changing a 1RM moves its training max with it", tm("Squat").value === "180", tm("Squat").value);
   await edit(oneRm("Deadlift"), "");
@@ -86,7 +86,7 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   }
   chip(80).click(); await tick(80);
   check("the choice is saved on the lifter", prof().tmPct === 80);
-  check("the hint names the percentage", /starts at 80% of the 1-rep maxes/.test($("dmMaxes").textContent));
+  check("the summary names the percentage", /Training maxes at 80%/.test($("dmMaxes").querySelector(".pn-sub").textContent));
   check("the 1-rep maxes themselves are untouched", oneRm("Squat").value === "200" && oneRm("Bench").value === "160" && oneRm("Deadlift").value === "245");
   [...doc.querySelectorAll("button")].find(b => b.id === "toastUndoBtn").click(); await tick(100);
   check("Undo goes back to the previous percentage", vals() === want[90] && active() === "90%", vals() + " / " + active());
@@ -95,7 +95,7 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   console.log("\nTyping your own numbers");
   await edit(tm("Squat"), "172.5");
   check("a typed number is kept", tm("Squat").value === "172.5" && prof().trainingMaxes.Squat === "172.5");
-  check("...it's no longer marked as automatic, the others still are", !tm("Squat").closest(".mx-field").classList.contains("auto") && tm("Bench").closest(".mx-field").classList.contains("auto"));
+  check("...it's no longer marked as automatic, the others still are", !tm("Squat").closest(".mn-cell").classList.contains("auto") && tm("Bench").closest(".mn-cell").classList.contains("auto"));
   check("the others keep following the percentage", tm("Bench").value === "144" && tm("Deadlift").value === "220.5");
   await edit(oneRm("Squat"), "210");
   check("a typed number doesn't move when the 1RM does", tm("Squat").value === "172.5");
@@ -114,19 +114,54 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
 
   /* ---------------------------------------------------------- other lifts */
   console.log("\nOther lifts");
-  const mxName = $("dmMaxes").querySelectorAll(".mx-newname")[0], mxVal = $("dmMaxes").querySelectorAll(".mx-newval")[0];
-  mxName.value = "Squat equipped"; mxVal.value = "250";
-  [...$("dmMaxes").querySelectorAll(".dm-addday")][0].querySelector("button").click(); await tick(100);
-  check("a 1RM for another lift gets a training max too", $("dmMaxes").querySelector('input[aria-label="Squat equipped training max in kg"]').value === "225");
-  check("...which has no remove button (clearing a number is how you reset it)", !$("dmMaxes").querySelector('input[aria-label="Squat equipped training max in kg"]').closest(".mx-field").querySelector(".mx-rm"));
-  const tmCard = [...$("dmMaxes").querySelectorAll(".mx-card")].find(c => /Training maxes/.test(c.textContent));
-  tmCard.querySelector(".dm-addday .mx-newname").value = "OHP"; tmCard.querySelector(".dm-addday .mx-newval").value = "80";
-  tmCard.querySelector(".dm-addday button").click(); await tick(100);
-  const ohp = $("dmMaxes").querySelector('input[aria-label="OHP training max in kg"]');
-  check("a lift with no 1RM can still be given a training max, and can be removed", ohp && ohp.value === "80" && !!ohp.closest(".mx-field").querySelector(".mx-rm"));
+  const addLift = async (name, max, trainingMax) => {
+    $("dmMaxes").querySelector(".mn-add").click();
+    $("dmMaxes").querySelector(".mn-newname").value = name;
+    $("dmMaxes").querySelector(".mn-newmax").value = max;
+    $("dmMaxes").querySelector(".mn-newtm").value = trainingMax;
+    [...$("dmMaxes").querySelectorAll(".mn-addform button")].find(b => b.textContent === "Add lift").click();
+    await tick(100);
+  };
+  const tmOf = name => $("dmMaxes").querySelector(`input[aria-label="${name} training max in kg"]`);
+  check("the add form starts hidden and opens from Add another lift", $("dmMaxes").querySelector(".mn-addform").classList.contains("hidden") &&
+    ($("dmMaxes").querySelector(".mn-add").click(), !$("dmMaxes").querySelector(".mn-addform").classList.contains("hidden")));
+  $("dmMaxes").querySelector(".mn-add").click();
+  await addLift("Squat equipped", "250", "");
+  check("a 1RM for another lift gets a training max too", tmOf("Squat equipped").value === "225");
+  check("...and the lift can be removed from its row", !!tmOf("Squat equipped").closest(".mn-grid").querySelector('button[aria-label="Remove Squat equipped"]'));
+  await addLift("OHP", "", "80");
+  check("a lift can be added with just a training max (e.g. OHP for Wendler)", tmOf("OHP") && tmOf("OHP").value === "80" && prof().trainingMaxes.OHP === "80");
+  await addLift("Squat", "100", "");
+  check("a lift that's already there is refused", /already a/.test($("toastMsg").textContent), $("toastMsg").textContent);
+  await addLift("Pin squat", "", "");
+  check("...and so is a lift with no numbers", /Enter a 1-rep max, a training max, or both/.test($("toastMsg").textContent), $("toastMsg").textContent);
   chip(95).click(); await tick(80);
-  check("a percentage button leaves it alone (nothing to take a percentage of)", $("dmMaxes").querySelector('input[aria-label="OHP training max in kg"]').value === "80");
-  check("...and sets the others", tm("Squat").value === "190" && $("dmMaxes").querySelector('input[aria-label="Squat equipped training max in kg"]').value === "237.5");
+  check("a percentage button leaves OHP alone (nothing to take a percentage of)", tmOf("OHP").value === "80");
+  check("...and sets the others", tm("Squat").value === "190" && tmOf("Squat equipped").value === "237.5");
+  $("dmMaxes").querySelector('button[aria-label="Remove OHP"]').click(); await tick(100);
+  check("removing a lift takes its row away", !tmOf("OHP") && !(prof().trainingMaxes || {}).OHP);
+  [...doc.querySelectorAll("button")].find(b => b.id === "toastUndoBtn").click(); await tick(100);
+  check("...and Undo brings it back", tmOf("OHP") && tmOf("OHP").value === "80");
+  $("dmMaxes").querySelector('button[aria-label="Remove OHP"]').click(); await tick(100);
+  $("dmMaxes").querySelector('button[aria-label="Remove Squat equipped"]').click(); await tick(100);
+
+  /* ---------------------------------------------------------- one card */
+  console.log("\nOne card");
+  check("the 1-rep maxes, training maxes and notes are one card", $("dmMaxes").querySelectorAll(".pn-card").length === 1 && !!$("dmMaxes").querySelector(".dmn-sec"));
+  check("...with a row per lift, 1-rep max beside training max", [...$("dmMaxes").querySelectorAll(".mn-lname")].map(n => n.textContent).join() === "Squat,Bench,Deadlift");
+  chip(90).click(); await tick(80);
+  await edit(tm("Squat"), "172.5");
+  const reset = $("dmMaxes").querySelector('button[aria-label^="Put the Squat training max back"]');
+  check("a typed training max has a back-arrow, the automatic ones don't", !!reset && !$("dmMaxes").querySelector('button[aria-label^="Put the Bench training max back"]'));
+  reset.click(); await tick(100);
+  check("the arrow puts it back on the percentage", tm("Squat").value === "180" && !(prof().trainingMaxes || {}).Squat && tm("Squat").closest(".mn-cell").classList.contains("auto"));
+  [...doc.querySelectorAll("button")].find(b => b.id === "toastUndoBtn").click(); await tick(100);
+  check("...and Undo brings the typed number back", tm("Squat").value === "172.5");
+  const head = $("dmMaxes").querySelector(".pn-toggle");
+  head.click();
+  check("the whole card collapses together (notes included)", !$("dmMaxes").querySelector(".pn-card").classList.contains("open"));
+  head.click();
+  check("...and opens again", $("dmMaxes").querySelector(".pn-card").classList.contains("open"));
 
   /* ---------------------------------------------------------- hub + keeping it */
   console.log("\nProgram Hub, re-imports and backups");
@@ -136,7 +171,7 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   f.contentWindow.postMessage = m => sent.push(JSON.parse(JSON.stringify(m)));
   w.dispatchEvent(new w.MessageEvent("message", { data: { type: "spotter-hub-ready", features: ["send", "height", "theme", "prefill"] } }));
   check("the Hub is sent the training maxes as shown, defaults included",
-    lastHub().trainingMaxes && lastHub().trainingMaxes.Squat === "190" && lastHub().trainingMaxes.Bench === "152" && lastHub().trainingMaxes.Deadlift === "233" && lastHub().trainingMaxes.OHP === "80",
+    lastHub().trainingMaxes && lastHub().trainingMaxes.Squat === "172.5" && lastHub().trainingMaxes.Bench === "144" && lastHub().trainingMaxes.Deadlift === "220.5" && !("OHP" in lastHub().trainingMaxes),
     JSON.stringify(lastHub().trainingMaxes));
   $("dmTabs").querySelector('[data-tab="manage"]').click(); await tick(50);
   chip(80).click(); await tick(100);

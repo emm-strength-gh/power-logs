@@ -119,6 +119,7 @@ const DEAD  = ["in-deadlift", "w-deadlift", "e-rdead", "d-max", "cb-dead", "lb-d
   [...aw.document.querySelectorAll("#sideNav .nav-item")].find(n => /Manage program/.test(n.textContent)).click();
   await tick(100);
   check("Manage Program opens", a$("viewDayMgr").classList.contains("active"));
+  a$("dmMaxesBtn").click(); await tick(50);   // the maxes live in a dialog
   async function setTM(label, v) {
     const i = a$("dmMaxes").querySelector(`input[aria-label="${label}"]`);
     i.value = v; i.dispatchEvent(new aw.Event("blur")); await tick();

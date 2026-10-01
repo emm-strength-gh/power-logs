@@ -27,7 +27,12 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
     virtualConsole: new VirtualConsole()
       .on("jsdomError", e => errors.push(e.message))
       .on("error", m => errors.push(String(m))),
-    beforeParse(w) { installCoach(w); },
+    beforeParse(w) {
+      installCoach(w);
+      // jsdom has no canvas: a stand-in that records which charts get drawn and freed.
+      w.__charts = [];
+      w.Chart = class { static defaults = { font: {} }; constructor(c, cfg) { this.id = c.id; this.cfg = cfg; this.alive = true; this.inCharts = !!c.closest("#dmCharts"); this.inAn = !!c.closest("#dmAnBody"); w.__charts.push(this); } destroy() { this.alive = false; } };
+    },
   });
   const w = dom.window, doc = w.document, $ = id => doc.getElementById(id);
   await new Promise(res => { if (doc.readyState === "complete") res(); else w.addEventListener("load", res); setTimeout(res, 4000); });
@@ -63,8 +68,49 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   await loadInto("fileInput", mk(NAME, [8, 9], [1, 2], ["Squat", "Bench"]), "lifter.csv");
   check("Manage Program opens", await openManage());
 
+  console.log("\nThe two dialogs");
+  const toolNames = [...$("dmTools").querySelectorAll(".dm-tool b")].map(b => b.textContent);
+  check("Sharing, Maxes and notes and Analytics sit in that order, left to right", toolNames.join() === "Sharing,Maxes and notes,Analytics", toolNames.join());
+  check("each says what's in it", /Only on this device/.test($("dmShareBtn").textContent) && /Add your 1-rep maxes/.test($("dmMaxesBtn").textContent), $("dmShareBtn").textContent + " | " + $("dmMaxesBtn").textContent);
+  check("both dialogs start closed", !$("shareScrim").classList.contains("show") && !$("maxesScrim").classList.contains("show"));
+  $("dmShareBtn").click(); await tick(50);
+  check("Sharing opens as a dialog for this lifter", $("shareScrim").classList.contains("show") && $("shareTitle").textContent === "Sharing" && $("shareFor").textContent === NAME);
+  check("...with the upload prompt for a lifter only on this device", /Upload lifters to my account/.test($("dmShare").textContent));
+  doc.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape" })); await tick(30);
+  check("Escape closes it", !$("shareScrim").classList.contains("show"));
+  $("dmMaxesBtn").click(); await tick(50);
+  check("Maxes and notes opens as a dialog", $("maxesScrim").classList.contains("show") && $("maxesFor").textContent === NAME && !!$("dmMaxes").querySelector(".mn-grid"));
+  const pos = (a, b) => !!(doc.getElementById(a).compareDocumentPosition(doc.getElementById(b)) & w.Node.DOCUMENT_POSITION_FOLLOWING);
+  check("the note editor and confirmations open above these dialogs", pos("maxesScrim", "wkNoteScrim") && pos("shareScrim", "wkNoteScrim") && pos("maxesScrim", "confirmScrim") && pos("shareScrim", "confirmScrim"));
+  $("maxesClose").click();
+  check("the close button closes it", !$("maxesScrim").classList.contains("show"));
+
+  console.log("\nAnalytics");
+  const liveCharts = () => w.__charts.filter(c => c.alive);
+  check("the tabs are Manage program, Warm up Calculator and Program Hub (Analytics moved)",
+    [...$("dmTabs").querySelectorAll(".seg-btn")].map(b => b.textContent.trim()).join() === "Manage program,Warm up Calculator,Program Hub");
+  check("the page itself no longer carries the program charts", !$("dmPaneManage").querySelector(".dm-charts") && !/Program charts/.test($("dmPaneManage").textContent) && !$("dmPaneAnalytics"));
+  check("nothing is drawn until the dialog opens", liveCharts().length === 0 && !$("viewDayMgr").querySelector("canvas"));
+  $("dmAnalyticsBtn").click(); await tick(100);
+  const dlg = $("dmAnalyticsScrim");
+  check("Analytics opens as a dialog for this lifter", dlg.classList.contains("show") && $("dmAnalyticsTitle").textContent === "Analytics" && $("dmAnalyticsFor").textContent === NAME);
+  check("...with the program charts first", /Program charts/.test($("dmCharts").textContent) && /Number of lifts/.test($("dmCharts").textContent) && /Heaviest top set/.test($("dmCharts").textContent));
+  check("...then the progression and load views", /Progression and load/.test(dlg.textContent) && $("dmAnBody").children.length > 0 && !!$("dmAnControls").querySelector(".seg"));
+  const both = () => liveCharts().some(c => c.inCharts) && liveCharts().some(c => c.inAn);
+  check("charts are drawn in both the program-charts part and the progression-and-load part", both(), liveCharts().map(c => (c.inCharts ? "charts" : "") + (c.inAn ? "an" : "")).join());
+  // changing a control inside redraws in place
+  const chartsBefore = w.__charts.length;
+  [...$("dmCharts").querySelectorAll(".seg-btn")].find(b => b.textContent === "Daily").click(); await tick(50);
+  check("switching a control redraws the dialog's charts in place", w.__charts.length > chartsBefore && dlg.classList.contains("show"));
+  doc.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape" })); await tick(30);
+  check("Escape closes it, and the charts are freed", !dlg.classList.contains("show") && liveCharts().length === 0, liveCharts().map(c => c.id).join());
+  $("dmAnalyticsBtn").click(); await tick(60);
+  check("it opens again with the charts back", both());
+  $("dmAnalyticsClose").click();
+  check("the close button closes it too", !dlg.classList.contains("show") && liveCharts().length === 0);
+
   console.log("\nLayout without an import");
-  check("sections: Program, Edit a day, Import, Sharing", caps().join(" | ") === "Program | Edit a day | Import from another program | Sharing", caps().join(" | "));
+  check("sections: Program, Edit a day, Import (Sharing moved to a dialog)", caps().join(" | ") === "Program | Edit a day | Import from another program", caps().join(" | "));
   const progCard = body().querySelector(".dm-sec .dm-card");
   check("Program card holds Export CSV and Compare two programs",
     !!btn("Export CSV", progCard) && !!btn("Compare two programs", progCard));
@@ -121,7 +167,7 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   console.log("\nImport, replace and merge");
   await loadInto("donorInput", mk("Donor", [1], [1, 2, 3], ["Pause squat", "Larsen press", "Row"]), "donor.csv");
   check("sections now include Use the imported program", caps().join(" | ") ===
-    "Program | Edit a day | Use the imported program | Imported program | Sharing", caps().join(" | "));
+    "Program | Edit a day | Use the imported program | Imported program", caps().join(" | "));
   check("imported day shows beside the current one", body().querySelectorAll(".dm-cmp-col").length === 2);
   const swap = body().querySelector(".dm-swap");
   const swapRows = [...swap.querySelectorAll(".dm-swap-row")];

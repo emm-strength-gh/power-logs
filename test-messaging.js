@@ -129,11 +129,13 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   await C.settle();
   const tomId = (await server.sql("select id from public.lifters where name = 'Tom'"))[0].id;
   C.nav("Manage program"); await tick(100);
-  const share = [...C.$("dmBody").querySelectorAll(".dm-sec")].find(s => s.querySelector(".dm-sec-cap").textContent === "Sharing");
+  C.$("dmShareBtn").click(); await tick(50);
+  const share = C.$("dmShare");
   const em = share.querySelector('input[type="email"]');
   em.value = "tom@test.invalid"; em.dispatchEvent(new C.w.Event("blur"));
   await until(async () => (await server.sql("select lifter_email from public.lifters"))[0].lifter_email === "tom@test.invalid");
   await C.settle();
+  C.$("shareClose").click();
   check("no new-week notice for the weeks Tom started with", !C.$("dmNotice").querySelector(".week-notice"));
 
   const L = boot("lifter");
@@ -207,10 +209,12 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   // Messages so far are older than Jordan's join: make that true in time too.
   await server.sql("update public.messages set created_at = created_at - interval '1 hour'");
   C.nav("Manage program"); await tick(100);
-  const share2 = [...C.$("dmBody").querySelectorAll(".dm-sec")].find(s => s.querySelector(".dm-sec-cap").textContent === "Sharing");
+  C.$("dmShareBtn").click(); await tick(50);
+  const share2 = C.$("dmShare");
   share2.querySelector('input[placeholder="Another coach’s email"]').value = "jordan@test.invalid";
   C.btn("Share", share2).click();
   await until(async () => (await server.sql("select count(*)::int n from public.lifter_coaches"))[0].n === 2);
+  C.$("shareClose").click();
   J.sync(); await J.settle();
   J.nav("Messages"); await tick();
   check("Jordan doesn't see messages from before he joined", J.$("viewMessages").classList.contains("active") && J.bubbles().length === 0, J.bubbles().join("|"));

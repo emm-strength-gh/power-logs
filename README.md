@@ -94,8 +94,8 @@ by the app, so a modified copy of the page can't get around them.
   so those lifters lose access; the programs stay with the owner and other coaches.
 - **Coach**: signs in, taps **I'm a coach: request access**, and once approved gets
   Manage Program for the lifters they upload or that another coach shares with them.
-  Manage Program → **Sharing** holds the lifter's own sign-in email, the list of
-  coaches (share by email, remove), and **Delete lifter for everyone**.
+  Manage Program → the **Sharing** button opens a dialog with the lifter's own sign-in
+  email, the list of coaches (share by email, remove), and **Delete lifter for everyone**.
 - **Lifter**: signs in with the email their coach entered. Sees only their own program
   (Overview, weeks, Analytics, 1-rep maxes, RPE Estimator, Velocity Tracker) and logs
   it; no Manage Program, and no loading or saving files (Load CSV/JSON, Save
@@ -219,13 +219,21 @@ That's why the dropdown opens a sheet instead.
    a **Whole week** row that say what goes where ("Imported W1D1 → your W9D1").
 4. **Import:** import a CSV/JSON or build one in the Program Hub; once loaded,
    **Import a different program** and **Clear import** live here too.
-5. **Sharing** (signed in as a coach): the lifter's sign-in email, their coaches,
-   and deleting the lifter for everyone. A lifter only on this device gets an
-   **Upload** button instead.
+5. **Three buttons above the tabs** (two to a row on a phone). **Sharing** (signed in
+   as a coach, on the left) opens a dialog with the lifter's sign-in email, their
+   coaches, and deleting the lifter for everyone; a lifter only on this device gets an
+   **Upload** button there instead. **Maxes and notes** opens the dialog described
+   below. **Analytics** opens one dialog with the program charts (number of lifts,
+   heaviest top sets, fatigue estimate) followed by the progression and load views
+   (estimated 1RM, adherence, acute:chronic workload, volume by lift). Each button's
+   second line summarises what's inside. The tabs underneath are Manage program, Warm up
+   Calculator and Program Hub; the charts are only drawn while the Analytics dialog is
+   open.
 
 ## Notes in Manage Program
 
-Manage Program's top section is one **Maxes and notes** card. Each lift is a row with
+Manage Program's **Maxes and notes** button opens one dialog (a bottom sheet on a
+   phone, like Account). Each lift is a row with
 its 1-rep max beside its training max; a row of 100/95/90/85/80% buttons sets the
 percentage the training maxes follow (grey numbers follow it, dark ones were typed by
 hand, and the small arrow puts a typed one back); **Add another lift** takes a 1-rep

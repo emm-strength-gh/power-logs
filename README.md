@@ -28,6 +28,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-lifterorder.js` | Rearranging lifters: the sheet, the dropdown entry, saving and reloading the order — `node test-lifterorder.js`. |
 | `test-dmnotes.js` | Manage Program's Notes card: coach-only, editing, links, backups, and that Weekly notes still work — `node test-dmnotes.js`. |
 | `test-reimport.js` | Re-importing a lifter's CSV or an older JSON backup keeps their training maxes; the CSV still sets the 1-rep maxes — `node test-reimport.js`. |
+| `test-trainingmax.js` | Training maxes: 90% of the 1-rep maxes by default, the 100/95/90/85/80% buttons, typed numbers winning, undo, the Hub and backups — `node test-trainingmax.js`. |
 | `test-hubanalytics.js` | Program Hub analytics: charts for each program, controls, and the same numbers as Power Logs' Analytics for the same CSV — `node test-hubanalytics.js`. |
 | `test-hubprefill.js` | Program Hub builders filled from the loaded lifter: every builder, typed values kept, Wendler/Massthetics TM %, and Power Logs sending it — `node test-hubprefill.js`. |
 | `test-managelayout.js` | Manage Program's Manage tab: section order, and every action from its place (add exercise, days & weeks, undo, import, replace/merge, clear, compare) — `node test-managelayout.js`. |

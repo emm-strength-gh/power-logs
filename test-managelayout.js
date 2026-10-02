@@ -110,16 +110,16 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   check("the close button closes it too", !dlg.classList.contains("show") && liveCharts().length === 0);
 
   console.log("\nLayout without an import");
-  check("sections: the Lifter and program card, then Edit a day and Import", caps().join(" | ") === "Edit a day | Import from another program" &&
+  check("sections: the Lifter & program/block title card, then Edit a day and Import", caps().join(" | ") === "Edit a day | Import from another program" &&
     body().firstElementChild.classList.contains("dm-progcard"), caps().join(" | "));
   const progCard = body().querySelector(".dm-progcard");
   check("the card holds the lifter's name, block, Export CSV and Compare two programs",
     !!progCard && !!btn("Export CSV", progCard) && !!btn("Compare two programs", progCard) &&
     !!progCard.querySelector('input[aria-label="Lifter name"]') && !!progCard.querySelector('input[aria-label="Block or program title"]'));
 
-  console.log("\nThe Lifter and program card collapses");
+  console.log("\nThe Lifter & program/block title card collapses");
   const progSub = () => progCard.querySelector(".pn-sub").textContent;
-  check("it's titled Lifter and program, and open to start with", progCard.querySelector(".pn-title").textContent === "Lifter and program" && progCard.classList.contains("open"));
+  check("it's titled Lifter & program/block title, and open to start with", progCard.querySelector(".pn-title").textContent === "Lifter & program/block title" && progCard.classList.contains("open"));
   check("collapsed or not, its header says whose program it is", progSub() === NAME + " · B", progSub());
   progCard.querySelector(".pn-toggle").click();
   check("the header collapses it", !progCard.classList.contains("open"));

@@ -1539,7 +1539,7 @@
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
   // major.minor.patch: minor goes up with each release (it carried on from the
   // old build counter, 30), patch for a fix to one.
-  var APP_VERSION = "1.40.0";
+  var APP_VERSION = "1.40.1";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -3749,14 +3749,14 @@
     clear(noticeHost);
     if (notice) noticeHost.appendChild(notice);
 
-    // ---- Lifter and program: name, block / title, export, compare (collapsible) ----
+    // ---- Lifter & program/block title: name, block / title, export, compare (collapsible) ----
     var progKey = "spotter.dmProgramCollapsed", progCollapsed = false;
     try { progCollapsed = localStorage.getItem(progKey) === "1"; } catch (e) {}
     var progCard = el("div", "pn-card dm-progcard" + (progCollapsed ? "" : " open"));
     var progToggle = el("button", "pn-toggle");
     progToggle.type = "button";
     var progLab = el("span", "pn-labels");
-    progLab.appendChild(el("span", "pn-title", "Lifter and program"));
+    progLab.appendChild(el("span", "pn-title", "Lifter & program/block title"));
     // Collapsed, it still says whose program this is.
     var progSub = el("span", "pn-sub", p.name + (p.block ? " \u00b7 " + p.block : ""));
     progLab.appendChild(progSub);

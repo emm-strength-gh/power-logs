@@ -209,7 +209,7 @@ That's why the dropdown opens a sheet instead.
 
 ## The Manage tab, top to bottom
 
-1. **Lifter and program** (a collapsible card; it remembers whether you left it open, and
+1. **Lifter & program/block title** (a collapsible card; it remembers whether you left it open, and
    when collapsed its header still reads "Name · Block"): the lifter's name (a coach can
    rename them; a synced lifter is renamed on every device, theirs included),
    block/title, **Export CSV**, **Compare two programs**.

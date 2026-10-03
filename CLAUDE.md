@@ -179,6 +179,9 @@ private script kept outside it (`private.settings`).
   the app only sends `reply_to` when set, so plain messages still work before the column
   exists. `renderThread()` builds the dock (reply bar, emoji panel, box), `fillThread()`
   the lines (bubble + reply button, `msgSwipe`, `msgQuote`); `msgUI.startReply` links them.
+- The Program Hub tab (and its Import button) is owner-only: `.owner-only` / `html.is-owner`
+  from `applyRoleUI()`, plus `isOwner()` guards in the functions that open or feed it. The
+  standalone program-hub.html stays a public page.
 - In-app notices (the "In-app notices" section, `#noticeBar` at the top of `.content`):
   `NT` (`spotter.notices.v1`) holds `{id, kind, lifter, thread?, week?, who, text, at}`,
   made by `ntFromMessage`/`ntFromEvent` (in `pullMessages`), `ntFromWeekNote` (in

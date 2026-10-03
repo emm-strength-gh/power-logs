@@ -207,6 +207,10 @@ the function in Supabase, never in this repo. Setting the function up is a one-o
 done in the Supabase dashboard (the private setup guide covers it). Until it is,
 messages still work, just without banners.
 
+## Who sees the Program Hub
+
+The **Program Hub** tab in Manage Program, and the "Build one in Program Hub" button in its Import card, are for the **owner only**; other coaches don't see them (`.owner-only`, set by `applyRoleUI()` from `isOwner()`, and enforced again in `setDMTab()`, `loadHubFrame()`, `pushLifterToHub()` and `loadDonorFromHub()`). This only hides it inside the app: `program-hub.html` is a public static file, so anyone who knows its address can still open it on its own; it just can't send programs into anyone's Manage Program.
+
 ## The notice banner
 
 Signed in, anything that happened while you were away shows as a banner at the top of

@@ -529,6 +529,22 @@
   .tro-form .seg-btn { flex: 1; }
   .tro-in { margin-top: 10px; }
   .tro-note { resize: vertical; min-height: 76px; }
+  /* ── In-app notices ── */
+  .nt-bar { display: flex; flex-direction: column; gap: 8px; margin: 0 0 18px; }
+  .nt-bar[hidden] { display: none; }
+  .nt-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .nt-count { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+  .nt-row { display: flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--nt-c, var(--pine)); border-radius: 14px; box-shadow: var(--shadow); animation: rise .25s ease both; }
+  .nt-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 11px 4px 11px 12px; background: transparent; color: var(--ink); text-align: left; border-radius: 12px; }
+  .nt-ic { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; color: var(--nt-c, var(--pine)); background: var(--bg); }
+  .nt-ic svg { width: 18px; height: 18px; }
+  .nt-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .nt-tx b { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+  .nt-tx span { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nt-x { flex: none; width: 40px; height: 40px; margin-right: 4px; display: grid; place-items: center; background: transparent; color: var(--muted); border-radius: 50%; }
+  .nt-x:hover { background: var(--bg); color: var(--ink); }
+  .nt-x svg { width: 18px; height: 18px; }
+  .nt-more { align-self: flex-start; }
   .msg-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 8px; }
   .msg-title { font-family: "Bricolage Grotesque", sans-serif; font-size: 18px; font-weight: 700; margin: 0; }
   .msg-note { font-size: 13px; color: var(--muted); margin: 0 0 10px; }
@@ -1055,6 +1071,7 @@
 
   <main class="main">
     <div class="content">
+      <div class="nt-bar" id="noticeBar" role="region" aria-label="Notifications" aria-live="polite" hidden></div>
       <!-- Empty state -->
       <section class="view active" id="viewEmpty">
         <div class="empty-wrap">
@@ -1639,7 +1656,7 @@
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
   // major.minor.patch: minor goes up with each release (it carried on from the
   // old build counter, 30), patch for a fix to one.
-  var APP_VERSION = "1.41.0";
+  var APP_VERSION = "1.42.0";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -2959,6 +2976,7 @@
     inRpe = false;
     inVbt = false;
     currentWeek = week;
+    ntRemove(function (n) { return n.kind !== "msg" && n.kind !== "trophy" && n.lifter === lifterIdOf(current) && String(n.week) === String(week); });
     dayFilterSel = "all";
     showView("viewWeek");
     renderWeek();
@@ -6902,6 +6920,7 @@
         if (!WKNOTES[name]) WKNOTES[name] = {};
         if (row.body) WKNOTES[name][row.week] = row.body; else delete WKNOTES[name][row.week];
         if (cur !== (row.body || "")) cloudChanged = true;
+        if (!force && row.body && cur !== row.body) ntFromWeekNote(row, name);
       }
     } else if (t === "lifter_coach_notes") {
       cur = DMNOTES[name] || ""; was = sh.coach || "";
@@ -6978,7 +6997,10 @@
       cloudChanged = true;
     }
     if (refetch || progHash(PROFILES[name]) === sh.prog || !canManage(name)) {
-      if (progHash(PROFILES[name]) !== rh) { PROFILES[name] = rp; cloudChanged = true; }
+      if (progHash(PROFILES[name]) !== rh) {
+        if (!refetch && isAthleteOf(row.id)) ntFromProgram(row.id, PROFILES[name], rp, rh);
+        PROFILES[name] = rp; cloudChanged = true;
+      }
     }
     sh.prog = rh;
   }
@@ -7083,6 +7105,7 @@
     }).then(function () {
       if (cloudChanged) writeAllStores();
       saveCloud();
+      NT.base.notes = true; ntSave();
     });
   }
 
@@ -7249,6 +7272,7 @@
     else renderOverview();
   }
   function setCloudStatus() {
+    renderNotices();
     var dot = $("acctDot"), badge = $("acctBadge"), s;
     if (!CLOUD.user) s = "out";
     else if (syncing) s = "busy";
@@ -7308,7 +7332,7 @@
       // Another account's synced lifters aren't this one's to see.
       Object.keys(PROFILES).forEach(function (n) { if (PROFILES[n].cloudId) removeLocalLifter(n); });
       CLOUD = cloudDefaults();
-      MSG = msgDefaults(); saveMsg();
+      MSG = msgDefaults(); saveMsg(); NT = ntDefaults(); ntSave(); ntUI.all = false;
       writeAllStores();
     }
     if (!CLOUD.user) backupOnce();
@@ -7335,7 +7359,7 @@
           return api ? api.signOut().catch(function () {}) : null;
         }).then(function () {
           stopListen();
-          MSG = msgDefaults(); saveMsg();
+          MSG = msgDefaults(); saveMsg(); NT = ntDefaults(); ntSave(); ntUI.all = false;
           clearTimeout(syncTimer);
           Object.keys(PROFILES).forEach(function (nm) { if (PROFILES[nm].cloudId) removeLocalLifter(nm); });
           CLOUD = cloudDefaults();
@@ -7889,6 +7913,7 @@
     var last = list[list.length - 1].created_at, k = threadKey(id, th);
     if (tms(last) <= tms(MSG.reads[k])) return;
     MSG.reads[k] = last;
+    ntRemove(function (n) { return n.kind === "msg" && n.lifter === id && n.thread === th; });
     MSG.outbox = MSG.outbox.filter(function (j) { return !(j.type === "read" && j.row.lifter_id === id && j.row.thread === th); });
     MSG.outbox.push({ type: "read", row: { lifter_id: id, thread: th, read_at: last } });
     saveMsg();
@@ -7925,7 +7950,7 @@
       (r[2] || []).forEach(function (m) {
         if (tms(m.created_at) > tms(top)) top = m.created_at;
         var row = { id: m.id, lifter_id: m.lifter_id, thread: m.thread, sender_id: m.sender_id, body: m.body, created_at: m.created_at };
-        if (at[m.id] === undefined) { at[m.id] = MSG.list.length; MSG.list.push(row); out.msgs = true; }
+        if (at[m.id] === undefined) { at[m.id] = MSG.list.length; MSG.list.push(row); out.msgs = true; ntFromMessage(row); }
         else {
           // Ours comes back with the server's time; take it (and clear "Sending…").
           var cur = MSG.list[at[m.id]];
@@ -7944,11 +7969,12 @@
       MSG.events.forEach(function (e) { seenEv[e.id] = true; });
       (r[3] || []).forEach(function (e) {
         if (tms(e.created_at) > tms(etop)) etop = e.created_at;
-        if (!seenEv[e.id]) { MSG.events.push({ id: e.id, lifter_id: e.lifter_id, kind: e.kind, week: e.week, day: e.day, created_by: e.created_by, created_at: e.created_at }); out.msgs = true; }
+        if (!seenEv[e.id]) { MSG.events.push({ id: e.id, lifter_id: e.lifter_id, kind: e.kind, week: e.week, day: e.day, created_by: e.created_by, created_at: e.created_at }); out.msgs = true; ntFromEvent(e); }
       });
       MSG.cursors.lifter_events = etop;
       pruneMsgs();
       saveMsg();
+      NT.base.msgs = true; NT.base.events = true; ntSave();   // from now on, what arrives is news
       return out;
     });
   }
@@ -9198,6 +9224,7 @@
   function openTrophies() {
     if (!current || !PROFILES[current]) return;
     inAnalytics = false; inDayMgr = false; inRpe = false; inVbt = false; currentWeek = null;
+    ntRemove(function (n) { return n.kind === "trophy" && n.lifter === lifterIdOf(current); });
     showView("viewTrophies");
     renderTrophies();
     renderSidebar();
@@ -9506,6 +9533,186 @@
     $("troBack").onclick = function () { openOverview(); };
   }
 
+  // ───────────────────────── In-app notices ─────────────────────────
+  // What happened while you were away, shown as a banner at the top of the app:
+  // new messages, finished days, trophies and awards, weeks and days a coach
+  // added, and weekly notes (saying whether a coach or the lifter wrote it).
+  // Made when a sync brings in something someone else did; each stays until it
+  // is dismissed, opened, or (messages) read. Stacked by lifter and kind, so a
+  // week away is a handful of rows ("Tom finished 4 days"), not a wall.
+  var STORE_NOTICES = "spotter.notices.v1";
+  var NT_SHOW = 3, NT_KEEP = 150, NT_DAYS = 30;
+  function ntDefaults() { return { list: [], base: {} }; }
+  var NT = ntDefaults();
+  var ntUI = { all: false };
+  var NT_ICON = {
+    msg: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+    session: '<path d="m5 12 5 5L20 7"/>',
+    trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/>',
+    program: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M12 13v5M9.5 15.5h5"/>',
+    note: '<path d="M4 4h16v13l-4 4H4z"/><path d="M8 9h8M8 13h5"/>'
+  };
+  var NT_COLOR = { msg: "--daily", session: "--pine", trophy: "--gold", program: "--clay", note: "--lift-other" };
+
+  function ntLoad() {
+    var saved = safeRead(STORE_NOTICES, null), d = ntDefaults();
+    if (saved && typeof saved === "object" && Array.isArray(saved.list)) { d.list = saved.list; d.base = saved.base || {}; }
+    NT = d;
+    ntPrune();
+  }
+  function ntSave() { try { localStorage.setItem(STORE_NOTICES, JSON.stringify(NT)); } catch (e) {} }
+  function ntPrune() {
+    var cut = Date.now() - NT_DAYS * 86400000;
+    NT.list = NT.list.filter(function (n) { return tms(n.at) >= cut; })
+      .sort(function (a, b) { return tms(b.at) - tms(a.at); }).slice(0, NT_KEEP);
+  }
+  function ntAdd(n) {
+    if (NT.list.some(function (x) { return x.id === n.id; })) return;
+    n.at = n.at || new Date().toISOString();
+    NT.list.push(n);
+    ntPrune(); ntSave(); renderNotices();
+  }
+  function ntRemove(pred) {
+    var before = NT.list.length;
+    NT.list = NT.list.filter(function (n) { return !pred(n); });
+    if (NT.list.length !== before) { ntSave(); renderNotices(); }
+  }
+  function ntAgo(iso) {
+    var s = Math.max(0, (Date.now() - tms(iso)) / 1000);
+    if (s < 60) return "just now";
+    if (s < 3600) return Math.floor(s / 60) + " min ago";
+    if (s < 86400) { var h = Math.floor(s / 3600); return h + (h === 1 ? " hour ago" : " hours ago"); }
+    var d = Math.floor(s / 86400);
+    return d === 1 ? "yesterday" : d + " days ago";
+  }
+  function ntSnippet(t) { t = String(t || "").replace(/\s+/g, " ").trim(); return t.length > 80 ? t.slice(0, 77) + "…" : t; }
+
+  // ---- Making them (called as a sync brings in what someone else did)
+  function ntFromMessage(m) {
+    if (!NT.base.msgs || m.pending || m.sender_id === me()) return;
+    var id = m.lifter_id;
+    if (!cloudIndex()[id] || tms(m.created_at) <= tms(MSG.reads[threadKey(id, m.thread)])) return;
+    if (inMessages && lifterIdOf(current) === id && document.visibilityState !== "hidden") return;   // they're looking at it
+    var who = senderName(id, m.sender_id);
+    ntAdd({ id: "msg:" + m.id, kind: "msg", lifter: id, thread: m.thread, who: who, text: who + ": " + ntSnippet(m.body), at: m.created_at });
+  }
+  function ntFromEvent(e) {
+    var name = cloudIndex()[e.lifter_id];
+    if (!NT.base.events || !name || e.created_by === me()) return;
+    if (e.kind === "session_done") {
+      if (!isCoachOf(e.lifter_id)) return;
+      ntAdd({ id: "ev:" + e.id, kind: "session", lifter: e.lifter_id, week: String(e.week), who: name, text: name + " finished week " + e.week + " · day " + e.day, at: e.created_at });
+    } else if (e.kind === "trophy") {
+      var meta = CLOUD.lifterMeta[e.lifter_id] || {}, fromLifter = e.created_by === meta.userId;
+      if (fromLifter ? !isCoachOf(e.lifter_id) : !isAthleteOf(e.lifter_id)) return;
+      var tn = troNameOf(e.week, (MSG.settings[e.lifter_id] || {}).sex);
+      ntAdd({ id: "ev:" + e.id, kind: "trophy", lifter: e.lifter_id, who: fromLifter ? name : coachName(e.created_by),
+        text: fromLifter ? name + " earned a trophy: " + tn : coachName(e.created_by) + " gave you an award: " + tn, at: e.created_at });
+    }
+  }
+  function ntFromWeekNote(row, name) {
+    if (!NT.base.notes || !row.updated_by || row.updated_by === me()) return;
+    var meta = CLOUD.lifterMeta[row.lifter_id] || {};
+    var who = row.updated_by === meta.userId ? name + " (lifter)" : "Coach " + coachName(row.updated_by);
+    ntAdd({ id: "wn:" + row.lifter_id + "|" + row.week + "|" + row.updated_at, kind: "note", lifter: row.lifter_id, week: String(row.week), who: who,
+      text: who + " added a note to week " + row.week, at: row.updated_at || new Date().toISOString() });
+  }
+  // A coach changed the program: say which weeks and days are new.
+  function ntFromProgram(id, oldP, newP, hash) {
+    var had = {}, newWeeks = [], newDays = {}, now = new Date().toISOString();
+    (oldP.weeks || []).forEach(function (w) { var d = {}; (w.days || []).forEach(function (g) { d[g.day] = 1; }); had[w.week] = d; });
+    (newP.weeks || []).forEach(function (w) {
+      if (!had[w.week]) newWeeks.push(String(w.week));
+      else (w.days || []).forEach(function (g) { if (!had[w.week][g.day]) (newDays[w.week] = newDays[w.week] || []).push(String(g.day)); });
+    });
+    var list = function (a) { return a.length === 1 ? a[0] : a.slice(0, -1).join(", ") + " and " + a[a.length - 1]; };
+    if (newWeeks.length) ntAdd({ id: "prog:" + hash + ":w", kind: "program", lifter: id, week: newWeeks[0], who: "Your coach",
+      text: "Your coach added " + (newWeeks.length === 1 ? "week " : "weeks ") + list(newWeeks), at: now });
+    Object.keys(newDays).forEach(function (wk) {
+      var d = newDays[wk];
+      ntAdd({ id: "prog:" + hash + ":d" + wk, kind: "program", lifter: id, week: wk, who: "Your coach",
+        text: "Your coach added " + (d.length === 1 ? "day " : "days ") + list(d) + " to week " + wk, at: now });
+    });
+  }
+
+  // ---- The banner
+  function ntGroups() {
+    var map = {}, out = [];
+    NT.list.slice().sort(function (a, b) { return tms(b.at) - tms(a.at); }).forEach(function (n) {
+      var k = n.kind + "|" + n.lifter + "|" + (n.kind === "msg" ? n.thread : "");
+      if (!map[k]) { map[k] = { kind: n.kind, items: [], latest: n }; out.push(map[k]); }
+      map[k].items.push(n);
+    });
+    return out;
+  }
+  function ntTitle(g) {
+    var n = g.items.length, who = nameOfLifter(g.latest.lifter);
+    if (n === 1) return g.latest.text;
+    if (g.kind === "msg") return n + " new messages";
+    if (g.kind === "session") return who + " finished " + n + " days";
+    if (g.kind === "trophy") return n + " new trophies";
+    if (g.kind === "program") return n + " program updates";
+    return n + " new weekly notes";
+  }
+  function ntGo(n) {
+    var name = cloudIndex()[n.lifter];
+    if (!name) return;
+    current = name; currentWeek = null;
+    safeWrite(STORE_LAST, name);
+    renderPicker();
+    if (n.kind === "msg" && canMessage(name)) openMessages(n.thread);
+    else if (n.kind === "trophy") openTrophies();
+    else if (n.week && getWeek(PROFILES[name], n.week)) openWeek(n.week);
+    else openOverview();
+  }
+  function renderNotices() {
+    var bar = $("noticeBar");
+    if (!bar) return;
+    clear(bar);
+    var groups = CLOUD.user ? ntGroups() : [];
+    bar.hidden = !groups.length;
+    if (!groups.length) return;
+    function dismiss(g) { var ids = {}; g.items.forEach(function (n) { ids[n.id] = 1; }); ntRemove(function (n) { return ids[n.id]; }); }
+    if (groups.length > 1) {
+      var head = el("div", "nt-head");
+      head.appendChild(el("span", "nt-count", NT.list.length + " updates"));
+      var all = el("button", "chip sm", "Clear all");
+      all.type = "button";
+      all.onclick = function () { ntRemove(function () { return true; }); };
+      head.appendChild(all);
+      bar.appendChild(head);
+    }
+    var shown = ntUI.all ? groups : groups.slice(0, NT_SHOW);
+    shown.forEach(function (g) {
+      var row = el("div", "nt-row k-" + g.kind);
+      row.style.setProperty("--nt-c", "var(" + NT_COLOR[g.kind] + ")");
+      var main = el("button", "nt-main");
+      main.type = "button";
+      var ic = el("span", "nt-ic");
+      ic.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + NT_ICON[g.kind] + "</svg>";
+      main.appendChild(ic);
+      var tx = el("span", "nt-tx");
+      tx.appendChild(el("b", null, ntTitle(g)));
+      tx.appendChild(el("span", null, (g.items.length > 1 ? "Latest: " + g.latest.text + " · " : "") + ntAgo(g.latest.at)));
+      main.appendChild(tx);
+      main.onclick = function () { var latest = g.latest; dismiss(g); ntGo(latest); };
+      row.appendChild(main);
+      var x = el("button", "nt-x");
+      x.type = "button";
+      x.setAttribute("aria-label", "Dismiss");
+      x.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+      x.onclick = function (e) { e.stopPropagation(); dismiss(g); };
+      row.appendChild(x);
+      bar.appendChild(row);
+    });
+    if (groups.length > NT_SHOW) {
+      var more = el("button", "chip sm nt-more", ntUI.all ? "Show less" : "Show " + (groups.length - NT_SHOW) + " more");
+      more.type = "button";
+      more.onclick = function () { ntUI.all = !ntUI.all; renderNotices(); };
+      bar.appendChild(more);
+    }
+  }
+
   // ───────────────────────── Theme ─────────────────────────
   function applyTheme(t) {
     document.documentElement.setAttribute("data-theme", t);
@@ -9540,9 +9747,11 @@
     WKNOTES = safeRead(STORE_WKNOTES, {}) || {};
     DMNOTES = safeRead(STORE_DMNOTES, {}) || {};
     troLoad();
+    ntLoad();
     ORDER = safeRead(STORE_ORDER, []);
     if (!Array.isArray(ORDER)) ORDER = [];
     cloudBoot();   // before the first render: it decides who sees Manage program
+    renderNotices();
     dmAddOpen = safeRead(STORE_ADDOPEN, false) === true;   // closed until opened; remembered after that
 
     // gym tools: plate calculator + rest timer preferences
@@ -9732,6 +9941,7 @@
     $("msgBack").onclick = openOverview;
     $("inboxBack").onclick = openOverview;
     troWire();
+    document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") renderNotices(); });
     $("acctClose").onclick = closeAcct;
     $("aboutVer").textContent = APP_VERSION;
     $("aboutParts").textContent = "Program Hub " + HUB_BUILD + " · Velocity Tracker " + VBT_BUILD;

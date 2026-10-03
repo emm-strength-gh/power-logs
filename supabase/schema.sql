@@ -573,7 +573,12 @@ language sql stable security definer set search_path = '' as $$
      end;
 $$;
 
--- The server decides who sent it and when, not the app.
+-- A reply points at the message it answers (when that message is gone, say
+-- after the owner clears a thread, the pointer simply empties).
+alter table public.messages add column if not exists reply_to uuid references public.messages(id) on delete set null;
+
+-- The server decides who sent it and when, not the app. A reply only points at a
+-- message in the same thread that the sender can read; anything else is dropped.
 create or replace function private.messages_guard() returns trigger
 language plpgsql set search_path = '' as $$
 begin
@@ -581,6 +586,11 @@ begin
   new.created_at := now();
   new.notified_at := null;
   new.body := btrim(new.body);
+  if new.reply_to is not null and not exists (
+    select 1 from public.messages m
+    where m.id = new.reply_to and m.lifter_id = new.lifter_id and m.thread = new.thread) then
+    new.reply_to := null;
+  end if;
   return new;
 end $$;
 drop trigger if exists messages_guard on public.messages;

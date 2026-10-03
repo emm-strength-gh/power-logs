@@ -175,6 +175,10 @@ private script kept outside it (`private.settings`).
   lifters are always their program's `#Name`.
   "Clear": owner-only RPC `clear_thread` deletes a thread's messages and stamps
   `lifter_settings.cleared[thread]`, which other devices use to drop their copies.
+- Replies in Messages: `messages.reply_to` (a trigger drops pointers outside the thread);
+  the app only sends `reply_to` when set, so plain messages still work before the column
+  exists. `renderThread()` builds the dock (reply bar, emoji panel, box), `fillThread()`
+  the lines (bubble + reply button, `msgSwipe`, `msgQuote`); `msgUI.startReply` links them.
 - In-app notices (the "In-app notices" section, `#noticeBar` at the top of `.content`):
   `NT` (`spotter.notices.v1`) holds `{id, kind, lifter, thread?, week?, who, text, at}`,
   made by `ntFromMessage`/`ntFromEvent` (in `pullMessages`), `ntFromWeekNote` (in
@@ -252,10 +256,11 @@ node test-messaging.js  # messages, finished sessions, new-week alerts, push (no
 node test-trophies.js   # Trophies: standards by IPF class, levels, clubs, streaks, PRs, awards, celebration, share image
 node test-trophysync.js # Trophies across devices on the real rules, plus their notifications
 node test-notices.js    # In-app notice banner: kinds, who wrote it, x, stacking
+node test-replies.js    # Messages: emoji picker and replies
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all eighteen. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all nineteen. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of power-logs.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

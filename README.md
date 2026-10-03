@@ -16,7 +16,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
 | `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
-| `supabase/selftest.sql` | Checks on those rules (122 at present). Paste and run after the schema; every row should say PASS. |
+| `supabase/selftest.sql` | Checks on those rules (124 at present). Paste and run after the schema; every row should say PASS. |
 | `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
 | `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
 | `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the original logo). |
@@ -38,6 +38,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-trophies.js` | Trophies and strength levels: men's and women's standards, class limits, levels, clubs, GL points, Done-set estimates, streaks, comebacks, blocks, PRs, awards, the celebration and the share image — `node test-trophies.js`. |
 | `test-trophysync.js` | Trophies across devices on the real rules: earned trophies reach the coach, PR confirmation, awards given and taken back, standards, the notifications, and a trophy problem never holding up the log — `node test-trophysync.js`. |
 | `test-notices.js` | The in-app notice banner: messages, finished days, notes (coach or lifter), added weeks, trophies, the x, stacking and Show more / Clear all — `node test-notices.js`. |
+| `test-replies.js` | Messages: the emoji picker and replies (the reply bar, quotes, jumping to the original, swiping, saved on the server) — `node test-replies.js`. |
 | `test-cloudfake.js` | Not a test: the stand-in Supabase the tests plug in (`window.__spotterCloud`), and the in-process runner for the notify function. |
 | `test-vbt.js` | Velocity Tracker smoke test — `node test-vbt.js`. |
 | `make_icons.py` | Regenerates the icons from `icons/_source.png`. |
@@ -179,6 +180,12 @@ the lifter's sidebar, plus an **Inbox** for coaches listing every lifter they co
   home-screen app (iOS 16.4 or later).
 - Messages are cached on the device to read offline; ones written offline are sent
   when it's back online.
+- **Emoji and replies:** the smiley beside the message box opens an emoji picker (tabs, plus
+  the ones you used last); tapping one drops it at the cursor. **Reply** (the arrow beside
+  a message, or swipe it toward the middle of the screen) quotes that message above the
+  box and in the reply, and tapping the quote jumps back to the original. The database
+  keeps the pointer (`messages.reply_to`) and drops one that doesn't point at a message in
+  the same thread.
 - **Seen:** under your latest message, "Seen" (private thread) or "Seen by Tom,
   Jordan" (shared thread) once they've opened it. A coach who joined after it was sent
   isn't counted.

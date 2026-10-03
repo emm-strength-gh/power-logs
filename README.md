@@ -18,7 +18,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
 | `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
-| `supabase/selftest.sql` | Checks on those rules (130 at present). Paste and run after the schema; every row should say PASS. |
+| `supabase/selftest.sql` | Checks on those rules (141 at present). Paste and run after the schema; every row should say PASS. |
 | `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
 | `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
 | `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the original logo). |
@@ -42,6 +42,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-notices.js` | The in-app notice banner: messages, finished days, notes (coach or lifter), added weeks, trophies, the x, stacking and Show more / Clear all — `node test-notices.js`. |
 | `test-replies.js` | Messages: the emoji picker and replies (the reply bar, quotes, jumping to the original, swiping, saved on the server) — `node test-replies.js`. |
 | `test-home.js` | The coach landing page: greeting, cards, the lifters list, Home buttons, who gets it and when — `node test-home.js`. |
+| `test-payments.js` | Payments and the lifter's Home, end to end on the real rules: marking months paid/unpaid, day, amount, currency, the lifter's read-only view, and co-coaches kept out — `node test-payments.js`. |
 | `test-cloudfake.js` | Not a test: the stand-in Supabase the tests plug in (`window.__spotterCloud`), and the in-process runner for the notify function. |
 | `test-vbt.js` | Velocity Tracker smoke test — `node test-vbt.js`. |
 | `make_icons.py` | Regenerates the icons from `icons/_source.png`. |
@@ -210,21 +211,36 @@ the function in Supabase, never in this repo. Setting the function up is a one-o
 done in the Supabase dashboard (the private setup guide covers it). Until it is,
 messages still work, just without banners.
 
-## Coach home
+## Home (coaches and lifters)
 
-Coaches and the owner land on **Home** after signing in (and whenever they open the app):
-**Welcome Coach <name>!** (from "Your name" in the account sheet, else the start of their
-email), then three cards:
+Everyone signed in lands on **Home** (at launch and right after signing in), and it is the first
+item in the sidebar and a ‹ Home button on a lifter's Overview, the lifters list, the Inbox and
+Payments. Notifications live in its first card for everyone signed in.
 
-1. **Notifications**: the notice banner, moved here for coaches (lifters still get it at the
-   top of the app).
-2. **Lifters**: **All lifters** opens a list of every lifter (block, class, weeks, % done, unread
-   messages); tapping one opens their program and profile exactly as before.
-3. **Messages**: **Inbox**, which has a Home button.
+**Coaches and the owner:** "Welcome Coach <name>!" (from "Your name", else the start of their
+email), then **Notifications**, **Lifters** (*All lifters* opens a list; tapping one opens their
+program and profile as before), **Messages** (*Inbox*) and **Payments**.
 
-**Home** is also the first item in the sidebar (next to **Lifters**) and a button at the top of a
-lifter's Overview. Lifters, and coaches not yet approved, don't see any of this. More buttons can
-go into these cards later.
+**Lifters** (and coaches not yet approved): "Welcome <name>!" using their program's `#Name`,
+then **Notifications**, **Programs** (every program assigned to them; tap one to open it),
+**Messages** and **Payments** (this month's status, and *View payments*).
+
+## Payments
+
+For a coach to track each month's payment from the lifters they created or loaded.
+
+- **Who:** only the coach who created the lifter (`lifters.created_by`) sees and edits them; the
+  lifter sees their own, read-only. Other coaches sharing the lifter don't see them. The database
+  enforces this (`lifter_payments`, row-level security; `private.made_lifter()`).
+- **How:** Home → Payments lists your lifters with this month's status. Open one to see the last
+  twelve months, newest first, each **Unpaid** until marked. Tap a month: **Paid / Unpaid**, the
+  **day** it was paid (today for the current month, otherwise the 1st, changeable), and the
+  **amount** (optional) in **₱ PHP, £ GBP or $ USD**. The next month offers the last amount used.
+  The currency buttons above the months set the default.
+- **Lifters** see the same months and amounts, and can't change anything.
+- Stored on the device in `spotter.payments.v1` (by lifter name) and synced after Trophies in
+  `syncNow()`; a problem there never holds up the training log. Lifters only on the coach's device
+  are tracked on that device until they're uploaded.
 
 ## Who sees the Program Hub
 

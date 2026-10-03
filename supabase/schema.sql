@@ -918,3 +918,61 @@ revoke all on public.owner_assets from public, anon, authenticated;
 grant select on public.owner_assets to authenticated;
 drop policy if exists read on public.owner_assets;
 create policy read on public.owner_assets for select to authenticated using (private.is_owner());
+
+---------------------------------------------------------------- payments
+-- A coach's record of each month's payment from a lifter they created. Unpaid
+-- unless marked; the day it was paid and the amount (pesos, pounds or dollars) are
+-- optional. Only the coach who created the lifter reads and writes them; the lifter
+-- reads their own. Other coaches on the same lifter don't see them.
+create table if not exists public.lifter_payments (
+  lifter_id  uuid not null references public.lifters(id) on delete cascade,
+  month      text not null check (month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'),
+  paid       boolean not null default false,
+  paid_on    date,
+  amount     numeric(12, 2) check (amount is null or (amount >= 0 and amount < 10000000)),
+  currency   text not null default 'PHP' check (currency in ('PHP', 'GBP', 'USD')),
+  updated_at timestamptz not null default now(),
+  updated_by uuid,
+  primary key (lifter_id, month)
+);
+create index if not exists lifter_payments_updated_idx on public.lifter_payments (updated_at);
+
+create or replace function private.made_lifter(lid uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select private.is_coach() and exists (select 1 from public.lifters l
+    where l.id = lid and l.created_by = auth.uid() and l.deleted_at is null);
+$$;
+create or replace function private.payments_guard() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  new.updated_by := auth.uid();
+  new.updated_at := now();
+  return new;
+end $$;
+drop trigger if exists payments_guard on public.lifter_payments;
+create trigger payments_guard before insert or update on public.lifter_payments
+  for each row execute function private.payments_guard();
+
+alter table public.lifter_payments enable row level security;
+revoke all on public.lifter_payments from public, anon, authenticated;
+grant select, insert, update on public.lifter_payments to authenticated;
+drop policy if exists read on public.lifter_payments;
+create policy read on public.lifter_payments for select to authenticated
+  using (private.made_lifter(lifter_id) or private.is_athlete(lifter_id));
+drop policy if exists add on public.lifter_payments;
+create policy add on public.lifter_payments for insert to authenticated
+  with check (private.made_lifter(lifter_id));
+drop policy if exists edit on public.lifter_payments;
+create policy edit on public.lifter_payments for update to authenticated
+  using (private.made_lifter(lifter_id)) with check (private.made_lifter(lifter_id));
+revoke execute on function private.made_lifter(uuid), private.payments_guard() from public, anon;
+grant execute on function private.made_lifter(uuid) to authenticated;
+
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (select 1 from pg_publication_tables
+                     where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'lifter_payments') then
+    alter publication supabase_realtime add table public.lifter_payments;
+  end if;
+end $$;

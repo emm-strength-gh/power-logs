@@ -114,9 +114,9 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
     a.closeSheet();
   }
 
-  // Coaches read them on Home; lifters get the banner at the top of the app.
-  const bar = a => (a === L ? a.$("noticeBar") : a.$("homeNotices"));
-  const empty = a => a.doc.querySelectorAll((a === L ? "#noticeBar" : "#homeNotices") + " .nt-row").length === 0;
+  // Signed in, everyone (coach or lifter) reads them in the Notifications card on Home.
+  const bar = a => a.$("homeNotices");
+  const empty = a => a.doc.querySelectorAll("#homeNotices .nt-row").length === 0;
   const rowsOf = a => [...bar(a).querySelectorAll(".nt-row")];
   const titles = a => rowsOf(a).map(r => r.querySelector("b").textContent);
   const stored = a => (a.store("spotter.notices.v1") || { list: [] }).list;
@@ -124,9 +124,9 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
 
   /* ---------------------------------------------------------- quiet to start */
   console.log("Nothing to say yet");
-  check("no banner when nothing has happened", empty(C) && bar(L).hidden && rowsOf(C).length === 0);
+  check("no banner when nothing has happened", empty(C) && empty(L) && rowsOf(C).length === 0);
   check("a coach's card says they're all caught up", /all caught up/.test(C.$("homeNotices").textContent) && C.$("noticeBar").hidden);
-  check("a lifter's banner sits at the top of the app; a coach's is the Notifications card on Home", L.$("noticeBar").parentElement.classList.contains("content") && L.$("noticeBar").getAttribute("aria-label") === "Notifications" && !!C.$("homeNotices").closest("#viewHome"));
+  check("signed in, notices are the Notifications card on Home, for coach and lifter alike", !!C.$("homeNotices").closest("#viewHome") && L.$("noticeBar").hidden && C.$("noticeBar").hidden);
 
   /* ----------------------------------------------------------- messages */
   console.log("\nA message");
@@ -141,7 +141,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("x closes it, and it stays closed", empty(C) && stored(C).length === 0);
   C.sync(); await tick(1800); await C.settle();
   check("...even after another sync", empty(C));
-  check("the sender isn't told about their own message", bar(L).hidden);
+  check("the sender isn't told about their own message", empty(L));
 
   await send(L, "Also: is Thursday heavy?");
   await send(L, "And can I swap deadlifts to Friday?");
@@ -175,7 +175,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   L.sync(); await tick(1800); await L.settle();
   C.sync(); await tick(1800); await C.settle();
   check("a second day joins it as one row", titles(C).filter(x => /finished/.test(x)).join() === "Tom finished 2 days", titles(C).join("|"));
-  check("the lifter doesn't get banners for their own ticks", bar(L).hidden);
+  check("the lifter doesn't get banners for their own ticks", empty(L));
   C.nav("Week 1"); await tick(150);
   check("opening that week clears them", !titles(C).some(x => /finished/.test(x)), titles(C).join("|"));
   C.nav("Overview"); await tick(50);

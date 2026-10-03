@@ -383,6 +383,27 @@ begin
   perform pg_temp.ok('...nor changes it', r like 'refused%', r);
   delete from public.owner_assets where id = 'selftest';
 
+  -- Payments: the coach who created the lifter (c1 made M) keeps them; the lifter reads them
+  r := pg_temp.act(c1, format($q$insert into public.lifter_payments (lifter_id, month, paid, paid_on, amount, currency, updated_by) values (%L, '2026-10', true, '2026-10-03', 2500, 'PHP', %L)$q$, m, l));
+  perform pg_temp.ok('the coach who created a lifter marks a month paid', r = 'ok 1', r);
+  perform pg_temp.ok('...stamped as theirs, whatever the app claims',
+    (select updated_by from public.lifter_payments where lifter_id = m and month = '2026-10') = c1);
+  r := pg_temp.act(c1, format($q$update public.lifter_payments set amount = 3000 where lifter_id = %L and month = '2026-10'$q$, m));
+  perform pg_temp.ok('...and can change it', r = 'ok 1', r);
+  perform pg_temp.ok('the lifter sees their payments', pg_temp.cnt(l, format('select * from public.lifter_payments where lifter_id = %L', m)) = 1);
+  r := pg_temp.act(l, format($q$update public.lifter_payments set paid = false where lifter_id = %L$q$, m));
+  perform pg_temp.ok('...but cannot change them', r = 'ok 0' or r like 'refused%', r);
+  r := pg_temp.act(l, format($q$insert into public.lifter_payments (lifter_id, month, paid) values (%L, '2026-11', true)$q$, m));
+  perform pg_temp.ok('...or add one', r like 'refused%', r);
+  perform pg_temp.ok('another coach on the lifter does not see them', pg_temp.cnt(c2, 'select * from public.lifter_payments') = 0);
+  r := pg_temp.act(c2, format($q$insert into public.lifter_payments (lifter_id, month, paid) values (%L, '2026-09', true)$q$, m));
+  perform pg_temp.ok('...nor write them', r like 'refused%', r);
+  perform pg_temp.ok('a stranger sees none', pg_temp.cnt(x, 'select * from public.lifter_payments') = 0);
+  r := pg_temp.act(c1, format($q$insert into public.lifter_payments (lifter_id, month, paid, currency) values (%L, '2026-08', true, 'EUR')$q$, m));
+  perform pg_temp.ok('only pesos, pounds or dollars', r like 'refused%', r);
+  r := pg_temp.act(c1, format($q$insert into public.lifter_payments (lifter_id, month, paid) values (%L, '2026-13', true)$q$, m));
+  perform pg_temp.ok('...and only real months', r like 'refused%', r);
+
   -- Clear (owner only)
   v := pg_temp.val(c1, format($q$select public.clear_thread(%L, 'team')::text$q$, m));
   perform pg_temp.ok('a coach cannot clear a conversation', v like 'refused%', v);

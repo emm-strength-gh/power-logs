@@ -87,7 +87,7 @@ async function boot(wd, storage = {}) {
   check("it opens on Home, not on a lifter", A.active() === "viewHome", A.active());
   check("the title greets the coach by name", A.$("homeTitle").textContent === "Welcome Coach Emm!", A.$("homeTitle").textContent);
   const caps = [...A.doc.querySelectorAll("#viewHome .home-cap")].map(c => c.textContent);
-  check("below it: Notifications, Lifters, then Messages, in that order", caps.join() === "Notifications,Lifters,Messages", caps.join());
+  check("below it: Notifications, Lifters, Messages, then Payments", caps.join() === "Notifications,Lifters,Messages,Payments", caps.join());
   check("the Notifications card is the existing banner, moved here", !!A.$("homeNotices").closest(".home-card") && /all caught up/.test(A.$("homeNotices").textContent) && A.$("noticeBar").hidden);
   check("the Lifters card has a button for the list", !!A.btn("All lifters", A.$("homeLifters")));
   check("the next card starts with Inbox", !!A.btn("Inbox", A.$("homeComms")));
@@ -160,18 +160,20 @@ async function boot(wd, storage = {}) {
   check("signing in as a coach lands on Home", await until(() => C.active() === "viewHome"), C.active());
   check("...greeting them", C.$("homeTitle").textContent === "Welcome Coach Emm!", C.$("homeTitle").textContent);
 
-  console.log("\nNot a coach");
+  console.log("\nA lifter gets a Home of their own");
   const W4 = world({ role: "member", coach_status: "none", display_name: "" });
-  const D = await boot(W4, Object.assign({}, saved, { "spotter.cloud.v1": cached(W4) }));
+  const D = await boot(W4, Object.assign({}, saved, { "spotter.cloud.v1": JSON.stringify({ uploadAsked: true, user: { id: ME, email: W4.email }, lastUserId: ME, account: { role: "member", coach_status: "none", display_name: "" }, lifterMeta: { a1: { name: "Tom", mine: true, createdBy: "someone" } } }) }));
   await tick(400);
-  check("a lifter opens on their program, as before", D.active() === "viewOverview", D.active());
-  check("...with no Home or Lifters in the sidebar", !D.navs().includes("Home") && !D.navs().includes("Lifters"), D.navs().join());
-  check("...and no Home button", D.$("ovHome").hidden);
-  check("their notices stay a banner at the top of the app", !!D.$("noticeBar") && D.$("noticeBar").parentElement.classList.contains("content"));
+  check("a lifter opens on Home too", D.active() === "viewHome", D.active());
+  check("...greeted without 'Coach'", /^Welcome (?!Coach)/.test(D.$("homeTitle").textContent), D.$("homeTitle").textContent);
+  const dcaps = [...D.doc.querySelectorAll("#viewHome .home-cap")].filter(c => !c.closest("[hidden]")).map(c => c.textContent);
+  check("...with Notifications and Programs, not a list of lifters", dcaps[0] === "Notifications" && dcaps[1] === "Programs" && !D.btn("All lifters", D.$("homeLifters")), dcaps.join());
+  check("...no Lifters or Inbox in the sidebar, but Home", D.navs().includes("Home") && !D.navs().includes("Lifters") && !D.navs().includes("Inbox"), D.navs().join());
+  check("...and their notices are on Home, not a banner", D.$("noticeBar").hidden);
   const W5 = world({ role: "member", coach_status: "pending", display_name: "" });
   const F = await boot(W5, Object.assign({}, saved, { "spotter.cloud.v1": cached(W5) }));
   await tick(400);
-  check("a coach who hasn't been approved yet isn't sent to Home", F.active() === "viewOverview" && !F.navs().includes("Home"), F.active());
+  check("a coach who hasn't been approved yet gets the lifter's Home, not the coach's", F.active() === "viewHome" && !/Coach/.test(F.$("homeTitle").textContent) && !F.navs().includes("Lifters"), F.$("homeTitle").textContent);
 
   console.log("\nAnother coach");
   const W6 = world({ role: "member", coach_status: "approved", display_name: "Jordan" });

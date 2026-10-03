@@ -338,7 +338,7 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   check("the coach loses file loading with it", !C.files());
   check("the coach loses Tom and Manage program at once", !C.names().includes("Tom") && !C.navs().includes("Manage program"), C.names().join());
   check("...off the device, not just the screen", !("Tom" in C.store("spotter.profiles.v1")) && !("Tom" in (C.store("spotter.done.v1") || {})));
-  check("...and sees the empty start screen", C.$("viewEmpty").classList.contains("active"));
+  check("...and lands on a plain (lifter's) Home with no programs", C.$("viewHome").classList.contains("active") && /^Welcome (?!Coach)/.test(C.$("homeTitle").textContent) && /No program yet/.test(C.$("homeSub").textContent), C.$("homeTitle").textContent + " / " + C.$("homeSub").textContent);
   check("the email the coach gave Tom is cleared", await until(async () => (await lifters()).find(l => l.name === "Tom").lifter_email === null));
   check("...but Tom's program stays, with the owner", (await lifters()).find(l => l.name === "Tom").deleted_at === null && (A.sync(), await A.settle(), A.names().includes("Tom")));
   A.pick("Tom"); await tick(); A.nav("Manage program"); await tick(100);

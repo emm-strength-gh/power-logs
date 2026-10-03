@@ -192,6 +192,12 @@ private script kept outside it (`private.settings`).
   Overview's Home button; `renderHome()` fills the three cards. `renderNotices()` draws into
   `#homeNotices` for coaches (the top `#noticeBar` is hidden for them) and into `#noticeBar` for
   everyone else. `inHome`/`inLifters` are set by `showView()`.
+- Home is for everyone signed in (`hasHome()`); `renderHome()` branches on `isCoach()` (coach:
+  Lifters / Inbox / Payments cards; lifter: Programs from `athleteNames()`, Messages, Payments
+  read-only). Payments ("Payments" section): `PAY` (`spotter.payments.v1`), `payCanEdit()` = the
+  coach who created the lifter (`lifterMeta.createdBy`) or a local-only lifter; `paySync()` after
+  `troSync()` in `syncNow()`; table `lifter_payments` (RLS `private.made_lifter`). The month
+  editor reuses the Trophies form dialog (`troOpenForm`).
 - In-app notices (the "In-app notices" section, `#noticeBar` at the top of `.content`):
   `NT` (`spotter.notices.v1`) holds `{id, kind, lifter, thread?, week?, who, text, at}`,
   made by `ntFromMessage`/`ntFromEvent` (in `pullMessages`), `ntFromWeekNote` (in
@@ -270,12 +276,13 @@ node test-trophies.js   # Trophies: standards by IPF class, levels, clubs, strea
 node test-trophysync.js # Trophies across devices on the real rules, plus their notifications
 node test-notices.js    # In-app notice banner: kinds, who wrote it, x, stacking
 node test-hubprivate.js # The Program Hub's private copy: owner download, offline, sign-out delete
-node test-home.js       # Coach landing page: greeting, cards, lifters list, Home buttons
+node test-home.js       # Home: coach and lifter landing pages, cards, lifters list, Home buttons
+node test-payments.js   # Payments: coach marks months paid, lifter read-only, real rules
 node test-replies.js    # Messages: emoji picker and replies
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all twenty-one. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all twenty-two. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of power-logs.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

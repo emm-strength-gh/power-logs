@@ -370,6 +370,19 @@ begin
   v := pg_temp.val(l, format($q$select public.set_trophy_profile(%L, 'x', 70)::text$q$, m));
   perform pg_temp.ok('...and only m or f', v like 'refused%', v);
 
+  -- The owner's private files (the Program Hub)
+  insert into public.owner_assets (id, version, body) values ('selftest', 'v0', '<html></html>');
+  perform pg_temp.ok('the owner reads the private files', pg_temp.cnt(o, $q$select * from public.owner_assets where id = 'selftest'$q$) = 1);
+  perform pg_temp.ok('...a coach does not', pg_temp.cnt(c1, 'select * from public.owner_assets') = 0);
+  perform pg_temp.ok('...nor a lifter, nor a stranger', pg_temp.cnt(l, 'select * from public.owner_assets') = 0 and pg_temp.cnt(x, 'select * from public.owner_assets') = 0);
+  r := pg_temp.act(null, 'select * from public.owner_assets');
+  perform pg_temp.ok('...nor anyone signed out', r like 'refused%', r);
+  r := pg_temp.act(o, $q$insert into public.owner_assets (id, version, body) values ('mine', 'v1', 'x')$q$);
+  perform pg_temp.ok('not even the owner writes through the API', r like 'refused%', r);
+  r := pg_temp.act(o, $q$update public.owner_assets set body = 'x' where id = 'selftest'$q$);
+  perform pg_temp.ok('...nor changes it', r like 'refused%', r);
+  delete from public.owner_assets where id = 'selftest';
+
   -- Clear (owner only)
   v := pg_temp.val(c1, format($q$select public.clear_thread(%L, 'team')::text$q$, m));
   perform pg_temp.ok('a coach cannot clear a conversation', v like 'refused%', v);

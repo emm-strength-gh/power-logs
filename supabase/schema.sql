@@ -898,3 +898,23 @@ begin
     end loop;
   end if;
 end $$;
+
+---------------------------------------------------------------- the owner's private files
+-- Files only the owner may read: the Program Hub (program-hub.html) lives here
+-- instead of on the public site. The app downloads it to the owner's device.
+-- Nobody can write through the API; the owner uploads with the SQL editor
+-- (node publish-hub.js writes that SQL).
+create table if not exists public.owner_assets (
+  id         text primary key,
+  version    text not null default '',
+  body       text not null default '',
+  updated_at timestamptz not null default now()
+);
+drop trigger if exists touch on public.owner_assets;
+create trigger touch before insert or update on public.owner_assets
+  for each row execute function private.touch_at();
+alter table public.owner_assets enable row level security;
+revoke all on public.owner_assets from public, anon, authenticated;
+grant select on public.owner_assets to authenticated;
+drop policy if exists read on public.owner_assets;
+create policy read on public.owner_assets for select to authenticated using (private.is_owner());

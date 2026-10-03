@@ -28,9 +28,15 @@ function coachCloud() {
     sendCode: async () => {},
     verifyCode: async () => user,
     signOut: async () => {},
-    fetch: async (table) => table === "accounts"
-      ? [{ user_id: user.id, email: user.email, role: "owner", coach_status: "none", display_name: "" }]
-      : [],
+    fetch: async (table) => {
+      if (table === "accounts") return [{ user_id: user.id, email: user.email, role: "owner", coach_status: "none", display_name: "" }];
+      // The Program Hub is in the database now: serve the file from disk, as the owner would get it.
+      if (table === "owner_assets") {
+        const body = fs.readFileSync(path.join(__dirname, "program-hub.html"), "utf8");
+        return [{ id: "program-hub", version: "hub-" + (body.match(/build: "hub-(\d+)"/) || [])[1], body, updated_at: "2026-01-01T00:00:00Z" }];
+      }
+      return [];
+    },
     upsert: async (t, rows) => { calls.push(["upsert", t, rows]); },
     remove: async (t, col, val) => { calls.push(["remove", t, col, val]); },
     invoke: async (fn, body) => { calls.push(["invoke", fn, body]); return { sent: 0 }; },

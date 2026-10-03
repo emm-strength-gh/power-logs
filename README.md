@@ -16,7 +16,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
 | `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
-| `supabase/selftest.sql` | Checks on those rules (93 at present). Paste and run after the schema; every row should say PASS. |
+| `supabase/selftest.sql` | Checks on those rules (122 at present). Paste and run after the schema; every row should say PASS. |
 | `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
 | `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
 | `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the original logo). |
@@ -35,6 +35,8 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-cloudsql.js` | The database rules on a real (in-memory) Postgres: `supabase/selftest.sql`, re-running the schema, owner set-up — `node test-cloudsql.js`. |
 | `test-cloudsync.js` | Accounts + sync end to end: sign-in, upload, two devices, offline and conflicts, coach approval, a lifter's own login, sharing, removing a coach, deleting, sign-out — `node test-cloudsync.js`. |
 | `test-messaging.js` | Messages, finished sessions, new-week alerts and notifications end to end, with the notify function run in-process — `node test-messaging.js`. |
+| `test-trophies.js` | Trophies and strength levels: men's and women's standards, class limits, levels, clubs, GL points, Done-set estimates, streaks, comebacks, blocks, PRs, awards, the celebration and the share image — `node test-trophies.js`. |
+| `test-trophysync.js` | Trophies across devices on the real rules: earned trophies reach the coach, PR confirmation, awards given and taken back, standards, the notifications, and a trophy problem never holding up the log — `node test-trophysync.js`. |
 | `test-cloudfake.js` | Not a test: the stand-in Supabase the tests plug in (`window.__spotterCloud`), and the in-process runner for the notify function. |
 | `test-vbt.js` | Velocity Tracker smoke test — `node test-vbt.js`. |
 | `make_icons.py` | Regenerates the icons from `icons/_source.png`. |
@@ -196,6 +198,65 @@ The Web Push **public** key is in `power-logs.html`; the private one is a secret
 the function in Supabase, never in this repo. Setting the function up is a one-off
 done in the Supabase dashboard (the private setup guide covers it). Until it is,
 messages still work, just without banners.
+
+## Trophies and strength levels
+
+**Trophies** in each lifter's sidebar (everyone, signed in or not). Two things live
+there: a **strength level** for each lift, and a shelf of trophies to collect.
+
+**Levels.** Pick *Men's standards* or *Women's standards* and a bodyweight. The
+lifter's IPF weight class is the limit their bodyweight falls under (men 59, 66, 74,
+83, 93, 105, 120, 120+; women 47, 52, 57, 63, 69, 76, 84, 84+), and each lift is
+placed on five rungs for that class: Beginner, Novice, Intermediate, Advanced, Elite.
+The thresholds are the Strength Level community's percentiles (Beginner beats about
+5% of lifters, Novice 20%, Intermediate 50%, Advanced 80%, Elite 95%), interpolated to
+each class limit and rounded to 2.5 kg (the table is `TRO_STD` in power-logs.html; the
+open classes 120+ and 84+ use 130 kg and 95 kg). The **overall level** is the average
+of the three lifts, rounded down. It is community data, not competition data, and the
+women's sample is smaller, so it is a guide.
+
+A lift's number is the best of: the 1RM on file, a coach-confirmed PR, or an Epley
+estimate from a **Done** set of up to 6 reps (competition lifts only; skipped or
+undone sets never count).
+
+**The shelf** (about 60): per-lift and overall levels; strength clubs (bodyweight
+multiples, totals of 300/400/500/600 kg men and 150/200/250/300 kg women, and IPF GL
+points 50/65/80/100, using the classic formula); consistency (finished training days,
+weekly streaks, full weeks, perfect blocks, comeback, taper complete); PRs logged;
+and coach awards (Meet debut, Meet PR, 9 for 9, Podium, Total PR, or the coach's own
+title and message).
+
+- **Earned for good.** A trophy is stored with its date and the class at the time and
+  is never taken back, so changing weight class or lowering a max loses nothing. The
+  first look at an existing lifter is silent; after that, one new trophy opens a
+  celebration, and several at once just mark themselves **New** (and badge the sidebar).
+- **PRs.** The lifter taps **Log a PR**; it counts toward trophies once a coach
+  confirms it (a coach's own PR entries, and PRs on a lifter who only lives on this
+  device, are confirmed straight away).
+- **Awards** are the coach's to give (**Give an award**) and to take back; the lifter
+  is celebrated with it.
+- **Streaks and comebacks** use the date each finished day was first seen, kept from
+  this version on (and, for signed-in lifters, the finished-day events), so they start
+  counting from then, not from earlier history.
+- **Sharing.** Every trophy opens as a story-sized (1080 × 1920) picture, with the
+  lifter's name optional. **Share to your story** opens the phone's share sheet with
+  the picture, where Instagram, Facebook, TikTok, Snapchat or WhatsApp offer Story or
+  My Day. Apps don't let a website post to a story directly, so this hands the picture
+  over; on a computer it saves the image instead. Nothing is shared unless the lifter
+  taps it.
+- **Coaches** are notified once when a lifter earns something ("Tom earned a trophy",
+  never which) and see it in their Inbox; lifters are notified of awards. Each person
+  can switch those banners off in the account sheet.
+
+How it syncs: its own store (`spotter.trophies.v1`, keyed by lifter name) rather than
+the log's, pushed and pulled after Messages in `syncNow()`; a problem there never
+holds up the training log. In the database: `lifter_trophies` (what's earned; awards
+only by coaches, who can also take them back), `lifter_prs` (the lifter logs, a coach
+confirms), the lifter's standards and bodyweight in `lifter_settings` (RPC
+`set_trophy_profile`), and a `trophy` kind of `lifter_events` for the banners. The
+rules are in `supabase/schema.sql`; update the database (and the `notify` function)
+**before** deploying. Trophies the app works out are the lifter's own device's word,
+like Done ticks; only PRs and awards need a coach.
 
 ## Rearranging lifters
 

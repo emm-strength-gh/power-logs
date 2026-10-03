@@ -104,6 +104,10 @@ the `.vN` suffix if you ever change a stored shape incompatibly.
   dropdown order. Always enumerate lifters through `lifterNames()`, never
   `Object.keys(PROFILES)`: it applies this order and appends anything loaded
   since. It's a separate list because JS forces all-digit object keys first.
+- `TRO` (`spotter.trophies.v1`): `name -> { earned: {id: {at,on,cls,note,title,by,rid,sent,seen,notify}}, prs, prefs: {sex,bw,dirty}, days, blocks, gone, init }`.
+  Its own store like Messages (not in `SYNCED_STORES`, synced by `troSync()` after
+  `pullMessages`/`pushMessages` in `syncNow()`; a failure there only sets `troUI.error`).
+  See *Trophies and strength levels* below. `renameLocal`/`removeLocalLifter` move/drop it.
 - Plus small scalars: last-selected lifter, theme, tools prefs (plate bar
   weight/collar mode, rest-timer duration/alert pref), Day-Manager
   add-panel-open state.
@@ -171,6 +175,20 @@ private script kept outside it (`private.settings`).
   lifters are always their program's `#Name`.
   "Clear": owner-only RPC `clear_thread` deletes a thread's messages and stamps
   `lifter_settings.cleared[thread]`, which other devices use to drop their copies.
+- Trophies and strength levels (the "Trophies and strength levels" section of
+  power-logs.html, before Theme): `troDefs()` is the catalogue (every trophy with its
+  `test(model)`), `troModel()` the lifter's numbers (best of 1RM, confirmed PR, Epley
+  from Done sets of <= 6 reps; standards from `TRO_STD` at the IPF class limit, GL
+  points), `troCheck()` records what is newly true (silent on the first look,
+  `init`), and only on the lifter's own device or a local-only lifter (`troCanRecord`):
+  a coach reads what the lifter's device recorded. Trophies are never revoked; the class
+  at the time is stored. `award:` ones are coach-only (database rule). The story image
+  is a 1080x1920 canvas shared with `navigator.share({files})`, else saved with
+  `saveFile`. Tables `lifter_trophies`, `lifter_prs`, `lifter_settings.sex/bodyweight`
+  (RPC `set_trophy_profile`) and `lifter_events.kind = 'trophy'` (the `notify` function
+  names the lifter, never the trophy); `TRO_CUR` cursors are in memory so each launch
+  reads everything once, which is how a taken-back award reaches other devices. Keep
+  `TRO_STD`'s tiers consistent with the README's description.
 - Changing the database: edit `supabase/schema.sql` (keep it re-runnable), run
   `node test-cloudsql.js`, and have the user paste it into Supabase **before**
   deploying app code that needs it.
@@ -223,10 +241,12 @@ node test-hubanalytics.js # Hub analytics charts + parity with Power Logs' Analy
 node test-cloudsql.js   # supabase/schema.sql + selftest.sql on PGlite: the row-level security rules
 node test-cloudsync.js  # accounts + sync end to end, several jsdom devices on one PGlite database
 node test-messaging.js  # messages, finished sessions, new-week alerts, push (notify function run in-process)
+node test-trophies.js   # Trophies: standards by IPF class, levels, clubs, streaks, PRs, awards, celebration, share image
+node test-trophysync.js # Trophies across devices on the real rules, plus their notifications
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all fifteen. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all seventeen. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of power-logs.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

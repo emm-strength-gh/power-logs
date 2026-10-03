@@ -298,6 +298,71 @@ begin
   r := pg_temp.act(l, format($q$insert into public.message_reads (user_id, lifter_id, thread) values (%L, %L, 'team')$q$, c2, m));
   perform pg_temp.ok('nobody writes someone else''s marker', r like 'refused%', r);
 
+  -- Trophies, PRs, strength levels
+  r := pg_temp.act(l, format($q$insert into public.lifter_trophies (lifter_id, trophy, cls) values (%L, 'lvl:squat:advanced', 'Men''s 83 kg')$q$, m));
+  perform pg_temp.ok('a lifter records a trophy they earned', r = 'ok 1', r);
+  r := pg_temp.act(l, format($q$insert into public.lifter_trophies (lifter_id, trophy) values (%L, 'lvl:squat:advanced') on conflict do nothing$q$, m));
+  perform pg_temp.ok('...once: the same trophy again does nothing', r = 'ok 0', r);
+  r := pg_temp.act(l, format($q$insert into public.lifter_trophies (lifter_id, trophy) values (%L, 'award:podium')$q$, m));
+  perform pg_temp.ok('a lifter cannot give themselves a coach''s award', r like 'refused%', r);
+  r := pg_temp.act(c1, format($q$insert into public.lifter_trophies (lifter_id, trophy) values (%L, 'lvl:bench:elite')$q$, m));
+  perform pg_temp.ok('a coach cannot earn a level for them', r like 'refused%', r);
+  r := pg_temp.act(c1, format($q$insert into public.lifter_trophies (lifter_id, trophy, note, awarded_by) values (%L, 'award:podium', 'Third in the 83s', %L)$q$, m, l));
+  perform pg_temp.ok('a coach gives an award', r = 'ok 1', r);
+  perform pg_temp.ok('...stamped as theirs, whatever the app claims',
+    (select awarded_by from public.lifter_trophies where lifter_id = m and trophy = 'award:podium') = c1);
+  perform pg_temp.ok('the lifter and every coach see the shelf',
+    pg_temp.cnt(l, format('select * from public.lifter_trophies where lifter_id = %L', m)) = 2
+    and pg_temp.cnt(c2, format('select * from public.lifter_trophies where lifter_id = %L', m)) = 2);
+  perform pg_temp.ok('...and a stranger sees none', pg_temp.cnt(x, 'select * from public.lifter_trophies') = 0);
+  r := pg_temp.act(x, format($q$insert into public.lifter_trophies (lifter_id, trophy) values (%L, 'award:podium')$q$, m));
+  perform pg_temp.ok('a stranger cannot give one', r like 'refused%', r);
+  r := pg_temp.act(l, format($q$delete from public.lifter_trophies where lifter_id = %L and trophy = 'lvl:squat:advanced'$q$, m));
+  perform pg_temp.ok('a lifter cannot delete a trophy', r = 'ok 0' or r like 'refused%', r);
+  r := pg_temp.act(c2, format($q$delete from public.lifter_trophies where lifter_id = %L and trophy = 'lvl:squat:advanced'$q$, m));
+  perform pg_temp.ok('...nor can a coach take back an earned one', r = 'ok 0' or r like 'refused%', r);
+  r := pg_temp.act(c2, format($q$delete from public.lifter_trophies where lifter_id = %L and trophy = 'award:podium'$q$, m));
+  perform pg_temp.ok('a coach can take back an award', r = 'ok 1', r);
+  r := pg_temp.act(l, format($q$insert into public.lifter_events (lifter_id, kind, week) values (%L, 'trophy', 'lvl:squat:advanced')$q$, m));
+  perform pg_temp.ok('the lifter announces a trophy', r = 'ok 1', r);
+  r := pg_temp.act(c1, format($q$insert into public.lifter_events (lifter_id, kind, week) values (%L, 'trophy', 'award:podium')$q$, m));
+  perform pg_temp.ok('...and a coach announces an award', r = 'ok 1', r);
+  r := pg_temp.act(x, format($q$insert into public.lifter_events (lifter_id, kind, week) values (%L, 'trophy', 'award:podium')$q$, m));
+  perform pg_temp.ok('...a stranger cannot', r like 'refused%', r);
+  r := pg_temp.act(l, format($q$insert into public.lifter_prs (lifter_id, lift, kg, reps, confirmed_by) values (%L, 'squat', 180, 1, %L)$q$, m, l));
+  perform pg_temp.ok('a lifter logs a PR', r = 'ok 1', r);
+  perform pg_temp.ok('...it waits for a coach, whatever the app claims',
+    (select confirmed_by from public.lifter_prs where lifter_id = m and lift = 'squat') is null);
+  r := pg_temp.act(l, format($q$update public.lifter_prs set confirmed_by = %L where lifter_id = %L$q$, l, m));
+  perform pg_temp.ok('a lifter cannot confirm their own PR', r = 'ok 0' or r like 'refused%', r);
+  r := pg_temp.act(c1, format($q$update public.lifter_prs set confirmed_by = %L where lifter_id = %L$q$, c1, m));
+  perform pg_temp.ok('a coach confirms it', r = 'ok 1'
+    and (select confirmed_by from public.lifter_prs where lifter_id = m and lift = 'squat') = c1, r);
+  r := pg_temp.act(c1, format($q$update public.lifter_prs set kg = 250 where lifter_id = %L$q$, m));
+  perform pg_temp.ok('a logged PR''s weight cannot be changed', r like 'refused%', r);
+  r := pg_temp.act(c1, format($q$insert into public.lifter_prs (lifter_id, lift, kg) values (%L, 'bench', 120)$q$, m));
+  perform pg_temp.ok('a coach can log one, already confirmed',
+    r = 'ok 1' and (select confirmed_by from public.lifter_prs where lifter_id = m and lift = 'bench') = c1, r);
+  r := pg_temp.act(x, format($q$insert into public.lifter_prs (lifter_id, lift, kg) values (%L, 'bench', 100)$q$, m));
+  perform pg_temp.ok('a stranger cannot', r like 'refused%' and pg_temp.cnt(x, 'select * from public.lifter_prs') = 0, r);
+  r := pg_temp.act(l, format($q$delete from public.lifter_prs where lifter_id = %L and lift = 'squat'$q$, m));
+  perform pg_temp.ok('a lifter cannot delete a PR once it is confirmed', r = 'ok 0' or r like 'refused%', r);
+  r := pg_temp.act(l, format($q$insert into public.lifter_prs (lifter_id, lift, kg) values (%L, 'deadlift', 200)$q$, m));
+  r := pg_temp.act(l, format($q$delete from public.lifter_prs where lifter_id = %L and lift = 'deadlift'$q$, m));
+  perform pg_temp.ok('...but can take back one still waiting', r = 'ok 1', r);
+  r := pg_temp.act(l, format($q$insert into public.lifter_prs (lifter_id, lift, kg) values (%L, 'squat', 700)$q$, m));
+  perform pg_temp.ok('an impossible weight is refused', r like 'refused%', r);
+  v := pg_temp.val(l, format($q$select public.set_trophy_profile(%L, 'm', 83.4)::text$q$, m));
+  perform pg_temp.ok('a lifter sets their standards and bodyweight', coalesce(v, '') = ''
+    and (select sex from public.lifter_settings where lifter_id = m) = 'm'
+    and (select bodyweight from public.lifter_settings where lifter_id = m) = 83.4, v);
+  v := pg_temp.val(c2, format($q$select public.set_trophy_profile(%L, 'f', 70)::text$q$, m));
+  perform pg_temp.ok('...a coach can too', coalesce(v, '') = '' and (select sex from public.lifter_settings where lifter_id = m) = 'f', v);
+  v := pg_temp.val(x, format($q$select public.set_trophy_profile(%L, 'm', 70)::text$q$, m));
+  perform pg_temp.ok('...a stranger cannot', v like 'refused%', v);
+  v := pg_temp.val(l, format($q$select public.set_trophy_profile(%L, 'x', 70)::text$q$, m));
+  perform pg_temp.ok('...and only m or f', v like 'refused%', v);
+
   -- Clear (owner only)
   v := pg_temp.val(c1, format($q$select public.clear_thread(%L, 'team')::text$q$, m));
   perform pg_temp.ok('a coach cannot clear a conversation', v like 'refused%', v);

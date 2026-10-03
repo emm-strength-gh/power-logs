@@ -282,6 +282,18 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   J.nav("Manage program"); await tick(100);
   const jn = J.$("dmNotice").querySelector(".week-notice");
   check("the other coach sees it's done, with no button", !!jn && /by owner/.test(jn.textContent) && !J.btn("Notify Tom", jn), jn && jn.textContent);
+  console.log("\nThe Program Hub is the owner's");
+  const hubTab = a => a.$("dmTabs").querySelector('[data-tab="hub"]');
+  check("the owner has the Program Hub tab", C.doc.documentElement.classList.contains("is-owner") && C.w.getComputedStyle(hubTab(C)).display !== "none", C.w.getComputedStyle(hubTab(C)).display);
+  check("another coach doesn't: the tab is hidden", !J.doc.documentElement.classList.contains("is-owner") && J.w.getComputedStyle(hubTab(J)).display === "none", J.w.getComputedStyle(hubTab(J)).display);
+  hubTab(J).click(); await tick(50);
+  check("...and pressing it anyway (or asking for it) leaves them on Manage program", J.$("dmPaneHub").classList.contains("hidden") && !J.$("dmPaneManage").classList.contains("hidden"));
+  check("...nor does Import offer to build one in it", !J.btn("Build one in Program Hub", J.$("dmBody")) && !/Program Hub/.test(J.$("dmBody").textContent.replace(/Program Hub build.*/, "")), (J.$("dmBody").textContent.match(/.{30}Program Hub.{30}/) || [""])[0]);
+  C.nav("Manage program"); await tick(100);
+  check("the owner still gets the button to build one in it", !!C.btn("Build one in Program Hub", C.$("dmBody")));
+  hubTab(C).click(); await tick(50);
+  check("...and the tab opens", !C.$("dmPaneHub").classList.contains("hidden"));
+  C.nav("Overview"); await tick(50);
   check("and the server won't send it twice", (await J.dev.rpc("notify_new_week", { p_lifter: tomId })) === null);
   const newWeekPushes = pushesTo("lifter").filter(p => /new week/.test(p.body)).length;
   check("only one new-week banner in all", newWeekPushes === 1, String(newWeekPushes));

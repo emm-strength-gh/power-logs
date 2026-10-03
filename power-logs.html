@@ -136,6 +136,8 @@
      program through their account. applyRoleUI() sets .can-files. */
   html:not(.can-files) .files-only { display: none !important; }
   html.can-files .nofiles-only { display: none !important; }
+  /* The Program Hub is the owner's alone. applyRoleUI() sets .is-owner. */
+  html:not(.is-owner) .owner-only { display: none !important; }
   .more-btn[aria-expanded="true"] { color: var(--ink); border-color: var(--pine); }
   .more-menu { position: absolute; top: calc(100% - 4px); right: 10px; z-index: 80; min-width: 220px; padding: 6px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.18); animation: fade .14s ease both; }
   .more-menu[hidden] { display: none; }
@@ -1281,7 +1283,7 @@
         <div class="seg dm-tabs" id="dmTabs" role="tablist" aria-label="Manage program sections">
           <button type="button" class="seg-btn active" data-tab="manage" role="tab" aria-selected="true">Manage program</button>
           <button type="button" class="seg-btn" data-tab="warmup" role="tab" aria-selected="false">Warm up Calculator</button>
-          <button type="button" class="seg-btn" data-tab="hub" role="tab" aria-selected="false">Program Hub</button>
+          <button type="button" class="seg-btn owner-only" data-tab="hub" role="tab" aria-selected="false">Program Hub</button>
         </div>
         <div id="dmPaneManage" role="tabpanel" aria-label="Manage program">
           <p class="section-sub">Edit this lifter's program day by day, or import another program and copy days or whole weeks across.</p>
@@ -1536,7 +1538,7 @@
     <div class="acct-sec">
       <h3>Power Logs</h3>
       <p>A training log built for powerlifting. Each lifter&rsquo;s program becomes a week-by-week checklist: tick sets done or skipped, add notes, and follow tonnage, number of lifts and heaviest top sets in Analytics.</p>
-      <p>Alongside the log: an RPE estimator, a Velocity Tracker that reads bar speed from a video, a plate calculator and a rest timer. Coaches write and adjust programs in Manage Program and the Program Hub, and with an account everything syncs between coach and lifter.</p>
+      <p>Alongside the log: an RPE estimator, a Velocity Tracker that reads bar speed from a video, a plate calculator and a rest timer. Coaches write and adjust programs in Manage Program (the owner also has the Program Hub), and with an account everything syncs between coach and lifter.</p>
     </div>
     <div class="acct-sec">
       <h3>EmmStrength coaching</h3>
@@ -1685,7 +1687,7 @@
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
   // major.minor.patch: minor goes up with each release (it carried on from the
   // old build counter, 30), patch for a fix to one.
-  var APP_VERSION = "1.43.0";
+  var APP_VERSION = "1.43.1";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -4438,13 +4440,14 @@
       var card = el("div", "dm-card");
       var acts = el("div", "dm-actions");
       function hubBtn() {
+        if (!isOwner()) return document.createDocumentFragment();   // the Program Hub is the owner's
         var b = el("button", "chip sm", "Build one in Program Hub");
         b.type = "button";
         b.onclick = function () { setDMTab("hub"); };
         return b;
       }
       if (!donor) {
-        card.appendChild(el("p", "dm-import-hint", "Load a CSV or JSON program, or build one in the Program Hub, to copy days or whole weeks into this one. It opens beside the day you're editing, stays separate from your lifters, and is discarded when you leave Manage Program."));
+        card.appendChild(el("p", "dm-import-hint", "Load a CSV or JSON program" + (isOwner() ? ", or build one in the Program Hub," : "") + " to copy days or whole weeks into this one. It opens beside the day you're editing, stays separate from your lifters, and is discarded when you leave Manage Program."));
         var imp = el("button", "chip primary", "Import CSV / JSON");
         imp.type = "button";
         imp.onclick = function () { $("donorInput").click(); };
@@ -5748,7 +5751,7 @@
   var HUB_BUILD = "9";
   var hubReadyFeatures = null;
   function loadHubFrame() {
-    var f = $("hubFrame"); if (!f) return;
+    var f = $("hubFrame"); if (!f || !isOwner()) return;
     var want = "program-hub.html?embed=1&theme=" + currentThemeName() + "&v=" + HUB_BUILD;
     if (f.getAttribute("data-src") !== want) {
       f.setAttribute("data-src", want);
@@ -5766,7 +5769,7 @@
   // Hub never overwrites a field that was typed into, so this is safe to resend.
   function pushLifterToHub() {
     var f = $("hubFrame");
-    if (!f || !f.contentWindow || !f.getAttribute("data-src")) return;   // not loaded yet; it asks once ready
+    if (!isOwner() || !f || !f.contentWindow || !f.getAttribute("data-src")) return;   // not loaded yet; it asks once ready
     var p = PROFILES[current];
     var msg = { type: "spotter-lifter" };
     if (p) {
@@ -5788,6 +5791,7 @@
   // Replace and Merge all behave the same. The Hub does the week filtering with
   // its own "Weeks" field before sending, so what arrives is already scoped.
   function loadDonorFromHub(msg) {
+    if (!isOwner()) return;
     var csv = msg && msg.csv;
     if (!csv) { toast("Nothing came through from the Program Hub."); return; }
     var prof = parseProgram(csv, msg.filename || "program-hub.csv");
@@ -5938,6 +5942,7 @@
   }
 
   function setDMTab(tab) {
+    if (tab === "hub" && !isOwner()) tab = "manage";   // the Program Hub is the owner's
     dmTab = (tab === "warmup" || tab === "hub") ? tab : "manage";
     Array.prototype.forEach.call(document.querySelectorAll("#dmTabs .seg-btn"), function (b) {
       var on = b.getAttribute("data-tab") === dmTab;
@@ -7322,6 +7327,8 @@
   // points everyone else's start screen at signing in.
   function applyRoleUI() {
     document.documentElement.classList.toggle("can-files", isCoach());
+    document.documentElement.classList.toggle("is-owner", isOwner());
+    if (dmTab === "hub" && !isOwner()) setDMTab("manage");   // e.g. signed out, or no longer the owner
     var t = $("emptyAcctText"), b = $("emptySignIn");
     if (t) t.textContent = !CLOUD.user
       ? "Sign in to see the program your coach has set for you, then tick off each set as you train."

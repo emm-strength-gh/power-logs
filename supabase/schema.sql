@@ -726,9 +726,11 @@ create policy own on public.message_reads for all to authenticated
 drop policy if exists read on public.lifter_events;
 create policy read on public.lifter_events for select to authenticated using (private.can_see(lifter_id));
 -- Only the lifter reports finishing a day; new weeks go through notify_new_week().
+-- A trophy is announced by the lifter who earned it, or by a coach who awarded it.
 drop policy if exists add on public.lifter_events;
 create policy add on public.lifter_events for insert to authenticated
-  with check (kind = 'session_done' and private.is_athlete(lifter_id));
+  with check ((kind = 'session_done' and private.is_athlete(lifter_id))
+           or (kind = 'trophy' and (private.is_athlete(lifter_id) or private.can_coach_live(lifter_id))));
 
 drop policy if exists own on public.push_subscriptions;
 create policy own on public.push_subscriptions for all to authenticated
@@ -740,11 +742,145 @@ grant execute on function private.is_athlete(uuid), private.coach_since(uuid), p
 revoke execute on function public.set_team_thread(uuid, boolean), public.notify_new_week(uuid), public.clear_thread(uuid, text) from public, anon;
 grant execute on function public.set_team_thread(uuid, boolean), public.notify_new_week(uuid), public.clear_thread(uuid, text) to authenticated;
 
+---------------------------------------------------------------- trophies and levels
+-- What a lifter has earned (kept for good), their logged PRs, and the two
+-- facts the strength levels need (which standards, and bodyweight).
+-- Trophies the app works out itself (levels, clubs, consistency) are written by
+-- the lifter's own device; "award:" ones are a coach's to give, and to take back.
+
+alter table public.lifter_events drop constraint if exists lifter_events_kind_check;
+alter table public.lifter_events add constraint lifter_events_kind_check
+  check (kind in ('session_done', 'new_week', 'trophy'));
+
+alter table public.lifter_settings add column if not exists sex text check (sex in ('m', 'f'));
+alter table public.lifter_settings add column if not exists bodyweight numeric(5, 1) check (bodyweight between 20 and 300);
+
+create table if not exists public.lifter_trophies (
+  id         uuid primary key default gen_random_uuid(),
+  lifter_id  uuid not null references public.lifters(id) on delete cascade,
+  trophy     text not null check (trophy ~ '^[a-z0-9:_.-]{3,80}$'),
+  earned_on  date not null default current_date,
+  cls        text not null default '' check (length(cls) <= 40),
+  title      text not null default '' check (length(title) <= 60),   -- a coach's own award
+  note       text not null default '' check (length(note) <= 200),
+  awarded_by uuid,
+  created_at timestamptz not null default now(),
+  unique (lifter_id, trophy)
+);
+create index if not exists lifter_trophies_created_idx on public.lifter_trophies (created_at);
+
+create table if not exists public.lifter_prs (
+  id           uuid primary key default gen_random_uuid(),
+  lifter_id    uuid not null references public.lifters(id) on delete cascade,
+  lift         text not null check (lift in ('squat', 'bench', 'deadlift')),
+  kg           numeric(6, 2) not null check (kg > 0 and kg <= 600),
+  reps         integer not null default 1 check (reps between 1 and 30),
+  on_date      date not null default current_date,
+  created_by   uuid default auth.uid(),
+  confirmed_by uuid,
+  confirmed_at timestamptz,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+create index if not exists lifter_prs_updated_idx on public.lifter_prs (updated_at);
+
+-- The server says who gave an award and when; a lifter's own PR starts
+-- unconfirmed, and one a coach logs is confirmed by them.
+create or replace function private.trophies_guard() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  new.awarded_by := case when new.trophy like 'award:%' then auth.uid() else null end;
+  new.created_at := now();
+  return new;
+end $$;
+drop trigger if exists trophies_guard on public.lifter_trophies;
+create trigger trophies_guard before insert on public.lifter_trophies
+  for each row execute function private.trophies_guard();
+
+create or replace function private.prs_guard() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if tg_op = 'INSERT' then
+    new.created_by := auth.uid();
+    new.created_at := now();
+    if private.is_athlete(new.lifter_id) then
+      new.confirmed_by := null; new.confirmed_at := null;
+    else
+      new.confirmed_by := auth.uid(); new.confirmed_at := now();
+    end if;
+  else
+    -- Only a coach's confirmation can change on a PR already logged.
+    if new.lifter_id <> old.lifter_id or new.lift <> old.lift or new.kg <> old.kg
+       or new.reps <> old.reps or new.on_date <> old.on_date then
+      raise exception 'a logged PR cannot be edited';
+    end if;
+    new.created_by := old.created_by;
+    new.created_at := old.created_at;
+    if new.confirmed_by is not null then new.confirmed_by := auth.uid(); new.confirmed_at := now();
+    else new.confirmed_at := null; end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists prs_guard on public.lifter_prs;
+create trigger prs_guard before insert or update on public.lifter_prs
+  for each row execute function private.prs_guard();
+drop trigger if exists touch on public.lifter_prs;
+create trigger touch before insert or update on public.lifter_prs
+  for each row execute function private.touch_at();
+
+-- Standards (men's / women's) and bodyweight: the lifter's, or a coach's for them.
+create or replace function public.set_trophy_profile(p_lifter uuid, p_sex text, p_bw numeric) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not (private.is_athlete(p_lifter) or private.can_coach_live(p_lifter)) then raise exception 'not your lifter'; end if;
+  if p_sex is not null and p_sex not in ('m', 'f') then raise exception 'standards are m or f'; end if;
+  insert into public.lifter_settings (lifter_id, sex, bodyweight) values (p_lifter, p_sex, p_bw)
+  on conflict (lifter_id) do update set sex = excluded.sex, bodyweight = excluded.bodyweight, updated_at = now();
+end $$;
+
+do $$
+declare t text;
+begin
+  foreach t in array array['lifter_trophies', 'lifter_prs'] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('revoke all on public.%I from public, anon, authenticated', t);
+  end loop;
+end $$;
+grant select, insert, delete on public.lifter_trophies to authenticated;
+grant select, insert, update, delete on public.lifter_prs to authenticated;
+
+drop policy if exists read on public.lifter_trophies;
+create policy read on public.lifter_trophies for select to authenticated using (private.can_see(lifter_id));
+drop policy if exists add on public.lifter_trophies;
+create policy add on public.lifter_trophies for insert to authenticated
+  with check ((trophy not like 'award:%' and private.is_athlete(lifter_id))
+           or (trophy like 'award:%' and private.can_coach_live(lifter_id)));
+drop policy if exists take_back on public.lifter_trophies;
+create policy take_back on public.lifter_trophies for delete to authenticated
+  using (trophy like 'award:%' and private.can_coach_live(lifter_id));
+
+drop policy if exists read on public.lifter_prs;
+create policy read on public.lifter_prs for select to authenticated using (private.can_see(lifter_id));
+drop policy if exists add on public.lifter_prs;
+create policy add on public.lifter_prs for insert to authenticated
+  with check (private.is_athlete(lifter_id) or private.can_coach_live(lifter_id));
+drop policy if exists confirm on public.lifter_prs;
+create policy confirm on public.lifter_prs for update to authenticated
+  using (private.can_coach_live(lifter_id)) with check (private.can_coach_live(lifter_id));
+drop policy if exists remove on public.lifter_prs;
+create policy remove on public.lifter_prs for delete to authenticated
+  using (private.can_coach_live(lifter_id)
+         or (created_by = (select auth.uid()) and confirmed_by is null and private.is_athlete(lifter_id)));
+
+revoke execute on function private.trophies_guard(), private.prs_guard() from public, anon;
+revoke execute on function public.set_trophy_profile(uuid, text, numeric) from public, anon;
+grant execute on function public.set_trophy_profile(uuid, text, numeric) to authenticated;
+
 do $$
 declare t text;
 begin
   if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
-    foreach t in array array['messages', 'lifter_settings', 'lifter_events', 'message_reads'] loop
+    foreach t in array array['messages', 'lifter_settings', 'lifter_events', 'message_reads', 'lifter_trophies', 'lifter_prs'] loop
       if not exists (select 1 from pg_publication_tables
                      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
         execute format('alter publication supabase_realtime add table public.%I', t);

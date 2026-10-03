@@ -472,6 +472,63 @@
   .msg-mid span { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .msg-mid .msg-done { color: var(--pine); font-weight: 600; }
   .msg-when { flex: none; font-size: 12px; color: var(--faint); }
+  /* ── Trophies and strength levels ── */
+  .modal [hidden] { display: none !important; }
+  .tro-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tro-count { font-size: 14px; font-weight: 600; color: var(--muted); }
+  .tro-seg { margin-bottom: 0; }
+  .tro-card { margin-bottom: 14px; }
+  .tro-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  .tro-head-l { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .tro-kicker { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+  .tro-overall { font-family: "Bricolage Grotesque", sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
+  .tro-card-title { font-family: "Bricolage Grotesque", sans-serif; font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+  .tro-sub { font-size: 13px; color: var(--muted); }
+  .tro-lift { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--border); }
+  .tro-lift-a { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .tro-lift-a b { font-size: 15px; }
+  .tro-lift-a span { font-size: 12.5px; color: var(--muted); }
+  .tro-lift-b { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .tro-lift-b b { font-size: 14px; }
+  .tro-bar { display: flex; gap: 3px; }
+  .tro-bar i { display: block; width: 22px; height: 6px; border-radius: 3px; background: var(--border-strong); }
+  .tro-bar i.on.t1 { background: #c98a4b; } .tro-bar i.on.t2 { background: #98a4b0; } .tro-bar i.on.t3 { background: #d6a52a; }
+  .tro-bar i.on.t4 { background: #34a6bc; } .tro-bar i.on.t5 { background: #8a5cf0; }
+  .tro-next { grid-column: 1 / -1; margin: 0; font-size: 12.5px; color: var(--muted); }
+  .tro-foot { margin: 12px 0 0; font-size: 12px; line-height: 1.5; color: var(--faint); }
+  .tro-pr { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 9px 0; border-top: 1px solid var(--border); }
+  .tro-pr-t { flex: 1 1 180px; font-size: 14px; }
+  .tro-pr-s { font-size: 12px; color: var(--muted); }
+  .tro-pr-s.ok { color: var(--pine); font-weight: 600; }
+  .tro-tools { margin: 0 0 6px; }
+  .tro-gsub { margin: -6px 0 12px; font-size: 13px; color: var(--muted); }
+  .tro-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+  .tro-item { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 12px; text-align: left; color: var(--ink); background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+  .tro-item:hover { border-color: var(--border-strong); }
+  .tro-item.locked { opacity: .72; }
+  .tro-item.fresh { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold-soft); }
+  .tro-item-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .tro-item-t b { font-size: 14px; }
+  .tro-item-t span { font-size: 12.5px; color: var(--muted); }
+  .tro-new { position: absolute; top: 8px; right: 10px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gold); }
+  .tro-medal { --m1: #ffe28f; --m2: #c8921a; flex: none; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; color: #fff; background: linear-gradient(135deg, var(--m1), var(--m2)); box-shadow: inset 0 0 0 2px rgba(255,255,255,.45), 0 2px 6px rgba(0,0,0,.18); }
+  .tro-medal svg { width: 26px; height: 26px; }
+  .tro-medal.big { width: 120px; height: 120px; }
+  .tro-medal.big svg { width: 64px; height: 64px; }
+  .tro-medal.t1 { --m1: #e0a66e; --m2: #8c5a2b; } .tro-medal.t2 { --m1: #e6eaee; --m2: #8e9aa6; } .tro-medal.t3 { --m1: #ffe28f; --m2: #c8921a; }
+  .tro-medal.t4 { --m1: #8ee6f2; --m2: #2a8fa3; } .tro-medal.t5 { --m1: #cdb0ff; --m2: #6a3fd1; }
+  .tro-medal.locked { background: var(--border); color: var(--faint); box-shadow: none; }
+  .tro-canvas { display: block; width: auto; max-width: 100%; max-height: 52vh; margin: 0 auto 12px; border-radius: 14px; box-shadow: var(--shadow); }
+  .tro-fallback { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 8px 0 14px; }
+  .tro-fallback h3 { margin: 8px 0 0; font-family: "Bricolage Grotesque", sans-serif; font-size: 22px; }
+  .tro-fallback p { margin: 0; color: var(--muted); font-size: 14px; }
+  .tro-fallback .tro-fb-detail { color: var(--ink); font-weight: 600; }
+  .tro-acts .btn-solid, .tro-acts .btn-ghost { flex: 1 1 140px; }
+  .tro-hint { margin: 12px 0 0; font-size: 12.5px; }
+  .tro-form .seg { display: flex; margin-bottom: 4px; }
+  .tro-form .seg-btn { flex: 1; }
+  .tro-in { margin-top: 10px; }
+  .tro-note { resize: vertical; min-height: 76px; }
   .msg-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 8px; }
   .msg-title { font-family: "Bricolage Grotesque", sans-serif; font-size: 18px; font-weight: 700; margin: 0; }
   .msg-note { font-size: 13px; color: var(--muted); margin: 0 0 10px; }
@@ -1065,6 +1122,17 @@
         <div id="inboxBody"></div>
       </section>
 
+      <!-- Trophies (one lifter) -->
+      <section class="view" id="viewTrophies">
+        <button class="wk-back" id="troBack">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          Overview
+        </button>
+        <h1 class="section-head">Trophies</h1>
+        <p class="section-sub" id="troSub"></p>
+        <div id="troBody"></div>
+      </section>
+
       <!-- Analytics -->
       <section class="view" id="viewAnalytics">
         <button class="wk-back" id="anBack">
@@ -1318,6 +1386,38 @@
   </div>
 </div>
 
+<div class="modal-scrim" id="troScrim">
+  <div class="modal acct-modal" role="dialog" aria-modal="true" aria-labelledby="troTitle">
+    <div class="modal-head">
+      <h2 id="troTitle">Trophy unlocked</h2>
+      <button class="icon-x" id="troClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="troCard"></div>
+    <label class="acct-check"><input type="checkbox" id="troShowName" checked /><span>Show my name on the image</span></label>
+    <div class="acct-acts tro-acts">
+      <button class="btn-solid" id="troShare" type="button">Share to your story</button>
+      <button class="btn-ghost" id="troSave" type="button">Save image</button>
+      <button class="btn-ghost" id="troNext" type="button" hidden>Next</button>
+      <button class="chip danger sm" id="troTakeBack" type="button" hidden>Take back award</button>
+    </div>
+    <p class="dm-import-hint tro-hint" id="troShareHint"></p>
+  </div>
+</div>
+
+<div class="modal-scrim" id="troFormScrim">
+  <div class="modal acct-modal" role="dialog" aria-modal="true" aria-labelledby="troFormTitle">
+    <div class="modal-head">
+      <h2 id="troFormTitle">Trophies</h2>
+      <button class="icon-x" id="troFormClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="troFormBody"></div>
+  </div>
+</div>
+
 <div class="modal-scrim" id="noteScrim">
   <div class="modal" role="dialog" aria-modal="true" aria-label="Notes">
     <div class="modal-head">
@@ -1539,7 +1639,7 @@
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
   // major.minor.patch: minor goes up with each release (it carried on from the
   // old build counter, 30), patch for a fix to one.
-  var APP_VERSION = "1.40.1";
+  var APP_VERSION = "1.41.0";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -1925,6 +2025,7 @@
     else delete DONE[name][rid];
     safeWrite(STORE_DONE, DONE);
     if (val) sessionCheck(name, rid);
+    troSoon(name);
   }
   function setSkipped(name, rid, val) {
     if (!SKIP[name]) SKIP[name] = {};
@@ -1932,6 +2033,7 @@
     else delete SKIP[name][rid];
     safeWrite(STORE_SKIP, SKIP);
     if (val) sessionCheck(name, rid);
+    troSoon(name);
   }
 
   // note override: undefined => fall back to the derived RPE+Notes value
@@ -2047,7 +2149,8 @@
     if (id !== "viewVbt") { var lay = document.querySelector(".layout"); if (lay) lay.classList.remove("vbt-open"); }
     inMessages = id === "viewMessages";
     inInbox = id === "viewInbox";
-    ["viewEmpty", "viewOverview", "viewWeek", "viewAnalytics", "viewDayMgr", "viewCompare", "viewRpe", "viewVbt", "viewMessages", "viewInbox"].forEach(function (v) {
+    inTrophies = id === "viewTrophies";
+    ["viewEmpty", "viewOverview", "viewWeek", "viewAnalytics", "viewDayMgr", "viewCompare", "viewRpe", "viewVbt", "viewMessages", "viewInbox", "viewTrophies"].forEach(function (v) {
       $(v).classList.toggle("active", v === id);
     });
     window.scrollTo({ top: 0, behavior: "auto" });
@@ -2188,7 +2291,7 @@
       nav.appendChild(ib);
     }
 
-    var ov = el("button", "nav-item" + (currentWeek === null && !inAnalytics && !inDayMgr && !inRpe && !inVbt && !inMessages && !inInbox ? " active" : ""));
+    var ov = el("button", "nav-item" + (currentWeek === null && !inAnalytics && !inDayMgr && !inRpe && !inVbt && !inMessages && !inInbox && !inTrophies ? " active" : ""));
     ov.appendChild(iconSpan('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>'));
     ov.appendChild(el("span", "nav-label", "Overview"));
     ov.onclick = function () { openOverview(); closeNav(); };
@@ -2200,6 +2303,15 @@
     an.appendChild(el("span", "nav-label", "Analytics"));
     an.onclick = function () { openAnalytics(); closeNav(); };
     nav.appendChild(an);
+
+    // Trophies: every lifter, signed in or not.
+    var tr = el("button", "nav-item" + (inTrophies ? " active" : ""));
+    tr.appendChild(iconSpan('<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/>'));
+    tr.appendChild(el("span", "nav-label", "Trophies"));
+    var trn = troUnseenCount(current);
+    if (trn) tr.appendChild(el("span", "nav-badge", String(trn)));
+    tr.onclick = function () { openTrophies(); closeNav(); };
+    nav.appendChild(tr);
 
     // Messages with this lifter (they and their coaches, signed in).
     if (canMessage(current)) {
@@ -2977,6 +3089,7 @@
     if (v === "") delete p[storeKey][lift];
     else p[storeKey][lift] = v;
     safeWrite(STORE_PROFILES, PROFILES);
+    if (storeKey === "maxes") troSoon(targetName);
     return true;
   }
   function setMax(targetName, lift, value) { return setMaxOn(targetName, "maxes", lift, value); }
@@ -6563,7 +6676,7 @@
       // are fetched by the next sync; this only says "something changed".
       listen: function (fn) {
         var ch = sb.channel("spotter-sync");
-        ["lifters", "lifter_coaches", "accounts", "messages", "lifter_settings", "lifter_events", "message_reads"].concat(LOG_TABLES).forEach(function (t) {
+        ["lifters", "lifter_coaches", "accounts", "messages", "lifter_settings", "lifter_events", "message_reads", "lifter_trophies", "lifter_prs"].concat(LOG_TABLES).forEach(function (t) {
           ch.on("postgres_changes", { event: "*", schema: "public", table: t }, function () { fn(t); });
         });
         ch.subscribe();
@@ -6805,7 +6918,7 @@
   function removeLocalLifter(name) {
     var id = PROFILES[name] && PROFILES[name].cloudId;
     delete PROFILES[name]; delete DONE[name]; delete SKIP[name]; delete NOTES[name];
-    delete CUSTOM[name]; delete WKNOTES[name]; delete DMNOTES[name];
+    delete CUSTOM[name]; delete WKNOTES[name]; delete DMNOTES[name]; delete TRO[name]; saveTro();
     ORDER = ORDER.filter(function (n) { return n !== name; });
     if (id) { delete CLOUD.shadow[id]; delete CLOUD.lifterMeta[id]; delete CLOUD.refetch[id]; }
     if (current === name) current = null;
@@ -6818,10 +6931,11 @@
   function renameLocal(oldName, newName) {
     if (oldName === newName || !Object.prototype.hasOwnProperty.call(PROFILES, oldName)) return;
     var order = lifterNames();
-    [PROFILES, DONE, SKIP, NOTES, CUSTOM, WKNOTES, DMNOTES].forEach(function (store) {
+    [PROFILES, DONE, SKIP, NOTES, CUSTOM, WKNOTES, DMNOTES, TRO].forEach(function (store) {
       if (Object.prototype.hasOwnProperty.call(store, oldName)) { store[newName] = store[oldName]; delete store[oldName]; }
     });
     PROFILES[newName].name = newName;
+    saveTro();
     ORDER = order.map(function (n) { return n === oldName ? newName : n; });
     if (current === oldName) { current = newName; safeWrite(STORE_LAST, newName); }
     if (dmUndoOwner === oldName) dmUndoOwner = newName;
@@ -7076,7 +7190,7 @@
         if (ch.msgs || ch.settings) msgRefreshUI(ch.settings);
         return pushMessages(api).then(function (sent) { if (sent) msgRefreshUI(false); });
       }).then(function () { CLOUD.msgError = ""; }, function (err) { CLOUD.msgError = (err && err.message) || "Messages couldn’t sync"; });
-    }).then(function () {
+    }).then(function () { return troSync(api); }).then(function () {
       if (cloudChanged) { writeAllStores(); cloudRefreshUI(); }
       CLOUD.lastSync = new Date().toISOString();
       CLOUD.lastError = "";
@@ -7127,6 +7241,7 @@
     if (inRpe || inVbt || inCompare) return;
     if (inMessages) { if (canMessage(current)) renderMessages(); else openOverview(); return; }
     if (inInbox) { renderInbox(); return; }
+    if (inTrophies) { renderTrophies(); return; }
     if (inDayMgr) { if (dmTab === "manage") renderDayMgr(); return; }
     if (inAnalytics) { renderAnalytics(); return; }
     if (currentWeek !== null) { if (getWeek(PROFILES[current], currentWeek)) renderWeek(); else openOverview(); return; }
@@ -7794,7 +7909,8 @@
       var st = {};
       (r[0] || []).forEach(function (s) {
         st[s.lifter_id] = { team_thread: s.team_thread !== false, notified_weeks: s.notified_weeks || [],
-                            notified_by: s.notified_by || "", notified_at: s.notified_at || "", cleared: s.cleared || {} };
+                            notified_by: s.notified_by || "", notified_at: s.notified_at || "", cleared: s.cleared || {},
+                            sex: s.sex || "", bodyweight: s.bodyweight || "" };
       });
       if (stableJSON(st) !== stableJSON(MSG.settings)) { MSG.settings = st; out.settings = true; }
       var seen = {};
@@ -8138,7 +8254,7 @@
         var m = msgsOf(id, t.th), last = m[m.length - 1];
         if (last && (!latest || tms(last.created_at) > tms(latest.created_at))) latest = last;
       });
-      var ev = MSG.events.filter(function (e) { return e.lifter_id === id && e.kind === "session_done"; })
+      var ev = MSG.events.filter(function (e) { return e.lifter_id === id && (e.kind === "session_done" || e.kind === "trophy"); })
         .sort(function (a, b) { return tms(b.created_at) - tms(a.created_at); })[0] || null;
       var when = Math.max(latest ? tms(latest.created_at) : 0, ev ? tms(ev.created_at) : 0);
       return { name: name, id: id, latest: latest, ev: ev, n: n, when: when };
@@ -8152,7 +8268,8 @@
       var mid = el("span", "msg-mid");
       mid.appendChild(el("b", null, r.name));
       var evNewer = r.ev && (!r.latest || tms(r.ev.created_at) > tms(r.latest.created_at));
-      if (evNewer) mid.appendChild(el("span", "msg-done", "✓ Finished week " + r.ev.week + " · day " + r.ev.day));
+      if (evNewer && r.ev.kind === "trophy") mid.appendChild(el("span", "msg-done", "\uD83C\uDFC6 " + troNameOf(r.ev.week, (MSG.settings[r.id] || {}).sex)));
+      else if (evNewer) mid.appendChild(el("span", "msg-done", "✓ Finished week " + r.ev.week + " · day " + r.ev.day));
       else mid.appendChild(el("span", null, r.latest ? senderName(r.id, r.latest.sender_id) + ": " + r.latest.body : "No messages yet"));
       row.appendChild(mid);
       if (r.n) row.appendChild(el("span", "nav-badge", String(r.n)));
@@ -8233,7 +8350,7 @@
     for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
     return out;
   }
-  function defaultPrefs() { return { messages: true, sessions: isCoach(), weeks: true }; }
+  function defaultPrefs() { return { messages: true, sessions: isCoach(), weeks: true, trophies: true }; }
   function savePushRow(prefs) {
     var j = pushState.sub.toJSON();
     MSG.pushPrefs = prefs; saveMsg();
@@ -8290,6 +8407,7 @@
     var opts = [["messages", "New messages"]];
     if (isCoach()) opts.push(["sessions", "A lifter finishes a session"]);
     if (athleteNames().length) opts.push(["weeks", "A new week in my program"]);
+    opts.push(["trophies", isCoach() ? "A lifter earns a trophy, or I give one" : "A trophy is earned or given to me"]);
     opts.forEach(function (o) {
       var lab = el("label", "acct-check");
       var box = el("input");
@@ -8323,9 +8441,1069 @@
     if (!name) return;                 // not synced yet: try again after the next sync
     pendingOpen = null;
     current = name; safeWrite(STORE_LAST, name); renderPicker();
-    if (o.open === "messages" && canMessage(name)) openMessages(o.thread || undefined);
+    if (o.open === "trophies") openTrophies();
+    else if (o.open === "messages" && canMessage(name)) openMessages(o.thread || undefined);
     else if (o.open === "week" && getWeek(PROFILES[name], o.week)) openWeek(o.week);
     else openOverview();
+  }
+
+  // ───────────────────────── Trophies and strength levels ─────────────────────────
+  // Trophies are earned for good: each is stored with its date and the class at
+  // the time, so a lifter who moves up a weight class (or loses a max) keeps them.
+  // Levels, clubs and consistency are worked out on the lifter's own device from
+  // the same data as the rest of the app; "award:" ones are a coach's to give.
+  // Its own store (not on the profile, so a CSV re-import can't wipe it), keyed by
+  // lifter name like the other stores, and synced like Messages: a failure here
+  // never holds up the training log.
+  var STORE_TROPHIES = "spotter.trophies.v1";
+  var STORE_TRO_NAME = "spotter.trophyShareName";
+  var TRO = {};   // name -> { earned: {id: {at,on,cls,note,title,by,rid,sent,seen,notify}}, prs: [...], prefs: {sex,bw,dirty}, days: {"week|day": iso}, blocks: {key: iso}, gone: {prs:[],trophies:[]}, init }
+  var troUI = { filter: "all", editing: false, queue: [], open: null, blob: null, timer: null, pumpTries: 0, error: "" };
+  var inTrophies = false;
+  var TRO_CUR = { t: "", p: "" };   // not saved: the first sync after launch reads everything, which also catches awards taken back
+
+  var TRO_LIFTS = ["squat", "bench", "deadlift"];
+  var TRO_LIFT_NAME = { squat: "Squat", bench: "Bench press", deadlift: "Deadlift" };
+  var TRO_TIERS = ["Beginner", "Novice", "Intermediate", "Advanced", "Elite"];
+  var TRO_CLASSES = { m: ["59", "66", "74", "83", "93", "105", "120", "120+"], f: ["47", "52", "57", "63", "69", "76", "84", "84+"] };
+  // The weight an open class (120+, 84+) is judged at: its thresholds are the
+  // heaviest class's, taken at a typical heavyweight bodyweight.
+  var TRO_CLASS_REF = { m: 130, f: 95 };
+  // kg at each IPF class limit, [Beginner, Novice, Intermediate, Advanced, Elite] for
+  // [squat, bench, deadlift]. Strength Level's community percentiles (a Beginner
+  // beats about 5% of lifters, Novice 20%, Intermediate 50%, Advanced 80%, Elite
+  // 95%), interpolated to each limit and rounded to 2.5 kg. Community data, not
+  // competition data.
+  var TRO_STD = {
+    m: {
+      "59":   [[47.5, 70, 95, 127.5, 160],    [35, 52.5, 70, 92.5, 117.5],    [60, 85, 115, 150, 187.5]],
+      "66":   [[57.5, 80, 110, 140, 175],     [42.5, 60, 80, 105, 130],       [70, 97.5, 130, 165, 207.5]],
+      "74":   [[67.5, 92.5, 122.5, 157.5, 195], [50, 67.5, 90, 115, 142.5],   [80, 110, 145, 185, 225]],
+      "83":   [[77.5, 105, 137.5, 172.5, 212.5], [57.5, 77.5, 102.5, 127.5, 155], [92.5, 125, 160, 202.5, 245]],
+      "93":   [[90, 117.5, 152.5, 190, 232.5], [67.5, 87.5, 112.5, 140, 170],  [105, 137.5, 177.5, 220, 265]],
+      "105":  [[105, 135, 170, 210, 252.5],    [77.5, 100, 125, 155, 185],     [120, 155, 195, 240, 290]],
+      "120":  [[120, 152.5, 190, 232.5, 277.5], [90, 112.5, 140, 170, 202.5],  [137.5, 175, 217.5, 265, 315]],
+      "120+": [[130, 165, 202.5, 247.5, 292.5], [97.5, 122.5, 150, 182.5, 215], [147.5, 185, 230, 280, 330]]
+    },
+    f: {
+      "47":   [[25, 40, 60, 85, 112.5],        [15, 25, 40, 57.5, 80],         [32.5, 50, 72.5, 102.5, 132.5]],
+      "52":   [[27.5, 42.5, 65, 90, 120],      [15, 25, 42.5, 60, 80],         [35, 52.5, 77.5, 107.5, 140]],
+      "57":   [[30, 47.5, 70, 95, 125],        [17.5, 30, 45, 62.5, 85],       [37.5, 57.5, 82.5, 112.5, 145]],
+      "63":   [[35, 52.5, 75, 102.5, 132.5],   [20, 32.5, 50, 67.5, 90],       [42.5, 62.5, 87.5, 120, 152.5]],
+      "69":   [[37.5, 55, 80, 107.5, 140],     [22.5, 35, 52.5, 72.5, 95],     [45, 67.5, 95, 125, 160]],
+      "76":   [[40, 60, 85, 115, 145],         [25, 37.5, 57.5, 77.5, 100],    [50, 72.5, 100, 132.5, 167.5]],
+      "84":   [[45, 65, 90, 120, 152.5],       [27.5, 42.5, 60, 82.5, 107.5],  [52.5, 77.5, 105, 137.5, 175]],
+      "84+":  [[50, 70, 97.5, 130, 162.5],     [32.5, 47.5, 67.5, 90, 115],    [60, 82.5, 112.5, 147.5, 185]]
+    }
+  };
+  // Bodyweight clubs, as multiples of bodyweight.
+  var TRO_BW_CLUBS = {
+    m: { bench: [1, 1.5, 2], squat: [1.5, 2, 2.5], deadlift: [2, 2.5, 3] },
+    f: { bench: [0.75, 1, 1.25], squat: [1, 1.5, 2], deadlift: [1.5, 2, 2.5] }
+  };
+  var TRO_TOTAL_CLUBS = { m: [300, 400, 500, 600], f: [150, 200, 250, 300] };
+  var TRO_GL_CLUBS = [[50, "IPF 50 points", 3], [65, "IPF 65 points", 4], [80, "IPF 80 points", 5], [100, "IPF 100 points", 5]];
+  // IPF GL points for a classic (raw) total: total x 100 / (A - B x e^(-C x bodyweight)).
+  var TRO_GL = { m: [1199.72839, 1025.18162, 0.00921], f: [610.32796, 1045.59282, 0.03048] };
+  var TRO_AWARDS = [
+    ["meet_debut", "Meet debut", "Your first competition."],
+    ["meet_pr", "Meet PR", "A personal best on the platform."],
+    ["nine_for_nine", "9 for 9", "Nine good lifts on the platform."],
+    ["podium", "Podium", "Top three in your class."],
+    ["total_pr", "Total PR", "A new best competition total."]
+  ];
+  // Medal colours by tier: [light, dark].
+  var TRO_COL = { 1: ["#e0a66e", "#8c5a2b"], 2: ["#e6eaee", "#8e9aa6"], 3: ["#ffe28f", "#c8921a"], 4: ["#8ee6f2", "#2a8fa3"], 5: ["#cdb0ff", "#6a3fd1"] };
+  // Drawn in a 24 x 24 box, stroke only, so the same paths serve the page and the share image.
+  var TRO_GLYPH = {
+    star: ["m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"],
+    bar: ["M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"],
+    bolt: ["M13 2 4 14h7l-1 8 9-12h-7z"],
+    flame: ["M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-9z"],
+    cal: ["M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z", "M8 3v4M16 3v4M4 10h16M9 15l2 2 4-4"],
+    up: ["M3 17l6-6 4 4 8-8", "M15 7h6v6"],
+    award: ["M12 3a6 6 0 1 0 0 12 6 6 0 0 0 0-12z", "m8.5 14-1.5 8 5-3 5 3-1.5-8"],
+    cup: ["M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z", "M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"],
+    back: ["M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5", "M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"],
+    feather: ["M3 17c4-8 10-12 18-13-1 8-5 14-13 16z", "M3 21l8-8"]
+  };
+  var TRO_GROUPS = [
+    { key: "levels", title: "Strength levels", sub: "Each lift, then overall, against your weight class." },
+    { key: "clubs", title: "Strength clubs", sub: "Bodyweight multiples, totals and IPF points." },
+    { key: "consistency", title: "Consistency", sub: "Showing up, week after week." },
+    { key: "prs", title: "Personal records", sub: "Logged PRs your coach has confirmed." },
+    { key: "awards", title: "Coach awards", sub: "Given by your coach." }
+  ];
+
+  function troLoad() { TRO = safeRead(STORE_TROPHIES, {}) || {}; if (typeof TRO !== "object" || Array.isArray(TRO)) TRO = {}; }
+  function saveTro() { try { localStorage.setItem(STORE_TROPHIES, JSON.stringify(TRO)); } catch (e) {} }
+  function troEnsure(name) {
+    var t = TRO[name];
+    if (!t || typeof t !== "object") t = TRO[name] = {};
+    if (!t.earned) t.earned = {};
+    if (!Array.isArray(t.prs)) t.prs = [];
+    if (!t.prefs) t.prefs = {};
+    if (!t.days) t.days = {};
+    if (!t.blocks) t.blocks = {};
+    if (!t.gone) t.gone = { prs: [], trophies: [] };
+    return t;
+  }
+  function troDirty() { if (CLOUD.user) scheduleSync(1500); }
+  function troToday() {
+    var d = new Date(), z = function (n) { return (n < 10 ? "0" : "") + n; };
+    return d.getFullYear() + "-" + z(d.getMonth() + 1) + "-" + z(d.getDate());
+  }
+  function troDateLabel(on) {
+    var d = new Date(String(on || "").slice(0, 10) + "T12:00:00");
+    return isNaN(d) ? "" : d.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" });
+  }
+  function troKg(n) { return (Math.round(n * 10) / 10).toString().replace(/\.0$/, "") + " kg"; }
+  // Who may record trophies the app works out: the lifter on their own account,
+  // or a lifter that only lives on this device. A coach looking at someone's
+  // program only reads what the lifter's device recorded.
+  function troCanRecord(name) {
+    var p = PROFILES[name];
+    return !!(p && (!p.cloudId || isAthleteOf(p.cloudId)));
+  }
+  function troCanEdit(name) {
+    var p = PROFILES[name];
+    return !!(p && (!p.cloudId || !CLOUD.user || isAthleteOf(p.cloudId) || isCoachOf(p.cloudId)));
+  }
+  // Giving awards and confirming PRs: a coach of that lifter (or their own local lifter).
+  function troIsCoach(name) { return !!(PROFILES[name] && isCoach() && canManage(name)); }
+
+  // ---- Standards: which class, which thresholds
+  function troClassKey(sex, bw, classWt) {
+    var list = TRO_CLASSES[sex];
+    if (!list) return "";
+    if (bw > 0) {
+      for (var i = 0; i < list.length - 1; i++) if (bw <= parseFloat(list[i])) return list[i];
+      return list[list.length - 1];
+    }
+    var m = /(\d+(?:\.\d+)?)\s*(\+?)/.exec(String(classWt || ""));
+    if (!m) return "";
+    var key = m[1] + (m[2] ? "+" : "");
+    if (list.indexOf(key) !== -1) return key;
+    return troClassKey(sex, parseFloat(m[1]), "");
+  }
+  function troClassLabel(sex, cls) { return (sex === "m" ? "Men’s " : "Women’s ") + cls + " kg"; }
+  function troGL(sex, bw, total) {
+    var c = TRO_GL[sex];
+    return total * 100 / (c[0] - c[1] * Math.exp(-c[2] * bw));
+  }
+
+  // ---- A lifter's numbers
+  function troMaxFromProfile(p, lift) {
+    var best = 0;
+    Object.keys(p.maxes || {}).forEach(function (k) {
+      var kl = k.toLowerCase();
+      if (kl.indexOf(lift) !== 0 || /equip|wrap|suit|multi/.test(kl)) return;
+      var v = parseFloat(p.maxes[k]);
+      if (!isNaN(v) && v > best) best = v;
+    });
+    return best;
+  }
+  // The best number for each lift: the 1RM on file, a coach-confirmed PR, or an
+  // Epley estimate from a Done set of up to 6 reps. Never a skipped or undone set.
+  function troLiftBest(name, lift) {
+    var p = PROFILES[name], t = troEnsure(name), best = { kg: 0, src: "" };
+    function take(kg, src) { if (kg > best.kg) { best.kg = Math.floor(kg * 2) / 2; best.src = src; } }
+    take(troMaxFromProfile(p, lift), "your 1RM");
+    t.prs.forEach(function (r) {
+      if (r.lift !== lift || !r.conf) return;
+      take(r.reps > 1 ? r.kg * (1 + r.reps / 30) : r.kg, "a confirmed PR");
+    });
+    var want = lift === "bench" ? "Bench" : (lift === "squat" ? "Squat" : "Deadlift");
+    p.weeks.forEach(function (w) {
+      mergedWeek(p, w).rows.forEach(function (r) {
+        if (!isDone(name, r.rid) || classifyLift(r.exercise) !== want) return;
+        var kg = parseFloat(r.weight), reps = parseInt(r.reps, 10);
+        if (isNaN(kg) || kg <= 0 || isNaN(reps) || reps < 1 || reps > 6) return;
+        take(reps > 1 ? kg * (1 + reps / 30) : kg, "W" + w.week + " · D" + r.day + " (" + troKg(kg) + " × " + reps + ")");
+      });
+    });
+    return best;
+  }
+
+  // ---- Consistency, from Done / Skipped (what exists today) and the dates days finished
+  function troStats(name) {
+    var p = PROFILES[name], s = { sessions: 0, fullWeeks: 0, workWeeks: 0, rows: 0, done: 0, skipped: 0, finished: [], complete: false };
+    p.weeks.forEach(function (w) {
+      var wk = { n: 0, done: 0 };
+      mergedWeek(p, w).days.forEach(function (g) {
+        var work = g.rows.filter(function (r) { return !REST.test(r.exercise); });
+        if (!work.length) return;
+        var d = 0, k = 0;
+        work.forEach(function (r) { if (isDone(name, r.rid)) d++; else if (isSkipped(name, r.rid)) k++; });
+        wk.n += work.length; wk.done += d; s.skipped += k;
+        if (d + k === work.length && d > 0) { s.sessions++; s.finished.push(w.week + "|" + g.day); }
+      });
+      if (wk.n) { s.workWeeks++; s.rows += wk.n; s.done += wk.done; if (wk.done === wk.n) s.fullWeeks++; }
+    });
+    s.perfect = s.workWeeks >= 3 && s.rows > 0 && s.done === s.rows;
+    s.complete = s.rows > 0 && s.done > 0 && s.done + s.skipped === s.rows;
+    return s;
+  }
+  // When each finished day was first seen: stamped by this device from now on,
+  // and for a signed-in lifter the "finished day" events fill in earlier ones.
+  function troDayDates(name) {
+    var t = troEnsure(name), out = {}, id = lifterIdOf(name);
+    Object.keys(t.days).forEach(function (k) { if (t.days[k]) out[k] = t.days[k]; });
+    if (id) MSG.events.forEach(function (e) {
+      if (e.lifter_id !== id || e.kind !== "session_done") return;
+      var k = e.week + "|" + e.day;
+      if (!out[k] || tms(e.created_at) < tms(out[k])) out[k] = e.created_at;
+    });
+    return out;
+  }
+  function troWeekIndex(ms) { return Math.floor((ms / 86400000 + 3) / 7); }   // weeks start on Monday
+  function troRuns(name) {
+    var dates = troDayDates(name), ms = Object.keys(dates).map(function (k) { return tms(dates[k]); }).filter(Boolean).sort(function (a, b) { return a - b; });
+    var weeks = {}, longest = 0, run = 0, prev = null, comeback = false, i;
+    ms.forEach(function (x) { weeks[troWeekIndex(x)] = true; });
+    Object.keys(weeks).map(Number).sort(function (a, b) { return a - b; }).forEach(function (w) {
+      run = (prev !== null && w === prev + 1) ? run + 1 : 1;
+      if (run > longest) longest = run;
+      prev = w;
+    });
+    for (i = 1; i < ms.length; i++) if (ms[i] - ms[i - 1] >= 15 * 86400000) comeback = true;
+    return { longest: longest, comeback: comeback };
+  }
+  // Remember when days finished and which blocks were completed in full.
+  function troNoteProgress(name, stats) {
+    var t = troEnsure(name), p = PROFILES[name], changed = false, now = new Date().toISOString();
+    stats.finished.forEach(function (k) {
+      if (t.days[k] === undefined) { t.days[k] = t.init ? now : ""; changed = true; }   // before this feature: no date to give
+    });
+    if (stats.perfect) {
+      var key = (p.block || p.name) + "|" + stats.workWeeks;
+      if (!t.blocks[key]) { t.blocks[key] = now; changed = true; }
+    }
+    return changed;
+  }
+
+  // ---- The whole picture for one lifter
+  function troPrefs(name) {
+    var p = PROFILES[name], pr = troEnsure(name).prefs;
+    var bw = parseFloat(pr.bw); if (isNaN(bw) || bw <= 0) bw = parseFloat(p.bodyweight);
+    if (isNaN(bw) || bw <= 0) bw = 0;
+    var sex = pr.sex === "m" || pr.sex === "f" ? pr.sex : "";
+    return { sex: sex, bw: bw, cls: sex ? troClassKey(sex, bw, p.classWt) : "" };
+  }
+  function troModel(name) {
+    var pf = troPrefs(name), m = { name: name, sex: pf.sex, bw: pf.bw, cls: pf.cls, ready: !!(pf.sex && pf.cls), lifts: {}, overall: null, total: null, gl: null };
+    m.clsLabel = m.ready ? troClassLabel(m.sex, m.cls) : "";
+    m.bwForClubs = m.bw || (m.ready ? (/\+$/.test(m.cls) ? TRO_CLASS_REF[m.sex] : parseFloat(m.cls)) : 0);
+    var allThree = true, sum = 0, lvls = 0;
+    TRO_LIFTS.forEach(function (lf, i) {
+      var b = troLiftBest(name, lf), thr = m.ready ? TRO_STD[m.sex][m.cls][i] : null, lvl = 0;
+      if (thr && b.kg > 0) thr.forEach(function (x) { if (b.kg >= x) lvl++; });
+      m.lifts[lf] = { kg: b.kg, src: b.src, thr: thr, lvl: lvl, next: thr && lvl < 5 ? thr[lvl] : null };
+      if (!(b.kg > 0)) allThree = false;
+      sum += b.kg; lvls += lvl;
+    });
+    if (allThree) {
+      m.total = sum;
+      if (m.ready) { m.overall = Math.floor(lvls / 3); m.overallExact = lvls / 3; }
+      if (m.ready && m.bwForClubs) m.gl = troGL(m.sex, m.bwForClubs, sum);
+    }
+    m.stats = troStats(name);
+    m.runs = troRuns(name);
+    m.prCount = troEnsure(name).prs.filter(function (r) { return r.conf; }).length;
+    return m;
+  }
+
+  // ---- The catalogue: every trophy, what it takes, and whether this lifter has it
+  function troDefs(m) {
+    var out = [], sex = m.sex || "m";
+    function add(group, id, tier, glyph, name, desc, test) { out.push({ id: id, group: group, tier: tier, glyph: glyph, name: name, desc: desc, test: test }); }
+    TRO_LIFTS.forEach(function (lf) {
+      TRO_TIERS.forEach(function (tn, i) {
+        add("levels", "lvl:" + lf + ":" + tn.toLowerCase(), i + 1, "bar", TRO_LIFT_NAME[lf] + " · " + tn,
+          "Reach the " + tn + " standard for the " + TRO_LIFT_NAME[lf].toLowerCase() + " in your weight class.",
+          function (mm) {
+            var L = mm.lifts[lf];
+            if (!mm.ready) return { ok: false, need: "Set your standards to start" };
+            if (!(L.kg > 0)) return { ok: false, need: "Add your " + lf + " 1RM" };
+            if (L.lvl > i) return { ok: true, detail: troKg(L.kg) + " · " + mm.clsLabel };
+            return { ok: false, need: "Need " + troKg(L.thr[i]) + " · you’re at " + troKg(L.kg) };
+          });
+      });
+    });
+    TRO_TIERS.forEach(function (tn, i) {
+      add("levels", "lvl:overall:" + tn.toLowerCase(), i + 1, "star", "Overall · " + tn,
+        "Your squat, bench and deadlift average out at " + tn + ".",
+        function (mm) {
+          if (!mm.ready) return { ok: false, need: "Set your standards to start" };
+          if (mm.overall === null) return { ok: false, need: "Needs a squat, bench and deadlift number" };
+          if (mm.overall > i) return { ok: true, detail: "Three-lift average · " + mm.clsLabel };
+          return { ok: false, need: "Your three lifts average " + mm.overallExact.toFixed(1) + " of " + (i + 1) };
+        });
+    });
+    TRO_LIFTS.forEach(function (lf) {
+      (TRO_BW_CLUBS[sex][lf] || []).forEach(function (x, i) {
+        add("clubs", "bw:" + lf + ":" + x, [2, 3, 4][i], "bar", x + "× bodyweight " + lf,
+          (lf === "bench" ? "Bench press" : (lf === "squat" ? "Squat" : "Deadlift")) + " " + x + " times your bodyweight.",
+          function (mm) {
+            if (!mm.sex) return { ok: false, need: "Set your standards to start" };
+            if (!(mm.bwForClubs > 0)) return { ok: false, need: "Add your bodyweight" };
+            var L = mm.lifts[lf], need = x * mm.bwForClubs;
+            if (!(L.kg > 0)) return { ok: false, need: "Add your " + lf + " 1RM" };
+            if (L.kg >= need) return { ok: true, detail: troKg(L.kg) + " at " + troKg(mm.bwForClubs) + " bodyweight" };
+            return { ok: false, need: "Need " + troKg(Math.ceil(need * 2) / 2) + " · you’re at " + troKg(L.kg) };
+          });
+      });
+    });
+    TRO_TOTAL_CLUBS[sex].forEach(function (x, i) {
+      add("clubs", "total:" + x, i + 2, "cup", x + " kg total", "Squat, bench and deadlift add up to " + x + " kg.",
+        function (mm) {
+          if (!mm.sex) return { ok: false, need: "Set your standards to start" };
+          if (mm.total === null) return { ok: false, need: "Needs a squat, bench and deadlift number" };
+          if (mm.total >= x) return { ok: true, detail: troKg(mm.total) + " total" };
+          return { ok: false, need: "Need " + x + " kg · you’re at " + troKg(mm.total) };
+        });
+    });
+    TRO_GL_CLUBS.forEach(function (g) {
+      add("clubs", "gl:" + g[0], g[2], "bolt", g[1], "Your total scores " + g[0] + " IPF GL points for your bodyweight.",
+        function (mm) {
+          if (mm.gl === null) return { ok: false, need: "Needs all three lifts and your standards" };
+          if (mm.gl >= g[0]) return { ok: true, detail: mm.gl.toFixed(1) + " GL points" };
+          return { ok: false, need: "Need " + g[0] + " · you’re at " + mm.gl.toFixed(1) };
+        });
+    });
+    [[10, 1], [25, 2], [50, 3], [100, 4], [250, 5]].forEach(function (x) {
+      add("consistency", "sessions:" + x[0], x[1], "cal", x[0] + " sessions", "Finish " + x[0] + " training days (every exercise Done or Skipped).",
+        function (mm) { return mm.stats.sessions >= x[0] ? { ok: true, detail: x[0] + " days finished" } : { ok: false, need: mm.stats.sessions + " of " + x[0] + " days" }; });
+    });
+    [[4, 2], [8, 3], [12, 4], [26, 5]].forEach(function (x) {
+      add("consistency", "streak:" + x[0], x[1], "flame", x[0] + "-week streak", "Train at least once a week, " + x[0] + " weeks running.",
+        function (mm) { return mm.runs.longest >= x[0] ? { ok: true, detail: x[0] + " weeks in a row" } : { ok: false, need: "Best so far " + mm.runs.longest + " of " + x[0] + " weeks" }; });
+    });
+    [[1, 1], [5, 3], [10, 5]].forEach(function (x) {
+      add("consistency", "fullweek:" + x[0], x[1], "cal", x[0] === 1 ? "Full week" : x[0] + " full weeks", "Every exercise Done in " + (x[0] === 1 ? "a week" : x[0] + " weeks") + ", none skipped.",
+        function (mm) { return mm.stats.fullWeeks >= x[0] ? { ok: true, detail: x[0] + (x[0] === 1 ? " week" : " weeks") + " done in full" } : { ok: false, need: mm.stats.fullWeeks + " of " + x[0] + " weeks" }; });
+    });
+    [[1, 3], [3, 4], [5, 5]].forEach(function (x) {
+      add("consistency", "perfect:" + x[0], x[1], "star", x[0] === 1 ? "Perfect block" : x[0] + " perfect blocks", "Finish " + (x[0] === 1 ? "a block" : x[0] + " blocks") + " with every exercise Done.",
+        function (mm) {
+          var n = Object.keys(troEnsure(mm.name).blocks).length;
+          return n >= x[0] ? { ok: true, detail: n + (n === 1 ? " block" : " blocks") + " done in full" } : { ok: false, need: n + " of " + x[0] + " blocks" };
+        });
+    });
+    add("consistency", "comeback", 2, "back", "Comeback", "Back to a finished day after two or more weeks away.",
+      function (mm) { return mm.runs.comeback ? { ok: true, detail: "Back after a break" } : { ok: false, need: "After 2+ weeks away" }; });
+    add("consistency", "taper", 3, "feather", "Taper complete", "Finish a taper block.",
+      function (mm) { return /taper/i.test(PROFILES[mm.name].block || "") && mm.stats.complete ? { ok: true, detail: "Peaked and tapered" } : { ok: false, need: "Finish a block named Taper" }; });
+    [[1, 1], [5, 2], [10, 4], [25, 5]].forEach(function (x) {
+      add("prs", "pr:" + x[0], x[1], "up", x[0] === 1 ? "First PR" : x[0] + " PRs", "Log " + x[0] + (x[0] === 1 ? " PR" : " PRs") + " that your coach confirms.",
+        function (mm) { return mm.prCount >= x[0] ? { ok: true, detail: x[0] + " confirmed" } : { ok: false, need: mm.prCount + " of " + x[0] + " confirmed" }; });
+    });
+    TRO_AWARDS.forEach(function (a) {
+      add("awards", "award:" + a[0], 5, "award", a[1], a[2], function () { return { ok: false, need: "Given by your coach" }; });
+    });
+    return out;
+  }
+  function troAwardsOf(name) {
+    var t = troEnsure(name), out = [];
+    Object.keys(t.earned).forEach(function (id) {
+      if (id.indexOf("award:custom:") !== 0) return;
+      var e = t.earned[id];
+      out.push({ id: id, group: "awards", tier: 4, glyph: "award", name: e.title || "Coach’s choice", desc: e.note || "From your coach.", test: function () { return { ok: false }; } });
+    });
+    return out;
+  }
+  // Every trophy for this lifter with its state.
+  function troCatalog(name, m) {
+    var t = troEnsure(name);
+    var list = troDefs(m).concat(troAwardsOf(name));
+    list.forEach(function (c) {
+      var r = c.test(m), e = t.earned[c.id];
+      c.rec = e || null;
+      c.earned = !!e || !!r.ok;
+      c.detail = (e && e.note && c.group !== "awards") ? e.note : (r.detail || "");
+      c.need = r.need || "";
+      c.on = e ? e.on : "";
+    });
+    return list;
+  }
+  function troNameOf(id, sex) {
+    var found = null;
+    troDefs({ sex: sex || "m", lifts: {}, stats: {}, runs: {} , name: "" }).forEach(function (c) { if (c.id === id) found = c; });
+    if (found) return found.name;
+    return id.indexOf("award:") === 0 ? "a coach’s award" : id;
+  }
+
+  // ---- Earning: record what's newly true, and celebrate it
+  function troUnseenCount(name) {
+    var t = TRO[name], n = 0;
+    if (t) Object.keys(t.earned).forEach(function (id) { if (t.earned[id].seen === false) n++; });
+    return n;
+  }
+  function troCheck(name) {
+    var p = PROFILES[name];
+    if (!p || !troCanRecord(name)) return [];
+    var t = troEnsure(name), m = troModel(name), fresh = [], now = new Date().toISOString();
+    var changed = troNoteProgress(name, m.stats);
+    if (changed) m = troModel(name);   // days and blocks feed the model
+    var first = !t.init;               // the first look back is silent: no fanfare for what was already true
+    troCatalog(name, m).forEach(function (c) {
+      if (c.group === "awards" || t.earned[c.id] || !c.earned) return;
+      t.earned[c.id] = { at: now, on: troToday(), cls: m.clsLabel, note: c.detail, sent: false, seen: first, notify: !first && !!p.cloudId };
+      fresh.push({ id: c.id, tier: c.tier });
+      changed = true;
+    });
+    if (first) { t.init = true; changed = true; }
+    if (changed) { saveTro(); troDirty(); }
+    if (!fresh.length) return [];
+    fresh.sort(function (a, b) { return b.tier - a.tier; });
+    var ids = fresh.map(function (f) { return f.id; });
+    renderSidebar();
+    if (first) return ids;
+    if (ids.length > 3) toast(ids.length + " new trophies. Open Trophies to see them.");
+    else troCelebrate(name, ids);
+    return ids;
+  }
+  function troSoon(name) {
+    clearTimeout(troUI.timer);
+    troUI.timer = setTimeout(function () { try { troCheck(name || current); } catch (e) {} }, 350);
+  }
+  function troCelebrate(name, ids) {
+    ids.forEach(function (id) {
+      var dup = troUI.queue.some(function (q) { return q.name === name && q.id === id; });
+      if (!dup && !(troUI.open && troUI.open.name === name && troUI.open.id === id)) troUI.queue.push({ name: name, id: id });
+    });
+    troPump();
+  }
+  function troPump() {
+    if (troUI.open || !troUI.queue.length) return;
+    if (anyModalOpen()) { if (troUI.pumpTries++ < 20) setTimeout(troPump, 1500); return; }
+    troUI.pumpTries = 0;
+    var q = troUI.queue.shift();
+    if (!PROFILES[q.name]) { troPump(); return; }
+    troShowTrophy(q.name, q.id);
+  }
+
+  // ---- The picture: a story-sized card (1080 x 1920), drawn on a canvas
+  var TRO_FONT = '"Bricolage Grotesque", "Inter", -apple-system, "Helvetica Neue", Arial, sans-serif';
+  function troInfo(name, id) {
+    var m = troModel(name), hit = null;
+    troCatalog(name, m).forEach(function (c) { if (c.id === id) hit = c; });
+    if (!hit) return null;
+    var e = hit.rec, award = hit.group === "awards";
+    return {
+      id: id, name: name, group: hit.group, tier: hit.tier, glyph: hit.glyph, title: hit.name,
+      desc: hit.desc,
+      detail: award ? (id.indexOf("award:custom:") === 0 ? "" : (e && e.note) || "") : hit.detail,
+      by: award && e && e.by ? (e.by === me() ? "" : coachName(e.by)) : "",
+      date: troDateLabel(hit.on), earned: hit.earned, award: award, rec: e
+    };
+  }
+  function troWrap(g, text, maxW, maxLines) {
+    var words = String(text || "").split(/\s+/), lines = [], line = "";
+    words.forEach(function (w) {
+      var test = line ? line + " " + w : w;
+      if (line && g.measureText(test).width > maxW) { lines.push(line); line = w; } else line = test;
+    });
+    if (line) lines.push(line);
+    if (maxLines && lines.length > maxLines) { lines = lines.slice(0, maxLines); lines[maxLines - 1] = lines[maxLines - 1].replace(/\s*\S*$/, "") + "…"; }
+    return lines;
+  }
+  function troDrawCard(info, withName) {
+    var c = document.createElement("canvas");
+    c.width = 1080; c.height = 1920;
+    var g = c.getContext && c.getContext("2d");
+    if (!g) return null;
+    var col = TRO_COL[info.tier] || TRO_COL[3], cx = 540, cy = 720;
+    var bg = g.createLinearGradient(0, 0, 0, 1920);
+    bg.addColorStop(0, "#0e1316"); bg.addColorStop(1, "#1b2622");
+    g.fillStyle = bg; g.fillRect(0, 0, 1080, 1920);
+    var glow = g.createRadialGradient(cx, cy, 30, cx, cy, 720);
+    glow.addColorStop(0, hexA(col[0], 0.34)); glow.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = glow; g.fillRect(0, 0, 1080, 1920);
+    // The medal
+    var mg = g.createLinearGradient(cx - 250, cy - 250, cx + 250, cy + 250);
+    mg.addColorStop(0, col[0]); mg.addColorStop(1, col[1]);
+    g.beginPath(); g.arc(cx, cy, 250, 0, Math.PI * 2); g.fillStyle = mg; g.fill();
+    g.lineWidth = 12; g.strokeStyle = "rgba(255,255,255,0.55)"; g.stroke();
+    g.beginPath(); g.arc(cx, cy, 208, 0, Math.PI * 2); g.lineWidth = 4; g.strokeStyle = "rgba(255,255,255,0.28)"; g.stroke();
+    if (typeof Path2D !== "undefined") {
+      g.save();
+      g.translate(cx - 150, cy - 150); g.scale(12.5, 12.5);
+      g.lineWidth = 1.5; g.lineCap = "round"; g.lineJoin = "round"; g.strokeStyle = "#ffffff";
+      (TRO_GLYPH[info.glyph] || TRO_GLYPH.cup).forEach(function (d) { g.stroke(new Path2D(d)); });
+      g.restore();
+    }
+    g.textAlign = "center"; g.textBaseline = "alphabetic";
+    function text(str, y, font, color) { g.font = font; g.fillStyle = color; g.fillText(str, cx, y); }
+    g.font = "600 40px " + TRO_FONT;
+    try { g.letterSpacing = "9px"; } catch (e) {}
+    text("TROPHY UNLOCKED", 1110, "600 40px " + TRO_FONT, col[0]);
+    try { g.letterSpacing = "0px"; } catch (e) {}
+    var y = 1230;
+    g.font = "700 96px " + TRO_FONT;
+    troWrap(g, info.title, 900, 3).forEach(function (ln) { text(ln, y, "700 96px " + TRO_FONT, "#ffffff"); y += 108; });
+    y += 14;
+    g.font = "400 42px " + TRO_FONT;
+    troWrap(g, info.desc, 860, 3).forEach(function (ln) { text(ln, y, "400 42px " + TRO_FONT, "rgba(255,255,255,0.72)"); y += 56; });
+    if (info.detail) {
+      y += 26;
+      g.font = "600 50px " + TRO_FONT;
+      troWrap(g, info.detail, 900, 2).forEach(function (ln) { text(ln, y, "600 50px " + TRO_FONT, col[0]); y += 62; });
+    }
+    if (info.by) { y += 14; text("Awarded by " + info.by, y, "500 38px " + TRO_FONT, "rgba(255,255,255,0.72)"); }
+    var foot = 1640;
+    if (withName) { text(info.name, foot, "600 54px " + TRO_FONT, "#ffffff"); foot += 58; }
+    if (info.date) { text(info.date, foot, "400 38px " + TRO_FONT, "rgba(255,255,255,0.6)"); foot += 62; }
+    text("EmmStrength Power Logs", foot, "600 36px " + TRO_FONT, "rgba(255,255,255,0.5)");
+    return c;
+  }
+  function troCaption(info) {
+    return "🏆 " + info.title + (info.detail ? " — " + info.detail : "") + "\nEmmStrength Power Logs";
+  }
+  function troSvg(glyph) {
+    var s = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+    (TRO_GLYPH[glyph] || TRO_GLYPH.cup).forEach(function (d) { s += '<path d="' + d + '"/>'; });
+    return s + "</svg>";
+  }
+  function troMedal(tier, glyph, locked, big) {
+    var m = el("span", "tro-medal t" + tier + (locked ? " locked" : "") + (big ? " big" : ""));
+    m.innerHTML = troSvg(glyph);
+    return m;
+  }
+
+  // ---- The celebration / share dialog
+  function troShowTrophy(name, id) {
+    var info = troInfo(name, id);
+    if (!info) return;
+    var t = troEnsure(name), e = t.earned[id];
+    if (e && e.seen === false) { e.seen = true; saveTro(); renderSidebar(); }
+    troUI.open = { name: name, id: id, info: info };
+    troUI.blob = null;
+    $("troTitle").textContent = info.award ? "Award" : "Trophy unlocked";
+    $("troNext").hidden = !troUI.queue.length;
+    $("troNext").textContent = "Next (" + troUI.queue.length + " more)";
+    $("troTakeBack").hidden = !(info.award && troIsCoach(name));
+    var showName = true;
+    try { showName = localStorage.getItem(STORE_TRO_NAME) !== "0"; } catch (er) {}
+    $("troShowName").checked = showName;
+    var canShare = !!(navigator.share && navigator.canShare);
+    $("troShareHint").textContent = canShare
+      ? "Opens your share sheet: pick Instagram, Facebook, TikTok, Snapchat or WhatsApp and choose Story or My Day. Apps don’t let a website post to your story directly, so this hands them the picture."
+      : "Save the image, then add it to your story from your photos.";
+    $("troShare").textContent = canShare ? "Share to your story" : "Save image";
+    $("troSave").hidden = !canShare;
+    troPaintCard();
+    $("troScrim").classList.add("show");
+  }
+  function troPaintCard() {
+    var o = troUI.open; if (!o) return;
+    var wrap = $("troCard"), info = o.info, withName = $("troShowName").checked;
+    clear(wrap);
+    troUI.blob = null;
+    var cv = null;
+    try { cv = troDrawCard(info, withName); } catch (e) { cv = null; }
+    if (cv) {
+      cv.className = "tro-canvas";
+      cv.setAttribute("role", "img");
+      cv.setAttribute("aria-label", info.title);
+      wrap.appendChild(cv);
+      if (cv.toBlob) cv.toBlob(function (b) { if (troUI.open === o) troUI.blob = b; }, "image/png");
+    } else {
+      // No canvas (an old browser): the same thing on the page, nothing to share.
+      var fb = el("div", "tro-fallback");
+      fb.appendChild(troMedal(info.tier, info.glyph, false, true));
+      fb.appendChild(el("h3", null, info.title));
+      fb.appendChild(el("p", null, info.desc));
+      if (info.detail) fb.appendChild(el("p", "tro-fb-detail", info.detail));
+      wrap.appendChild(fb);
+    }
+  }
+  function troCloseDialog() {
+    $("troScrim").classList.remove("show");
+    troUI.open = null; troUI.blob = null;
+    if (troUI.queue.length) setTimeout(troPump, 250);
+    if (inTrophies && !anyModalOpen()) renderTrophies();
+  }
+  function troShare() {
+    var o = troUI.open; if (!o) return;
+    if (!troUI.blob) { toast("Getting the image ready… try again in a second."); return; }
+    var b = troUI.blob, file = null;
+    try { file = new File([b], "power-logs-trophy.png", { type: "image/png" }); } catch (e) {}
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: o.info.title, text: troCaption(o.info) }).catch(function (err) {
+        if (err && err.name !== "AbortError") saveFile(b, "power-logs-trophy.png", "Image saved. Add it to your story from your photos.");
+      });
+    } else saveFile(b, "power-logs-trophy.png", "Image saved. Add it to your story from your photos.");
+  }
+  function troSaveImage() {
+    if (!troUI.blob) { toast("Getting the image ready… try again in a second."); return; }
+    saveFile(troUI.blob, "power-logs-trophy.png", "Image saved.");
+  }
+  function troTakeBack() {
+    var o = troUI.open; if (!o) return;
+    var t = troEnsure(o.name), e = t.earned[o.id];
+    if (!e) return;
+    delete t.earned[o.id];
+    if (e.sent && e.rid) t.gone.trophies.push(e.rid);
+    saveTro(); troDirty();
+    toast("Award taken back.");
+    troCloseDialog();
+  }
+
+  // ---- PRs and awards
+  function troAddPr(name, lift, kg, reps, on) {
+    var p = PROFILES[name], t = troEnsure(name), ownsIt = troIsCoach(name) || !p.cloudId;
+    t.prs.push({ id: newUuid(), lift: lift, kg: kg, reps: reps, on: on, by: me(), conf: ownsIt, sent: false });
+    saveTro(); troDirty();
+    troCheck(name);
+  }
+  function troPrLabel(r) { return TRO_LIFT_NAME[r.lift] + " · " + troKg(r.kg) + (r.reps > 1 ? " × " + r.reps : "") + (r.on ? " · " + troDateLabel(r.on) : ""); }
+  function troConfirmPr(name, id) {
+    var t = troEnsure(name);
+    t.prs.forEach(function (r) { if (r.id === id && !r.conf) { r.conf = true; r.confPending = !!PROFILES[name].cloudId; } });
+    saveTro(); troDirty();
+    troCheck(name);
+    if (inTrophies) renderTrophies();
+  }
+  function troRemovePr(name, id) {
+    var t = troEnsure(name), keep = [];
+    t.prs.forEach(function (r) {
+      if (r.id !== id) keep.push(r);
+      else if (r.sent) t.gone.prs.push(r.id);
+    });
+    t.prs = keep;
+    saveTro(); troDirty();
+    if (inTrophies) renderTrophies();
+  }
+  function troGiveAward(name, key, title, note, on) {
+    var p = PROFILES[name], t = troEnsure(name);
+    var id = key === "custom" ? "award:custom:" + newUuid().slice(0, 8) : "award:" + key;
+    if (t.earned[id]) { toast("They already have that award."); return false; }
+    t.earned[id] = { at: new Date().toISOString(), on: on || troToday(), cls: "", note: note || "", title: title || "", by: me(), sent: false, seen: true, notify: !!p.cloudId };
+    saveTro(); troDirty();
+    return true;
+  }
+
+  // ---- Small form dialog (standards, PR, award)
+  function troOpenForm(title, node) {
+    $("troFormTitle").textContent = title;
+    var body = $("troFormBody");
+    clear(body); body.appendChild(node);
+    $("troFormScrim").classList.add("show");
+  }
+  function troCloseForm() { $("troFormScrim").classList.remove("show"); }
+  function troBtn(cls, label, fn) { var b = el("button", cls, label); b.type = "button"; b.onclick = fn; return b; }
+  function troLab(text) { return el("label", "tro-lab", text); }
+  function troInput(type, ph, val, aria) {
+    var i = el("input", "acct-input tro-in");
+    i.type = type; i.placeholder = ph || ""; if (val !== undefined && val !== null) i.value = val;
+    i.setAttribute("aria-label", aria || ph || "");
+    return i;
+  }
+  function troSavePrefs(name, sex, bw) {
+    var p = PROFILES[name], t = troEnsure(name);
+    t.prefs = { sex: sex, bw: bw, dirty: !!p.cloudId };
+    saveTro(); troDirty();
+    troCheck(name);
+  }
+  function troSetupForm(name, onDone) {
+    var pf = troPrefs(name), sex = pf.sex, wrap = el("div", "tro-form");
+    var seg = el("div", "seg");
+    seg.setAttribute("role", "tablist");
+    [["m", "Men’s standards"], ["f", "Women’s standards"]].forEach(function (o) {
+      var b = el("button", "seg-btn" + (sex === o[0] ? " active" : ""), o[1]);
+      b.type = "button"; b.setAttribute("data-sex", o[0]);
+      b.onclick = function () {
+        sex = o[0];
+        Array.prototype.forEach.call(seg.children, function (x) { x.classList.toggle("active", x === b); });
+      };
+      seg.appendChild(b);
+    });
+    wrap.appendChild(seg);
+    var bw = troInput("number", "Bodyweight (kg)", pf.bw ? String(pf.bw) : "", "Bodyweight in kilograms");
+    bw.step = "0.1"; bw.min = "20"; bw.max = "300"; bw.inputMode = "decimal"; bw.id = "troBw";
+    wrap.appendChild(bw);
+    wrap.appendChild(el("p", "dm-import-hint", "Your levels are judged against your IPF weight class: the limit your bodyweight falls under (men 59, 66, 74, 83, 93, 105, 120, 120+ kg; women 47, 52, 57, 63, 69, 76, 84, 84+ kg). Update it whenever your bodyweight changes. Trophies you’ve earned stay."));
+    var acts = el("div", "acct-acts");
+    acts.appendChild(troBtn("btn-solid sm", "Save", function () {
+      var w = parseFloat(bw.value);
+      if (!sex) { toast("Choose men’s or women’s standards."); return; }
+      if (!(w >= 20 && w <= 300)) { toast("Enter your bodyweight in kg."); return; }
+      troSavePrefs(name, sex, Math.round(w * 10) / 10);
+      if (onDone) onDone();
+    }));
+    wrap.appendChild(acts);
+    return wrap;
+  }
+  function troPrForm(name) {
+    var wrap = el("div", "tro-form"), p = PROFILES[name], lift = "squat";
+    var seg = el("div", "seg");
+    TRO_LIFTS.forEach(function (lf) {
+      var b = el("button", "seg-btn" + (lf === lift ? " active" : ""), TRO_LIFT_NAME[lf]);
+      b.type = "button"; b.setAttribute("data-lift", lf);
+      b.onclick = function () { lift = lf; Array.prototype.forEach.call(seg.children, function (x) { x.classList.toggle("active", x === b); }); };
+      seg.appendChild(b);
+    });
+    wrap.appendChild(seg);
+    var kg = troInput("number", "Weight (kg)", "", "Weight in kilograms"), reps = troInput("number", "Reps", "1", "Reps"), on = troInput("date", "", troToday(), "Date");
+    kg.step = "0.5"; kg.min = "1"; kg.max = "600"; kg.inputMode = "decimal"; kg.id = "troPrKg";
+    reps.min = "1"; reps.max = "30"; reps.step = "1"; reps.inputMode = "numeric"; reps.id = "troPrReps";
+    on.id = "troPrOn";
+    wrap.appendChild(kg); wrap.appendChild(reps); wrap.appendChild(on);
+    var own = troIsCoach(name) || !p.cloudId;
+    wrap.appendChild(el("p", "dm-import-hint", own ? "Logged as confirmed." : "Your coach confirms it before it counts toward your trophies."));
+    var acts = el("div", "acct-acts");
+    acts.appendChild(troBtn("btn-solid sm", "Log PR", function () {
+      var w = parseFloat(kg.value), r = parseInt(reps.value, 10);
+      if (!(w > 0 && w <= 600)) { toast("Enter the weight in kg."); return; }
+      if (!(r >= 1 && r <= 30)) { toast("Reps are 1 to 30."); return; }
+      troAddPr(name, lift, Math.round(w * 100) / 100, r, on.value || troToday());
+      troCloseForm();
+      toast(own ? "PR logged." : "PR logged. Waiting for your coach.");
+      if (inTrophies) renderTrophies();
+    }));
+    wrap.appendChild(acts);
+    return wrap;
+  }
+  function troAwardForm(name) {
+    var wrap = el("div", "tro-form"), sel = el("select", "acct-input tro-in");
+    sel.id = "troAwardKind";
+    sel.setAttribute("aria-label", "Award");
+    TRO_AWARDS.forEach(function (a) { var o = el("option", null, a[1]); o.value = a[0]; sel.appendChild(o); });
+    var oc = el("option", null, "Coach’s choice (your own title)"); oc.value = "custom"; sel.appendChild(oc);
+    wrap.appendChild(sel);
+    var title = troInput("text", "Title (up to 60 characters)", "", "Award title");
+    title.maxLength = 60; title.id = "troAwardTitle"; title.hidden = true;
+    var note = el("textarea", "acct-input tro-in tro-note");
+    note.id = "troAwardNote"; note.maxLength = 200; note.rows = 3; note.placeholder = "A line for the lifter (optional)";
+    note.setAttribute("aria-label", "Message");
+    var on = troInput("date", "", troToday(), "Date");
+    on.id = "troAwardOn";
+    sel.onchange = function () { title.hidden = sel.value !== "custom"; };
+    wrap.appendChild(title); wrap.appendChild(note); wrap.appendChild(on);
+    var acts = el("div", "acct-acts");
+    acts.appendChild(troBtn("btn-solid sm", "Give award", function () {
+      if (sel.value === "custom" && !title.value.trim()) { toast("Give it a title."); return; }
+      if (troGiveAward(name, sel.value, title.value.trim(), note.value.trim(), on.value || troToday())) {
+        troCloseForm();
+        toast("Award given to " + name + ".");
+        if (inTrophies) renderTrophies();
+      }
+    }));
+    wrap.appendChild(acts);
+    return wrap;
+  }
+
+  // ---- The view
+  function openTrophies() {
+    if (!current || !PROFILES[current]) return;
+    inAnalytics = false; inDayMgr = false; inRpe = false; inVbt = false; currentWeek = null;
+    showView("viewTrophies");
+    renderTrophies();
+    renderSidebar();
+  }
+  function troLevelName(n) { return n > 0 ? TRO_TIERS[n - 1] : "Getting started"; }
+  function troLevelBar(n) {
+    var bar = el("span", "tro-bar");
+    bar.setAttribute("aria-hidden", "true");
+    for (var i = 1; i <= 5; i++) bar.appendChild(el("i", i <= n ? "on t" + i : ""));
+    return bar;
+  }
+  function troLevelsCard(name, m) {
+    var card = el("div", "dm-card tro-card"), head = el("div", "tro-card-head");
+    var left = el("div", "tro-head-l");
+    left.appendChild(el("span", "tro-kicker", "Overall level"));
+    left.appendChild(el("b", "tro-overall", m.overall === null ? "Add all three lifts" : troLevelName(m.overall)));
+    var bits = [m.clsLabel];
+    if (m.total !== null) bits.push(troKg(m.total) + " total");
+    if (m.gl !== null) bits.push(m.gl.toFixed(1) + " GL points");
+    left.appendChild(el("span", "tro-sub", bits.join(" · ")));
+    head.appendChild(left);
+    if (troCanEdit(name)) head.appendChild(troBtn("chip sm", "Edit", function () { troOpenForm("Standards and bodyweight", troSetupForm(name, function () { troCloseForm(); renderTrophies(); })); }));
+    card.appendChild(head);
+    TRO_LIFTS.forEach(function (lf) {
+      var L = m.lifts[lf], row = el("div", "tro-lift");
+      var a = el("div", "tro-lift-a");
+      a.appendChild(el("b", null, TRO_LIFT_NAME[lf]));
+      a.appendChild(el("span", null, L.kg > 0 ? troKg(L.kg) + " · from " + L.src : "No number yet. Add your 1RM in Overview."));
+      row.appendChild(a);
+      var b = el("div", "tro-lift-b");
+      b.appendChild(el("b", null, L.kg > 0 ? troLevelName(L.lvl) : "—"));
+      b.appendChild(troLevelBar(L.lvl));
+      row.appendChild(b);
+      if (L.kg > 0 && L.next) row.appendChild(el("p", "tro-next", TRO_TIERS[L.lvl] + " at " + troKg(L.next) + " · " + troKg(Math.max(0, L.next - L.kg)) + " to go"));
+      else if (L.kg > 0) row.appendChild(el("p", "tro-next", "Top level reached for your class."));
+      card.appendChild(row);
+    });
+    card.appendChild(el("p", "tro-foot", "Standards come from lifts logged by the Strength Level community, not from competitions, and the women’s sample is smaller. Treat them as a guide."));
+    return card;
+  }
+  function troPrCard(name) {
+    var t = troEnsure(name), card = el("div", "dm-card tro-card"), head = el("div", "tro-card-head");
+    var left = el("div", "tro-head-l");
+    left.appendChild(el("b", "tro-card-title", "Personal records"));
+    left.appendChild(el("span", "tro-sub", "A PR counts once your coach confirms it."));
+    head.appendChild(left);
+    if (troCanEdit(name)) head.appendChild(troBtn("chip sm primary", "Log a PR", function () { troOpenForm("Log a PR", troPrForm(name)); }));
+    card.appendChild(head);
+    var coach = troIsCoach(name), list = t.prs.slice().sort(function (a, b) { return String(b.on).localeCompare(String(a.on)); });
+    if (!list.length) card.appendChild(el("p", "dm-import-hint", "No PRs logged yet."));
+    list.slice(0, 8).forEach(function (r) {
+      var row = el("div", "tro-pr");
+      row.appendChild(el("span", "tro-pr-t", troPrLabel(r)));
+      row.appendChild(el("span", "tro-pr-s" + (r.conf ? " ok" : ""), r.conf ? "Confirmed" : "Waiting for coach"));
+      if (!r.conf && coach) row.appendChild(troBtn("chip sm primary", "Confirm", function () { troConfirmPr(name, r.id); }));
+      if (coach || (!r.conf && troCanEdit(name))) row.appendChild(troBtn("chip sm danger", "Remove", function () { troRemovePr(name, r.id); }));
+      card.appendChild(row);
+    });
+    return card;
+  }
+  function troItem(name, c, isNew) {
+    var b = el("button", "tro-item" + (c.earned ? " earned" : " locked") + (isNew ? " fresh" : ""));
+    b.type = "button";
+    b.setAttribute("data-trophy", c.id);
+    b.appendChild(troMedal(c.tier, c.glyph, !c.earned, false));
+    var txt = el("span", "tro-item-t");
+    txt.appendChild(el("b", null, c.name));
+    txt.appendChild(el("span", null, c.earned ? (c.on ? troDateLabel(c.on) : "Earned") : (c.need || c.desc)));
+    b.appendChild(txt);
+    if (isNew) b.appendChild(el("span", "tro-new", "New"));
+    b.onclick = function () {
+      if (c.earned) troShowTrophy(name, c.id);
+      else toast(c.name + ": " + c.desc);
+    };
+    return b;
+  }
+  function renderTrophies() {
+    var name = current, p = PROFILES[name], body = $("troBody");
+    clear(body);
+    if (!p) return;
+    if (troCanRecord(name)) troCheck(name);
+    var m = troModel(name), list = troCatalog(name, m), t = troEnsure(name);
+    $("troSub").textContent = p.name + (m.ready ? " · " + m.clsLabel : "");
+    var fresh = {};
+    Object.keys(t.earned).forEach(function (id) { if (t.earned[id].seen === false) fresh[id] = true; });
+
+    var have = list.filter(function (c) { return c.earned; }).length;
+    var top = el("div", "tro-top");
+    top.appendChild(el("span", "tro-count", have + " of " + list.length + " trophies"));
+    var seg = el("div", "seg tro-seg");
+    [["all", "All"], ["earned", "Earned"]].forEach(function (o) {
+      var b = el("button", "seg-btn" + (troUI.filter === o[0] ? " active" : ""), o[1]);
+      b.type = "button"; b.setAttribute("data-filter", o[0]);
+      b.onclick = function () { troUI.filter = o[0]; renderTrophies(); };
+      seg.appendChild(b);
+    });
+    top.appendChild(seg);
+    body.appendChild(top);
+
+    if (!m.ready) {
+      var setup = el("div", "dm-card tro-card");
+      setup.appendChild(el("b", "tro-card-title", "Set your standards"));
+      setup.appendChild(el("p", "dm-import-hint", troCanEdit(name)
+        ? "Pick men’s or women’s standards and enter a bodyweight to see your strength level."
+        : "Their standards and bodyweight aren’t set yet."));
+      if (troCanEdit(name)) setup.appendChild(troSetupForm(name, renderTrophies));
+      body.appendChild(setup);
+    } else body.appendChild(troLevelsCard(name, m));
+    body.appendChild(troPrCard(name));
+
+    if (troIsCoach(name)) {
+      var tools = el("div", "acct-acts tro-tools");
+      tools.appendChild(troBtn("chip sm primary", "Give an award", function () { troOpenForm("Give an award", troAwardForm(name)); }));
+      body.appendChild(tools);
+    }
+    TRO_GROUPS.forEach(function (gp) {
+      var items = list.filter(function (c) { return c.group === gp.key && (troUI.filter === "all" || c.earned); });
+      if (!items.length) return;
+      body.appendChild(el("p", "sec-cap", gp.title));
+      body.appendChild(el("p", "tro-gsub", gp.sub));
+      var grid = el("div", "tro-grid");
+      items.forEach(function (c) { grid.appendChild(troItem(name, c, !!fresh[c.id])); });
+      body.appendChild(grid);
+    });
+    if (troUI.error) body.appendChild(el("p", "dm-import-hint", "Trophies couldn’t sync: " + troUI.error));
+    // What's new has been seen now; it stays marked on this draw.
+    var ids = Object.keys(fresh);
+    if (ids.length) { ids.forEach(function (id) { t.earned[id].seen = true; }); saveTro(); renderSidebar(); }
+  }
+
+  // ---- Sync with the cloud (after the log and messages, in syncNow)
+  function troApplySettings(id, name) {
+    var s = MSG.settings[id], t = troEnsure(name);
+    if (!s || t.prefs.dirty) return false;
+    var sex = s.sex === "m" || s.sex === "f" ? s.sex : "", bw = parseFloat(s.bodyweight) || 0, changed = false;
+    if (sex && t.prefs.sex !== sex) { t.prefs.sex = sex; changed = true; }
+    if (bw && t.prefs.bw !== bw) { t.prefs.bw = bw; changed = true; }
+    return changed;
+  }
+  function troPull(api) {
+    var idx = cloudIndex(), ids = Object.keys(idx), changed = false;
+    if (!ids.length) return Promise.resolve(false);
+    var fullT = !TRO_CUR.t, fullP = !TRO_CUR.p;
+    var since = function (c) { return c ? new Date(tms(c) - CURSOR_OVERLAP_MS).toISOString() : null; };
+    return Promise.all([
+      api.fetch("lifter_trophies", { since: since(TRO_CUR.t), sinceCol: "created_at", orderBy: "created_at" }),
+      api.fetch("lifter_prs", { since: since(TRO_CUR.p), sinceCol: "updated_at", orderBy: "updated_at" })
+    ]).then(function (r) {
+      var topT = TRO_CUR.t || "", topP = TRO_CUR.p || "", onServerT = {}, onServerP = {};
+      (r[0] || []).forEach(function (row) {
+        if (tms(row.created_at) > tms(topT)) topT = row.created_at;
+        var name = idx[row.lifter_id];
+        if (!name) return;
+        (onServerT[row.lifter_id] = onServerT[row.lifter_id] || {})[row.trophy] = true;
+        var t = troEnsure(name), e = t.earned[row.trophy];
+        var given = row.awarded_by || "", theirs = isAthleteOf(row.lifter_id) && given && given !== me();
+        if (!e) {
+          t.earned[row.trophy] = { at: row.created_at, on: row.earned_on, cls: row.cls || "", note: row.note || "", title: row.title || "", by: given, rid: row.id, sent: true, seen: !theirs };
+          changed = true;
+        } else {
+          if (!e.sent || e.rid !== row.id) { e.sent = true; e.rid = row.id; changed = true; }
+          if (given && e.by !== given) { e.by = given; changed = true; }
+        }
+      });
+      (r[1] || []).forEach(function (row) {
+        if (tms(row.updated_at) > tms(topP)) topP = row.updated_at;
+        var name = idx[row.lifter_id];
+        if (!name) return;
+        (onServerP[row.lifter_id] = onServerP[row.lifter_id] || {})[row.id] = true;
+        var t = troEnsure(name), cur = null, conf = !!row.confirmed_by;
+        t.prs.forEach(function (x) { if (x.id === row.id) cur = x; });
+        if (!cur) {
+          t.prs.push({ id: row.id, lift: row.lift, kg: Number(row.kg), reps: row.reps, on: row.on_date, by: row.created_by || "", conf: conf, sent: true });
+          changed = true;
+        } else {
+          if (!cur.sent) { cur.sent = true; changed = true; }
+          if (cur.conf !== conf && !cur.confPending) { cur.conf = conf; changed = true; }
+        }
+      });
+      TRO_CUR.t = topT || "1970-01-01T00:00:00.000Z";
+      TRO_CUR.p = topP || "1970-01-01T00:00:00.000Z";
+      // A full read also shows what was taken back (awards) or removed (PRs) elsewhere.
+      ids.forEach(function (id) {
+        var name = idx[id], t = troEnsure(name), keep;
+        if (fullT) {
+          Object.keys(t.earned).forEach(function (tid) {
+            var e = t.earned[tid];
+            if (tid.indexOf("award:") === 0 && e.sent && e.rid && !(onServerT[id] && onServerT[id][tid])) { delete t.earned[tid]; changed = true; }
+          });
+        }
+        if (fullP) {
+          keep = t.prs.filter(function (x) { return !x.sent || (onServerP[id] && onServerP[id][x.id]); });
+          if (keep.length !== t.prs.length) { t.prs = keep; changed = true; }
+        }
+        if (troApplySettings(id, name)) changed = true;
+      });
+      if (changed) saveTro();
+      return changed;
+    });
+  }
+  function troAnnounce(api, id, tids) {
+    var rows = tids.map(function (tid) { return { lifter_id: id, kind: "trophy", week: tid, day: "" }; });
+    return api.upsert("lifter_events", rows, "lifter_id,kind,week,day", true).then(function () {
+      if (api.invoke) return api.invoke("notify", { event: rows[0] }).catch(function () {});
+    });
+  }
+  function troPushLifter(api, id, name) {
+    var t = TRO[name];
+    if (!t) return Promise.resolve(false);
+    var steps = Promise.resolve(), did = false, athlete = isAthleteOf(id), coach = isCoachOf(id);
+    var rows = [], ids = [], tell = [];
+    Object.keys(t.earned).forEach(function (tid) {
+      var e = t.earned[tid], award = tid.indexOf("award:") === 0;
+      if (e.sent || (award ? !coach : !athlete)) return;
+      if (!e.rid) e.rid = newUuid();
+      rows.push({ id: e.rid, lifter_id: id, trophy: tid, earned_on: e.on || troToday(), cls: e.cls || "", title: e.title || "", note: e.note || "" });
+      ids.push(tid);
+      if (e.notify) tell.push(tid);
+    });
+    if (rows.length) {
+      did = true;
+      steps = steps.then(function () { return api.upsert("lifter_trophies", rows, "lifter_id,trophy", true); }).then(function () {
+        ids.forEach(function (tid) { if (t.earned[tid]) { t.earned[tid].sent = true; t.earned[tid].notify = false; } });
+        saveTro();
+        // Best effort: the trophy is saved either way.
+        if (tell.length) return troAnnounce(api, id, tell).catch(function () {});
+      });
+    }
+    var prs = t.prs.filter(function (r) { return !r.sent && (athlete || coach); });
+    if (prs.length) {
+      did = true;
+      steps = steps.then(function () {
+        return api.upsert("lifter_prs", prs.map(function (r) { return { id: r.id, lifter_id: id, lift: r.lift, kg: r.kg, reps: r.reps, on_date: r.on || troToday() }; }), "id", true);
+      }).then(function () { prs.forEach(function (r) { r.sent = true; }); saveTro(); });
+    }
+    t.prs.filter(function (r) { return r.sent && r.confPending && coach; }).forEach(function (r) {
+      did = true;
+      steps = steps.then(function () { return api.update("lifter_prs", r.id, { confirmed_by: me() }); }).then(function () { r.confPending = false; saveTro(); });
+    });
+    t.gone.prs.slice().forEach(function (pid) {
+      did = true;
+      steps = steps.then(function () { return api.remove("lifter_prs", "id", pid); }).then(function () { t.gone.prs = t.gone.prs.filter(function (x) { return x !== pid; }); saveTro(); });
+    });
+    t.gone.trophies.slice().forEach(function (rid) {
+      did = true;
+      steps = steps.then(function () { return api.remove("lifter_trophies", "id", rid); }).then(function () { t.gone.trophies = t.gone.trophies.filter(function (x) { return x !== rid; }); saveTro(); });
+    });
+    if (t.prefs.dirty && (athlete || coach)) {
+      did = true;
+      steps = steps.then(function () {
+        return api.rpc("set_trophy_profile", { p_lifter: id, p_sex: t.prefs.sex || null, p_bw: t.prefs.bw || null });
+      }).then(function () { t.prefs.dirty = false; saveTro(); });
+    }
+    return steps.then(function () { return did; });
+  }
+  function troPush(api) {
+    var idx = cloudIndex(), chain = Promise.resolve(), did = false;
+    Object.keys(idx).forEach(function (id) {
+      chain = chain.then(function () { return troPushLifter(api, id, idx[id]); }).then(function (d) { if (d) did = true; });
+    });
+    return chain.then(function () { return did; });
+  }
+  function troSync(api) {
+    if (!CLOUD.user) return Promise.resolve();
+    return troPull(api).then(function (pulled) {
+      return troPush(api).then(function (pushed) {
+        troUI.error = "";
+        if (pulled || pushed) troRefreshUI();
+      });
+    }).catch(function (err) { troUI.error = (err && err.message) || "Trophies couldn’t sync"; });
+  }
+  // Something came in: what a coach confirmed or gave may unlock or award things.
+  function troRefreshUI() {
+    var seen = {};
+    athleteNames().concat(current ? [current] : []).forEach(function (n) {
+      if (seen[n] || !PROFILES[n]) return;
+      seen[n] = true;
+      try { troCheck(n); } catch (e) {}
+    });
+    renderSidebar();
+    if (inTrophies && !anyModalOpen() && !(document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName))) renderTrophies();
+    // An award that arrived from a coach.
+    var n = current;
+    if (n && PROFILES[n] && PROFILES[n].cloudId && isAthleteOf(PROFILES[n].cloudId) && !inTrophies) {
+      var t = troEnsure(n), ids = Object.keys(t.earned).filter(function (id) { var e = t.earned[id]; return e.seen === false && e.by && e.by !== me(); });
+      if (ids.length) troCelebrate(n, ids);
+    }
+  }
+  function troWire() {
+    $("troClose").onclick = troCloseDialog;
+    $("troNext").onclick = function () { troCloseDialog(); };
+    $("troShare").onclick = troShare;
+    $("troSave").onclick = troSaveImage;
+    $("troTakeBack").onclick = troTakeBack;
+    $("troShowName").onchange = function () {
+      try { localStorage.setItem(STORE_TRO_NAME, $("troShowName").checked ? "1" : "0"); } catch (e) {}
+      troPaintCard();
+    };
+    $("troFormClose").onclick = troCloseForm;
+    var down = false;
+    [["troScrim", troCloseDialog], ["troFormScrim", troCloseForm]].forEach(function (s) {
+      var sc = $(s[0]);
+      sc.addEventListener("pointerdown", function (e) { down = e.target === sc; });
+      sc.addEventListener("click", function (e) { if (down && e.target === sc) s[1](); down = false; });
+    });
+    $("troBack").onclick = function () { openOverview(); };
   }
 
   // ───────────────────────── Theme ─────────────────────────
@@ -8361,6 +9539,7 @@
     CUSTOM = safeRead(STORE_CUSTOM, {}) || {};
     WKNOTES = safeRead(STORE_WKNOTES, {}) || {};
     DMNOTES = safeRead(STORE_DMNOTES, {}) || {};
+    troLoad();
     ORDER = safeRead(STORE_ORDER, []);
     if (!Array.isArray(ORDER)) ORDER = [];
     cloudBoot();   // before the first render: it decides who sees Manage program
@@ -8552,6 +9731,7 @@
     });
     $("msgBack").onclick = openOverview;
     $("inboxBack").onclick = openOverview;
+    troWire();
     $("acctClose").onclick = closeAcct;
     $("aboutVer").textContent = APP_VERSION;
     $("aboutParts").textContent = "Program Hub " + HUB_BUILD + " · Velocity Tracker " + VBT_BUILD;

@@ -30,7 +30,7 @@ const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE
   auth: { persistSession: false },
 });
 
-type Note = { to: string[]; pref: "messages" | "sessions" | "weeks"; body: string; tag: string; url: string };
+type Note = { to: string[]; pref: "messages" | "sessions" | "weeks" | "trophies"; body: string; tag: string; url: string };
 type Account = { user_id: string; role: string; coach_status: string; display_name: string; email: string };
 
 Deno.serve(async (req) => {
@@ -114,6 +114,25 @@ async function forEvent(uid: string, body: { event_id?: string; event?: Record<s
       to: coaches.map((c) => c.id).filter((c) => c !== uid), pref: "sessions",
       body: `${lifter.name} finished week ${ev.week} · day ${ev.day}`, tag: `done-${ev.id}`,
       url: `${SITE}power-logs.html?open=week&lifter=${ev.lifter_id}&week=${encodeURIComponent(ev.week)}`,
+    };
+  }
+  if (ev.kind === "trophy") {
+    // Names only, never the trophy: banners show on locked screens, and
+    // trophies are the lifter's to share.
+    if (uid === lifter.lifter_user_id) {
+      const coaches = await activeCoaches(ev.lifter_id);
+      return {
+        to: coaches.map((c) => c.id).filter((c) => c !== uid), pref: "trophies",
+        body: `${lifter.name} earned a trophy`, tag: `trophy-${ev.lifter_id}`,
+        url: `${SITE}power-logs.html?open=trophies&lifter=${ev.lifter_id}`,
+      };
+    }
+    if (!lifter.lifter_user_id) return null;
+    const giver = (await activeCoaches(ev.lifter_id)).find((c) => c.id === uid);
+    return {
+      to: [lifter.lifter_user_id], pref: "trophies",
+      body: `${coachLabel(giver?.acc)} gave you a trophy`, tag: `trophy-${ev.lifter_id}`,
+      url: `${SITE}power-logs.html?open=trophies&lifter=${ev.lifter_id}`,
     };
   }
   if (ev.kind === "new_week" && lifter.lifter_user_id) {

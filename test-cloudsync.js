@@ -333,6 +333,8 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   A.$("confirmYes").click();
   check("revoked", await until(async () =>
     (await server.sql("select coach_status from public.accounts where email = 'coach@test.invalid'"))[0].coach_status === "revoked"));
+  const delBtn = () => A.btn("Delete request", A.$("acctBody"));
+  check("the owner gets Delete request on a removed coach", await until(() => !!delBtn()));
   A.close();
   C.sync(); await C.settle();
   check("the coach loses file loading with it", !C.files());
@@ -345,6 +347,24 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   A.$("dmShareBtn").click(); await tick(50);
   check("...where Sharing shows no email now", /Add the email Tom signs in with/.test(A.$("dmShare").textContent) && /No login for Tom/.test(A.$("dmShareBtn").textContent));
   A.$("shareClose").click();
+
+  console.log("\nThe owner deletes the removed coach's request");
+  const coachStatus = async () => (await server.sql("select coach_status from public.accounts where email = 'coach@test.invalid'"))[0].coach_status;
+  A.$("acctBtn").click(); await tick();
+  await until(() => !!delBtn());
+  delBtn().click(); await tick();
+  check("it asks first, saying they become an ordinary account", A.$("confirmScrim").classList.contains("show") && /ordinary account/.test(A.$("confirmBody").textContent), A.$("confirmBody").textContent);
+  A.$("confirmNo").click(); await tick(200);
+  check("Cancel leaves it", (await coachStatus()) === "revoked");
+  delBtn().click(); await tick();
+  A.$("confirmYes").click();
+  check("confirmed: an ordinary account again", await until(async () => (await coachStatus()) === "none"));
+  check("...gone from the owner's Coaches list", await until(() => !/coach@test\.invalid/.test(A.$("acctBody").textContent)), A.$("acctBody").textContent.slice(0, 200));
+  A.close();
+  C.sync(); await C.settle();
+  C.$("acctBtn").click(); await tick();
+  check("the person can ask to be a coach again", await until(() => !!C.btn("I’m a coach: request access", C.$("acctBody"))));
+  C.close();
   A.nav("Overview");
   D.sync(); await D.settle();
   check("and Tom's phone loses it", !D.names().includes("Tom"), D.names().join());

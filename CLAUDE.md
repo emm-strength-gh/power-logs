@@ -198,6 +198,9 @@ private script kept outside it (`private.settings`).
   coach who created the lifter (`lifterMeta.createdBy`) or a local-only lifter; `paySync()` after
   `troSync()` in `syncNow()`; table `lifter_payments` (RLS `private.made_lifter`). The month
   editor reuses the Trophies form dialog (`troOpenForm`).
+- New lifters from the app: `openNewLifter()` (Lifters page) → `createLifter()` builds the profile,
+  `addEmptyWeek`/`addEmptyDay`, opens Manage Program and calls `uploadLifter()` when signed in as a
+  coach. Weight class: `cleanClass()`/`setClass()` in the Lifter & program card.
 - In-app notices (the "In-app notices" section, `#noticeBar` at the top of `.content`):
   `NT` (`spotter.notices.v1`) holds `{id, kind, lifter, thread?, week?, who, text, at}`,
   made by `ntFromMessage`/`ntFromEvent` (in `pullMessages`), `ntFromWeekNote` (in

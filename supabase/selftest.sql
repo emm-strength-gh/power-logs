@@ -198,6 +198,17 @@ begin
     and pg_temp.act(c2, format($q$update public.lifters set name = 'SELFTEST hacked' where id = %L$q$, a)) in ('ok 0'));
   v := pg_temp.val(c2, $q$select public.request_coach_access('again')$q$);
   perform pg_temp.ok('...and cannot simply ask again', v = 'revoked', v);
+  v := pg_temp.val(c1, format($q$select public.decide_coach(%L, 'cleared')$q$, c2));
+  perform pg_temp.ok('only the owner deletes a request', v like 'refused%', v);
+  v := pg_temp.val(o, format($q$select public.decide_coach(%L, 'cleared')$q$, p));
+  perform pg_temp.ok('a request still pending cannot be deleted (approve or decline it)', v like 'refused%', v);
+  v := pg_temp.val(o, format($q$select public.decide_coach(%L, 'cleared')$q$, c2));
+  perform pg_temp.ok('the owner deletes a removed coach''s request: an ordinary account again',
+    v = 'none' and (select coach_status from public.accounts where user_id = c2) = 'none'
+    and (select requested_at from public.accounts where user_id = c2) is null, v);
+  v := pg_temp.val(c2, $q$select public.request_coach_access('Again')$q$);
+  perform pg_temp.ok('...who can ask to be a coach again', v = 'pending', v);
+  perform pg_temp.val(o, format($q$select public.decide_coach(%L, 'revoked')$q$, c2));
 
   -- Linking later, unlinking, deleting
   update auth.users set email_confirmed_at = now() where id = u;

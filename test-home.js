@@ -31,7 +31,7 @@ function world(over = {}) {
     session: async () => (w.signedIn ? { id: ME, email: w.email } : null),
     onSessionChange() {}, sendCode: async () => {}, verifyCode: async () => { w.signedIn = true; return { id: ME, email: w.email }; }, signOut: async () => { w.signedIn = false; },
     fetch: async table => table === "accounts" ? [{ user_id: ME, email: w.email, role: w.role, coach_status: w.coach_status, display_name: w.display_name }] : [],
-    upsert: async () => {}, remove: async () => {}, invoke: async () => ({ sent: 0 }), insert: async () => {}, update: async () => {}, rpc: async () => null, listen: () => () => {},
+    upsert: async () => {}, remove: async () => {}, invoke: async () => ({ sent: 0 }), insert: async (t, rows) => { if (t === "lifters") w.inserted = (w.inserted || []).concat(rows); }, update: async () => {}, rpc: async () => null, listen: () => () => {},
   };
   return w;
 }
@@ -119,6 +119,26 @@ async function boot(wd, storage = {}) {
   [...A.doc.querySelectorAll("#liftersBody .msg-thread")].find(r => /Tom/.test(r.textContent)).click(); await tick(100);
   A.$("ovHome").click(); await tick(50);
   check("...and from the Home button on the Overview", A.active() === "viewHome");
+
+  console.log("\nAdd new lifter / program");
+  A.nav("Lifters"); await tick(50);
+  check("the Lifters page has an Add button", !!A.$("addLifterBtn") && /Add new lifter \/ program/.test(A.$("addLifterBtn").textContent));
+  A.$("addLifterBtn").click(); await tick(50);
+  check("it opens a form for the lifter's profile", A.$("troFormScrim").classList.contains("show") && ["nlName", "nlBlock", "nlCls", "nlBw", "nlSquat", "nlBench", "nlDeadlift"].every(id => !!A.$(id)));
+  A.btn("Create", A.$("troFormBody")).click(); await tick(50);
+  check("a name is required", A.$("troFormScrim").classList.contains("show") && /name/.test(A.$("toastMsg").textContent));
+  A.$("nlName").value = "Tom";
+  A.btn("Create", A.$("troFormBody")).click(); await tick(50);
+  check("...and must be new", A.$("troFormScrim").classList.contains("show") && /already a lifter called Tom/.test(A.$("toastMsg").textContent));
+  A.$("nlName").value = "  Jo   Reyes "; A.$("nlBlock").value = "Off-season"; A.$("nlCls").value = "63kg"; A.$("nlBw").value = "61.5";
+  A.$("nlSquat").value = "120"; A.$("nlDeadlift").value = "150";
+  A.btn("Create", A.$("troFormBody")).click(); await tick(200);
+  const jo = JSON.parse(A.w.localStorage.getItem("spotter.profiles.v1"))["Jo Reyes"];
+  check("the lifter is created with their profile", !!jo && jo.block === "Off-season" && jo.classWt === "63" && jo.bodyweight === "61.5" && jo.maxes.Squat === "120" && jo.maxes.Deadlift === "150" && !jo.maxes.Bench, JSON.stringify(jo && { b: jo.block, c: jo.classWt, bw: jo.bodyweight, m: jo.maxes }));
+  check("...with an empty program: Week 1, Day 1, no exercises", jo.weeks.length === 1 && jo.weeks[0].week === "1" && jo.weeks[0].days.length === 1 && jo.weeks[0].days[0].rows.length === 0);
+  check("...and it opens in Manage Program to be built", A.active() === "viewDayMgr" && A.$("dmBody").querySelector(".dm-progcard input[aria-label='Lifter name']").value === "Jo Reyes");
+  check("...and appears in the list of lifters", (A.nav("Lifters"), [...A.doc.querySelectorAll("#liftersBody .msg-thread")].some(r => /Jo Reyes/.test(r.textContent))));
+  check("signed in as a coach, it's uploaded to the account", WD.inserted && WD.inserted.some(r => r.name === "Jo Reyes"), JSON.stringify(WD.inserted || []).slice(0, 200));
 
   console.log("\nInbox");
   A.btn("Inbox", A.$("homeComms")).click(); await tick(100);

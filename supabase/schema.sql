@@ -325,7 +325,15 @@ create or replace function public.decide_coach(p_user uuid, p_decision text) ret
 language plpgsql security definer set search_path = '' as $$
 begin
   if not private.is_owner() then raise exception 'only the owner can approve coaches'; end if;
-  if p_decision not in ('approved', 'declined', 'revoked') then raise exception 'bad decision'; end if;
+  if p_decision not in ('approved', 'declined', 'revoked', 'cleared') then raise exception 'bad decision'; end if;
+  -- 'cleared': a declined or removed request is deleted. The account is an ordinary
+  -- one again (a lifter, if they have a program) and may ask to be a coach again.
+  if p_decision = 'cleared' then
+    update public.accounts set coach_status = 'none', requested_at = null, decided_at = null
+     where user_id = p_user and role <> 'owner' and coach_status in ('declined', 'revoked');
+    if not found then raise exception 'only a declined or removed request can be deleted'; end if;
+    return 'none';
+  end if;
   update public.accounts set coach_status = p_decision, decided_at = now()
    where user_id = p_user and role <> 'owner';
   if not found then raise exception 'no such coach'; end if;

@@ -175,6 +175,14 @@ private script kept outside it (`private.settings`).
   lifters are always their program's `#Name`.
   "Clear": owner-only RPC `clear_thread` deletes a thread's messages and stamps
   `lifter_settings.cleared[thread]`, which other devices use to drop their copies.
+- In-app notices (the "In-app notices" section, `#noticeBar` at the top of `.content`):
+  `NT` (`spotter.notices.v1`) holds `{id, kind, lifter, thread?, week?, who, text, at}`,
+  made by `ntFromMessage`/`ntFromEvent` (in `pullMessages`), `ntFromWeekNote` (in
+  `applyLogRow`) and `ntFromProgram` (in `applyLifterRow`, athletes only, diffing the
+  old and new program for new weeks/days). `NT.base` flags make the first sync of each
+  source silent. `renderNotices()` groups by kind + lifter (+ thread) and is redrawn
+  from `setCloudStatus()`; reading clears them (`markRead`, `openTrophies`, `openWeek`).
+  Reset with `MSG` on sign-out / account change. No database change.
 - Trophies and strength levels (the "Trophies and strength levels" section of
   power-logs.html, before Theme): `troDefs()` is the catalogue (every trophy with its
   `test(model)`), `troModel()` the lifter's numbers (best of 1RM, confirmed PR, Epley
@@ -243,10 +251,11 @@ node test-cloudsync.js  # accounts + sync end to end, several jsdom devices on o
 node test-messaging.js  # messages, finished sessions, new-week alerts, push (notify function run in-process)
 node test-trophies.js   # Trophies: standards by IPF class, levels, clubs, streaks, PRs, awards, celebration, share image
 node test-trophysync.js # Trophies across devices on the real rules, plus their notifications
+node test-notices.js    # In-app notice banner: kinds, who wrote it, x, stacking
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all seventeen. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all eighteen. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of power-logs.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

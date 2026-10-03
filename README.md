@@ -37,6 +37,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-messaging.js` | Messages, finished sessions, new-week alerts and notifications end to end, with the notify function run in-process — `node test-messaging.js`. |
 | `test-trophies.js` | Trophies and strength levels: men's and women's standards, class limits, levels, clubs, GL points, Done-set estimates, streaks, comebacks, blocks, PRs, awards, the celebration and the share image — `node test-trophies.js`. |
 | `test-trophysync.js` | Trophies across devices on the real rules: earned trophies reach the coach, PR confirmation, awards given and taken back, standards, the notifications, and a trophy problem never holding up the log — `node test-trophysync.js`. |
+| `test-notices.js` | The in-app notice banner: messages, finished days, notes (coach or lifter), added weeks, trophies, the x, stacking and Show more / Clear all — `node test-notices.js`. |
 | `test-cloudfake.js` | Not a test: the stand-in Supabase the tests plug in (`window.__spotterCloud`), and the in-process runner for the notify function. |
 | `test-vbt.js` | Velocity Tracker smoke test — `node test-vbt.js`. |
 | `make_icons.py` | Regenerates the icons from `icons/_source.png`. |
@@ -198,6 +199,24 @@ The Web Push **public** key is in `power-logs.html`; the private one is a secret
 the function in Supabase, never in this repo. Setting the function up is a one-off
 done in the Supabase dashboard (the private setup guide covers it). Until it is,
 messages still work, just without banners.
+
+## The notice banner
+
+Signed in, anything that happened while you were away shows as a banner at the top of
+the app, on every screen: new **messages**, a lifter's **finished days** (coaches), new
+**trophies and awards**, **weeks and days a coach added** (lifters; it says which, so
+no need for the coach to press Notify), and **weekly notes**, saying whether a coach
+or the lifter (e.g. "Tom (lifter)") wrote it. Each row has an **x** to close it;
+tapping the row opens the place it's about and clears it. Nothing is shown for your
+own actions.
+
+Away for days, it stays short: notices stack by lifter and kind, newest first, so a
+week of ticks is one row ("Tom finished 4 days", with the latest underneath), three
+rows show at a time with **Show N more** for the rest, and **Clear all** appears once
+there are two or more. Messages clear themselves once read, trophies once Trophies is
+opened, and the rest once their week is opened. Notices are kept on the device for up
+to 30 days (`spotter.notices.v1`), are made as a sync brings in something someone else
+did (the first sync on a new device is silent), and are dropped on sign-out.
 
 ## Trophies and strength levels
 

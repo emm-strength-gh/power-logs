@@ -223,6 +223,13 @@ begin
   perform pg_temp.ok('their coach replies there', r = 'ok 1', r);
   perform pg_temp.ok('...stamped as the coach, whatever the app claims',
     (select sender_id from public.messages where lifter_id = m and body = 'hi Sam') = c1);
+  r := pg_temp.act(l, format($q$insert into public.messages (lifter_id, thread, body, reply_to) values (%L, 'team', 'replying to Sam', (select id from public.messages where lifter_id = %L and body = 'hi Sam'))$q$, m, m));
+  perform pg_temp.ok('a reply points at the message it answers',
+    r = 'ok 1' and (select reply_to from public.messages where lifter_id = m and body = 'replying to Sam') = (select id from public.messages where lifter_id = m and body = 'hi Sam'), r);
+  r := pg_temp.act(l, format($q$insert into public.messages (lifter_id, thread, body, reply_to) values (%L, 'team', 'replying to nothing', gen_random_uuid())$q$, m));
+  perform pg_temp.ok('...a pointer to a message that isn''t in the thread is dropped, not refused',
+    r = 'ok 1' and (select reply_to from public.messages where lifter_id = m and body = 'replying to nothing') is null, r);
+  delete from public.messages where lifter_id = m and body in ('replying to Sam', 'replying to nothing');
   r := pg_temp.act(x, format($q$insert into public.messages (lifter_id, thread, body) values (%L, 'team', 'spam')$q$, m));
   perform pg_temp.ok('a stranger cannot post', r like 'refused%', r);
   perform pg_temp.ok('...or read', pg_temp.cnt(x, 'select * from public.messages') = 0);

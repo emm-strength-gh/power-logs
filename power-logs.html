@@ -559,7 +559,36 @@
   .msg-bubble.mine a { color: #fff; }
   .msg-time { display: block; font-size: 11px; color: var(--faint); margin-top: 3px; text-align: right; }
   .msg-bubble.mine .msg-time { color: rgba(255,255,255,.75); }
-  .msg-compose { position: sticky; bottom: 0; display: flex; gap: 8px; align-items: flex-end; padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); background: var(--bg); }
+  .msg-dock { position: sticky; bottom: 0; padding-bottom: calc(10px + env(safe-area-inset-bottom)); background: var(--bg); }
+  .msg-compose { display: flex; gap: 8px; align-items: flex-end; padding: 10px 0 0; }
+  .msg-line { display: flex; align-items: center; gap: 6px; align-self: flex-start; max-width: 92%; touch-action: pan-y; transition: transform .15s ease; }
+  .msg-line.mine { align-self: flex-end; }
+  .msg-line .msg-bubble { align-self: auto; max-width: 100%; min-width: 0; }
+  .msg-reply { flex: none; width: 28px; height: 28px; display: grid; place-items: center; background: transparent; color: var(--faint); border-radius: 50%; opacity: .75; }
+  .msg-reply:hover { background: var(--surface); color: var(--ink); opacity: 1; }
+  .msg-reply svg { width: 16px; height: 16px; }
+  .msg-quote { display: block; width: 100%; margin: 0 0 6px; padding: 5px 9px; text-align: left; font: inherit; color: inherit; background: rgba(0,0,0,.05); border-left: 3px solid var(--daily); border-radius: 8px; }
+  .msg-bubble.mine .msg-quote { background: rgba(255,255,255,.16); border-left-color: rgba(255,255,255,.7); }
+  .msg-quote b { display: block; font-size: 12px; font-weight: 600; }
+  .msg-quote span { display: block; font-size: 12.5px; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .msg-bubble.flash { animation: msgflash 1.2s ease; }
+  @keyframes msgflash { 0%, 65% { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); } 100% { box-shadow: 0 0 0 0 transparent; } }
+  .msg-replybar { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 6px 6px 6px 12px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--daily); border-radius: 12px; }
+  .msg-rb-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .msg-rb-t b { font-size: 12.5px; font-weight: 600; }
+  .msg-rb-t span { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .msg-rb-x { flex: none; width: 30px; height: 30px; display: grid; place-items: center; background: transparent; color: var(--muted); border-radius: 50%; }
+  .msg-rb-x svg { width: 16px; height: 16px; }
+  .msg-emoji-btn { flex: none; width: 40px; height: 40px; display: grid; place-items: center; background: var(--surface); color: var(--muted); border: 1px solid var(--border-strong); border-radius: 50%; }
+  .msg-emoji-btn[aria-expanded="true"] { color: var(--pine); border-color: var(--pine); }
+  .msg-emoji-btn svg { width: 22px; height: 22px; }
+  .msg-emoji { margin-top: 8px; padding: 4px 8px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+  .msg-emoji-tabs { display: flex; gap: 2px; margin-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .msg-emoji-tabs button { flex: 1; padding: 6px 0; font-size: 19px; background: transparent; border-radius: 8px 8px 0 0; border-bottom: 2px solid transparent; }
+  .msg-emoji-tabs button.on { border-bottom-color: var(--pine); }
+  .msg-emoji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); max-height: 168px; overflow-y: auto; }
+  .msg-emoji-grid button { padding: 4px 0; font-size: 24px; line-height: 1.25; background: transparent; border-radius: 8px; }
+  .msg-emoji-grid button:hover { background: var(--bg); }
   .msg-input { flex: 1; min-width: 0; resize: none; padding: 10px 12px; font: inherit; font-size: 15px; color: var(--ink); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px; }
   .msg-input:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(46,90,78,.12); }
   .week-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-bottom: 16px; }
@@ -1656,7 +1685,7 @@
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
   // major.minor.patch: minor goes up with each release (it carried on from the
   // old build counter, 30), patch for a fix to one.
-  var APP_VERSION = "1.42.0";
+  var APP_VERSION = "1.43.0";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -7839,7 +7868,7 @@
   // reads: how far I've read each thread; seen: how far everyone else has ("Seen").
   function msgDefaults() { return { list: [], reads: {}, seen: {}, settings: {}, events: [], outbox: [], cursors: {}, pushPrefs: null }; }
   var MSG = msgDefaults();
-  var msgUI = { thread: null, drafts: {} };   // thread: null = pick for me, "" = show the list
+  var msgUI = { thread: null, drafts: {}, reply: {}, emoji: false, emojiTab: "", startReply: null, replyKey: "" };   // thread: null = pick for me, "" = show the list
   var inMessages = false, inInbox = false;
   var pendingOpen = null;                    // from a tapped notification
   var pushState = { sub: null, checked: false, busy: false };
@@ -7950,6 +7979,7 @@
       (r[2] || []).forEach(function (m) {
         if (tms(m.created_at) > tms(top)) top = m.created_at;
         var row = { id: m.id, lifter_id: m.lifter_id, thread: m.thread, sender_id: m.sender_id, body: m.body, created_at: m.created_at };
+        if (m.reply_to) row.reply_to = m.reply_to;
         if (at[m.id] === undefined) { at[m.id] = MSG.list.length; MSG.list.push(row); out.msgs = true; ntFromMessage(row); }
         else {
           // Ours comes back with the server's time; take it (and clear "Sending…").
@@ -8004,7 +8034,9 @@
       chain = chain.then(function () {
         if (job.type === "msg") {
           var r = job.row;
-          return api.insert("messages", [{ id: r.id, lifter_id: r.lifter_id, thread: r.thread, body: r.body }])
+          var ins = { id: r.id, lifter_id: r.lifter_id, thread: r.thread, body: r.body };
+          if (r.reply_to) ins.reply_to = r.reply_to;
+          return api.insert("messages", [ins])
             .catch(function (err) { if (!/duplicate key|already exists|23505/i.test((err && err.message) || "")) throw err; })
             .then(function () {
               done(job);
@@ -8176,8 +8208,10 @@
     list.setAttribute("data-key", threadKey(id, t.th));
     body.appendChild(list);
     fillThread(list);
+    msgUI.startReply = null; msgUI.replyKey = "";
     if (t.live) {
-      var k = threadKey(id, t.th), form = el("div", "msg-compose");
+      var k = threadKey(id, t.th), dock = el("div", "msg-dock"), form = el("div", "msg-compose");
+      var replySlot = el("div"), emojiSlot = el("div");
       var inp = el("textarea", "msg-input");
       inp.id = "msgInput"; inp.rows = 2; inp.placeholder = t.th === "team" && isAthleteOf(id) ? "Message your coaches" : "Message";
       inp.setAttribute("aria-label", "Message");
@@ -8187,25 +8221,160 @@
         // Enter sends on a keyboard; phones use the button (their Enter is a new line).
         if (e.key === "Enter" && !e.shiftKey && !("ontouchstart" in window)) { e.preventDefault(); send(); }
       });
+      var emo = el("button", "msg-emoji-btn");
+      emo.type = "button";
+      emo.id = "msgEmojiBtn";
+      emo.setAttribute("aria-label", "Emoji");
+      emo.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9.5h.01M15 9.5h.01"/></svg>';
       var btn = el("button", "btn-solid", "Send");
       btn.type = "button";
+      function paintEmoji() {
+        clear(emojiSlot);
+        emo.setAttribute("aria-expanded", msgUI.emoji ? "true" : "false");
+        if (msgUI.emoji) emojiSlot.appendChild(emojiPanel(inp, paintEmoji));
+      }
+      function paintReply() {
+        clear(replySlot);
+        var rid = msgUI.reply[k], o = rid && msgById(rid);
+        if (!o) { delete msgUI.reply[k]; return; }
+        var bar = el("div", "msg-replybar"), tx = el("span", "msg-rb-t");
+        bar.id = "msgReplyBar";
+        tx.appendChild(el("b", null, "Replying to " + msgAuthor(o)));
+        tx.appendChild(el("span", null, ntSnippet(o.body)));
+        bar.appendChild(tx);
+        var x = el("button", "msg-rb-x");
+        x.type = "button";
+        x.setAttribute("aria-label", "Cancel reply");
+        x.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+        x.onclick = function () { delete msgUI.reply[k]; paintReply(); };
+        bar.appendChild(x);
+        replySlot.appendChild(bar);
+      }
+      msgUI.replyKey = k;
+      msgUI.startReply = function (mid) {
+        msgUI.reply[k] = mid;
+        paintReply();
+        try { inp.focus(); } catch (e) {}
+      };
+      emo.onclick = function () { msgUI.emoji = !msgUI.emoji; paintEmoji(); };
       function send() {
         var text = inp.value.trim();
         if (!text) return;
         if (text.length > 4000) { toast("That’s over 4,000 characters. Split it into two messages."); return; }
         var row = { id: newUuid(), lifter_id: id, thread: t.th, sender_id: me(), body: text, created_at: new Date().toISOString(), pending: true };
+        if (msgUI.reply[k] && msgById(msgUI.reply[k])) row.reply_to = msgUI.reply[k];
         MSG.list.push(row);
         MSG.outbox.push({ type: "msg", row: row });
         saveMsg();
         inp.value = ""; msgUI.drafts[k] = "";
+        delete msgUI.reply[k]; paintReply();
+        msgUI.emoji = false; paintEmoji();
         fillThread(list);
         scheduleSync(50);
       }
       btn.onclick = send;
+      form.appendChild(emo);
       form.appendChild(inp);
       form.appendChild(btn);
-      body.appendChild(form);
+      dock.appendChild(replySlot);
+      dock.appendChild(emojiSlot);
+      dock.appendChild(form);
+      body.appendChild(dock);
+      paintReply();
+      paintEmoji();
+      fillThread(list);   // again, now that replying is wired: the messages grow their reply buttons
     }
+  }
+  // ---- Replies and emoji
+  function msgById(mid) {
+    for (var i = 0; i < MSG.list.length; i++) if (MSG.list[i].id === mid) return MSG.list[i];
+    return null;
+  }
+  function msgAuthor(m) { return m.sender_id === me() ? "yourself" : senderName(m.lifter_id, m.sender_id); }
+  // The quoted message above a reply. Tapping it jumps to the original.
+  function msgQuote(list, mid) {
+    var o = msgById(mid), q = el("button", "msg-quote");
+    q.type = "button";
+    q.appendChild(el("b", null, o ? (o.sender_id === me() ? "You" : senderName(o.lifter_id, o.sender_id)) : "Earlier message"));
+    q.appendChild(el("span", null, o ? ntSnippet(o.body) : "No longer available"));
+    if (o) q.onclick = function () {
+      var target = list.querySelector('[data-mid="' + mid + '"]');
+      if (!target) return;
+      try { target.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (e) {}
+      target.classList.remove("flash");
+      void target.offsetWidth;
+      target.classList.add("flash");
+      setTimeout(function () { target.classList.remove("flash"); }, 1300);
+    };
+    return q;
+  }
+  // Swipe a message toward the middle of the screen to reply (right on theirs, left on yours).
+  function msgSwipe(line, mine, mid) {
+    var x0 = 0, y0 = 0, dx = 0, on = false;
+    line.addEventListener("touchstart", function (e) {
+      var t = e.touches && e.touches[0]; if (!t) return;
+      x0 = t.clientX; y0 = t.clientY; dx = 0; on = true; line.style.transition = "none";
+    }, { passive: true });
+    line.addEventListener("touchmove", function (e) {
+      var t = e.touches && e.touches[0]; if (!on || !t) return;
+      var mx = t.clientX - x0, my = t.clientY - y0;
+      if (!dx && Math.abs(my) > Math.abs(mx) + 6) { on = false; return; }   // it's a scroll
+      dx = mine ? Math.min(0, Math.max(-70, mx)) : Math.max(0, Math.min(70, mx));
+      line.style.transform = "translateX(" + dx + "px)";
+    }, { passive: true });
+    function end() {
+      if (!on) return;
+      on = false; line.style.transition = ""; line.style.transform = "";
+      if (Math.abs(dx) >= 56 && msgUI.startReply) msgUI.startReply(mid);
+      dx = 0;
+    }
+    line.addEventListener("touchend", end);
+    line.addEventListener("touchcancel", end);
+  }
+  var EMOJI_TABS = [
+    ["\uD83D\uDE00", "Smileys", "😀 😃 😄 😁 😆 😅 😂 🤣 🙂 😉 😊 😍 🥰 😘 😎 🤩 🥳 😏 🙄 😬 😮 😢 😭 😤 😡 🤔 😴 🤒 🥵 🥶 😋 🤗"],
+    ["\uD83D\uDC4D", "Hands", "👍 👎 👏 🙌 🙏 💪 🤝 👊 ✊ 🤞 ✌️ 👌 🤙 👀 🤘 🖐️ ☝️ 👋"],
+    ["\uD83C\uDFCB", "Training", "🏋️ 💪 🔥 ⚡ 🏆 🥇 🥈 🥉 🎯 📈 📉 ⏱️ ✅ ❌ 💯 🚀 🧠 🦵 🍑 🏃 🚴 🧘 🛌 🩹"],
+    ["\u2764\uFE0F", "Hearts", "❤️ 🧡 💛 💚 💙 💜 🖤 🤍 💔 ✨ 🎉 🎊 ⭐ 🌟 💥 👑"],
+    ["\uD83C\uDF57", "Food", "🍗 🥩 🍚 🥚 🍌 🥤 ☕ 🍕 🍔 🍺 🥗 🍝 🥑 🍎 💧 🌙 ☀️"]
+  ];
+  var STORE_EMOJI = "spotter.emojiRecent";
+  function emojiRecent() { var r = safeRead(STORE_EMOJI, []); return Array.isArray(r) ? r.slice(0, 16) : []; }
+  function emojiPanel(inp, repaint) {
+    var wrap = el("div", "msg-emoji"), tabs = el("div", "msg-emoji-tabs"), grid = el("div", "msg-emoji-grid");
+    wrap.id = "msgEmoji";
+    var rec = emojiRecent();
+    var sets = (rec.length ? [["\uD83D\uDD52", "Recent", rec.join(" ")]] : []).concat(EMOJI_TABS);
+    // The tab is remembered by name: "Recent" appears once something is used, which shifts the rest along.
+    var cur = 0;
+    sets.forEach(function (st, i) { if (st[1] === msgUI.emojiTab) cur = i; });
+    sets.forEach(function (st, i) {
+      var tb = el("button", i === cur ? "on" : "", st[0]);
+      tb.type = "button";
+      tb.setAttribute("aria-label", st[1]);
+      tb.onclick = function () { msgUI.emojiTab = st[1]; repaint(); };
+      tabs.appendChild(tb);
+    });
+    sets[cur][2].split(" ").forEach(function (e) {
+      var b = el("button", null, e);
+      b.type = "button";
+      b.setAttribute("aria-label", e);
+      b.onclick = function () {
+        // Put it where the cursor was, without taking focus (that would raise the phone's keyboard over this).
+        var a = inp.selectionStart, z = inp.selectionEnd;
+        if (typeof a !== "number") { a = z = inp.value.length; }
+        inp.value = inp.value.slice(0, a) + e + inp.value.slice(z);
+        try { inp.setSelectionRange(a + e.length, a + e.length); } catch (er) {}
+        inp.dispatchEvent(new Event("input"));
+        var r = emojiRecent().filter(function (x) { return x !== e; });
+        r.unshift(e);
+        try { localStorage.setItem(STORE_EMOJI, JSON.stringify(r.slice(0, 16))); } catch (er) {}
+      };
+      grid.appendChild(b);
+    });
+    wrap.appendChild(tabs);
+    wrap.appendChild(grid);
+    return wrap;
   }
   function fillThread(list) {
     var parts = list.getAttribute("data-key").split("|"), id = parts[0], th = parts[1];
@@ -8218,11 +8387,23 @@
       var mine = m.sender_id === me();
       if (!mine && m.sender_id !== lastSender) list.appendChild(el("p", "msg-who", senderName(id, m.sender_id)));
       lastSender = m.sender_id;
+      var line = el("div", "msg-line" + (mine ? " mine" : ""));
       var b = el("div", "msg-bubble" + (mine ? " mine" : ""));
+      b.setAttribute("data-mid", m.id);
+      if (m.reply_to) b.appendChild(msgQuote(list, m.reply_to));
       appendLinkified(b, m.body);
       var foot = el("span", "msg-time", m.failed ? "Not sent: this thread no longer takes messages" : m.pending ? "Sending…" : timeLabel(m.created_at));
       b.appendChild(foot);
-      list.appendChild(b);
+      if (msgUI.startReply && msgUI.replyKey === list.getAttribute("data-key") && !m.pending && !m.failed) {
+        var rb = el("button", "msg-reply");
+        rb.type = "button";
+        rb.setAttribute("aria-label", "Reply to " + (mine ? "your message" : senderName(id, m.sender_id)));
+        rb.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v3"/></svg>';
+        rb.onclick = function () { msgUI.startReply(m.id); };
+        if (mine) { line.appendChild(rb); line.appendChild(b); } else { line.appendChild(b); line.appendChild(rb); }
+        msgSwipe(line, mine, m.id);
+      } else line.appendChild(b);
+      list.appendChild(line);
       if (seen.id === m.id) list.appendChild(el("p", "msg-seen", seen.text));
     });
     if (!document.hidden) markRead(id, th);

@@ -5,6 +5,9 @@ npm-debug.log*
 # Local sample clips for testing the Velocity Tracker export — never deployed.
 test-assets/
 
+# The Program Hub is the owner's: it lives in the database (see publish-hub.js), never on the public site.
+program-hub.html
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db

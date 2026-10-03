@@ -7,8 +7,9 @@ the iOS home screen via Safari. Data lives in `localStorage` on-device; signed
 in, it also syncs through Supabase (see *Accounts + sync*). This folder is a git repo tracking
 `origin/main` (https://github.com/emm-strength-gh/power-logs), kept
 byte-for-byte identical to it — deploy by committing the files you changed and
-`git push origin main`. `node_modules/` and `test-assets/` (a personal video)
-are gitignored and must never be published: the repo is public.
+`git push origin main`. `node_modules/`, `test-assets/` (a personal video) and
+`program-hub.html` (owner-only; see below) are gitignored and must never be published:
+the repo is public.
 
 Full user-facing/deploy documentation is in [README.md](README.md) — read that
 too, it covers iOS PWA quirks, the update/versioning ritual, and known rough
@@ -19,7 +20,7 @@ edges in more depth than this file.
 | File | Role | Standalone? |
 |---|---|---|
 | [power-logs.html](power-logs.html) | **The main app** ("Power Logs"). Lifter profiles, weekly program view, done/skip tracking, notes, custom items, Manage Program (day/week editing, coaches only), accounts + cloud sync, Analytics, Compare, plate calculator, rest timer, warm-up calculator, JSON/CSV import-export. Hosts the other three apps in iframes. | Yes — this is the PWA entry point (`start_url`). |
-| [program-hub.html](program-hub.html) | Program **builders**: Meet Peak v2 Gen Pop (balanced 16-week peak, first card), Taper (2 weeks: last heavy week + taper, three lifter types), Gustav, Wendler, equipped lifting, single-lift (squat/bench/deadlift), combined, Lilliebridge, KSB, CVBT, MDL, fatigue-managed, etc. Generates a CSV program. | Yes, and also opens inside Power Logs as the **Program Hub** tab in Manage Program. |
+| [program-hub.html](program-hub.html) | Program **builders**: Meet Peak v2 Gen Pop (balanced 16-week peak, first card), Taper (2 weeks: last heavy week + taper, three lifter types), Gustav, Wendler, equipped lifting, single-lift (squat/bench/deadlift), combined, Lilliebridge, KSB, CVBT, MDL, fatigue-managed, etc. Generates a CSV program. | Not served: gitignored, kept in the database (`owner_assets`, owner-only) and copied to the owner's device. Opens inside Power Logs as the **Program Hub** tab in Manage Program. |
 | [VBT.html](VBT.html) | **Velocity Tracker**. Loads a video clip, tracks the barbell path frame-by-frame, computes bar speed/RPE per rep, detects stalls/grinds, exports an annotated MP4 (custom `mp4Mux` muxer + WebCodecs) or CSV. | Yes, and opens inside Power Logs from the **Velocity Tracker** nav button. |
 | [rpe-estimator.html](rpe-estimator.html) | RPE ↔ %1RM load-chart tool (Chart.js). | Yes, and opens inside Power Logs (RPE Estimator in the sidebar). |
 
@@ -179,9 +180,13 @@ private script kept outside it (`private.settings`).
   the app only sends `reply_to` when set, so plain messages still work before the column
   exists. `renderThread()` builds the dock (reply bar, emoji panel, box), `fillThread()`
   the lines (bubble + reply button, `msgSwipe`, `msgQuote`); `msgUI.startReply` links them.
-- The Program Hub tab (and its Import button) is owner-only: `.owner-only` / `html.is-owner`
-  from `applyRoleUI()`, plus `isOwner()` guards in the functions that open or feed it. The
-  standalone program-hub.html stays a public page.
+- The Program Hub is owner-only and not a public file: `.owner-only` / `html.is-owner` from
+  `applyRoleUI()` plus `isOwner()` guards hide it; the file itself is in `owner_assets` (RLS:
+  owner reads, no API writes; `node publish-hub.js` writes the upload SQL), downloaded by
+  `hubSync()` into IndexedDB (`HUB_STORE`, test stand-in `window.__spotterPrivateStore`) so it
+  opens offline, shown by `loadHubFrame()` as the iframe's `srcdoc` with `window.__hubParams`
+  injected (the hub reads that when it has no URL query). `hubLocalClear()` deletes it on
+  sign-out / non-owner, retried via `spotter.hubHeld`.
 - In-app notices (the "In-app notices" section, `#noticeBar` at the top of `.content`):
   `NT` (`spotter.notices.v1`) holds `{id, kind, lifter, thread?, week?, who, text, at}`,
   made by `ntFromMessage`/`ntFromEvent` (in `pullMessages`), `ntFromWeekNote` (in
@@ -230,9 +235,9 @@ Four independent counters, all manual, no build tooling enforces them:
   release, the patch number for a fix to one.
 - `HUB_BUILD` in power-logs.html (must match the `hub-N` string
   program-hub.html announces in its `spotter-hub-ready` message) — bump
-  **both** whenever program-hub.html changes; this busts the iframe's HTTP
-  cache via a `?v=N` query param and lets power-logs.html detect a stale
-  deployed hub file.
+  **both** whenever program-hub.html changes, then `node publish-hub.js` and run
+  its SQL in Supabase (the file isn't deployed by git). power-logs.html flags a
+  copy older than `HUB_BUILD` as out of date.
 - `VBT_BUILD` in power-logs.html, same pattern for VBT.html.
 
 ## Testing
@@ -259,11 +264,12 @@ node test-messaging.js  # messages, finished sessions, new-week alerts, push (no
 node test-trophies.js   # Trophies: standards by IPF class, levels, clubs, streaks, PRs, awards, celebration, share image
 node test-trophysync.js # Trophies across devices on the real rules, plus their notifications
 node test-notices.js    # In-app notice banner: kinds, who wrote it, x, stacking
+node test-hubprivate.js # The Program Hub's private copy: owner download, offline, sign-out delete
 node test-replies.js    # Messages: emoji picker and replies
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all nineteen. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all twenty. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of power-logs.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

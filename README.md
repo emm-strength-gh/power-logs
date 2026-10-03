@@ -11,12 +11,14 @@ Separate repo from the Program Hub. Same deploy pattern.
 |---|---|
 | `power-logs.html` | The app. Same code plus a PWA `<head>`, touch field sizing, share-sheet exports, persistent-storage request, and service worker registration. |
 | `rpe-estimator.html` | The RPE → %1RM load-chart tool. Opens inside the app (RPE Estimator in the sidebar) via an iframe, and also works standalone. Precached for offline use. |
-| `program-hub.html` | The program builders (Gustav, Wendler, and the rest). Opens inside the app as the **Program Hub** tab in Manage Program, and also works standalone. Precached for offline use. |
+| `program-hub.html` | The program builders (Gustav, Wendler, and the rest). **Not in the repo (gitignored) and not on the public site**: it lives in the database, owner-only, and the app copies it to the owner's device. Shown inside the app as the **Program Hub** tab in Manage Program. See *Who sees the Program Hub*. |
+| `publish-hub.js` | Writes the SQL that uploads `program-hub.html` to the database (`node publish-hub.js`), after you change it. |
+| `test-hubprivate.js` | The Program Hub's copy: downloaded for the owner, opens offline, newer versions, deleted on sign-out, never fetched by other coaches — `node test-hubprivate.js`. |
 | `VBT.html` | Velocity Tracker — barbell velocity and RPE from a video clip. Opens inside the app from the **Velocity Tracker** nav button, and also works standalone. Precached for offline use. |
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
 | `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
-| `supabase/selftest.sql` | Checks on those rules (124 at present). Paste and run after the schema; every row should say PASS. |
+| `supabase/selftest.sql` | Checks on those rules (130 at present). Paste and run after the schema; every row should say PASS. |
 | `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
 | `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
 | `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the original logo). |
@@ -209,7 +211,14 @@ messages still work, just without banners.
 
 ## Who sees the Program Hub
 
-The **Program Hub** tab in Manage Program, and the "Build one in Program Hub" button in its Import card, are for the **owner only**; other coaches don't see them (`.owner-only`, set by `applyRoleUI()` from `isOwner()`, and enforced again in `setDMTab()`, `loadHubFrame()`, `pushLifterToHub()` and `loadDonorFromHub()`). This only hides it inside the app: `program-hub.html` is a public static file, so anyone who knows its address can still open it on its own; it just can't send programs into anyone's Manage Program.
+The **Program Hub** is the owner's alone, and it isn't a public file any more.
+
+- **Where it lives:** `program-hub.html` is gitignored (never pushed) and stored in the database table `owner_assets`, which only the owner can read (row-level security; nobody can write through the API). `sw.js` doesn't cache it either.
+- **On the owner's device:** once signed in and online, the app downloads it and keeps a copy in IndexedDB, so the Hub opens offline. It checks the version in the background (a few bytes) and downloads a newer one when there is one; the new one opens the next time the tab is opened. It runs inside the app in a frame, with its page settings handed over by the app.
+- **Signing out deletes it.** So does no longer being the owner. If the delete ever fails, the device remembers (`spotter.hubHeld`) and retries on the next launch.
+- **Other coaches and lifters:** the Hub tab and the Import card's "Build one in Program Hub" button are hidden (`.owner-only`, from `applyRoleUI()` / `isOwner()`), their app never asks for the file, and the database wouldn't give it to them.
+- **Updating it:** change `program-hub.html`, bump its `hub-N` string and `HUB_BUILD` in `power-logs.html` together, run `node publish-hub.js`, paste the file it writes (in "Power Logs Cloud Setup", outside this repo) into Supabase's SQL editor and Run. No app deploy needed unless the app changed.
+- **History:** earlier commits in this public repo still contain the old public `program-hub.html`; removing it from `main` doesn't remove that.
 
 ## The notice banner
 
@@ -483,11 +492,7 @@ but harmless, so I left it.
 
 ## Updating the app later
 
-If you change `program-hub.html`, bump **both** `CACHE_VERSION` in `sw.js` and
-`HUB_BUILD` in `power-logs.html`. The first drops the old precached copy; the second
-adds `?v=N` to the iframe URL so the browser's own HTTP cache can't serve a stale
-build. If the deployed hub file is out of date, the Program Hub tab now says so
-outright instead of just missing its Send button.
+If you change `program-hub.html`, see *Who sees the Program Hub* above: bump its `hub-N` and `HUB_BUILD` in `power-logs.html` together, then `node publish-hub.js` and run the SQL it writes. If the copy a device holds is older than the app expects, the Program Hub tab says so outright instead of just missing its Send button.
 
 
 Push a new `power-logs.html` and reopen. HTML is fetched network-first, so you get

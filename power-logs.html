@@ -1314,19 +1314,13 @@
         <div id="dmPaneHub" class="hidden" role="tabpanel" aria-label="Program Hub">
           <p class="dm-an-intro">The program builders — pick a methodology, enter the lifter's competition maxes, and generate a dashboard-ready CSV. Build one, then use <b>Send to Manage Program</b> under the Weeks field to push it straight into the import slot. Runs as its own self-contained tool and doesn't touch your loaded programs.</p>
           <p class="hub-stale hidden" id="hubStale">
-            <b>The <code>program-hub.html</code> on this deploy looks out of date.</b>
-            It loaded, but it isn't reporting the &ldquo;Send to Manage Program&rdquo; feature — so you'll see the builders
-            but no send button. Re-upload <code>program-hub.html</code> alongside this file. If you've installed this to
-            your home screen, also remove the site's data (Settings → Safari → Advanced → Website Data) so the old cached
-            copy is dropped.
+            <b>The Program Hub on this device looks out of date.</b>
+            Open this tab again while you're online to update it. If this stays, the new version hasn't been uploaded to the database yet.
           </p>
           <div class="hub-frame-wrap">
             <iframe id="hubFrame" class="hub-frame" title="Program Hub" loading="lazy" src="about:blank"></iframe>
           </div>
-          <p class="rpe-fallback">
-            Can't see the builders? They live in <code>program-hub.html</code> next to this file — make sure both are uploaded together.
-            <a id="hubOpenNew" href="program-hub.html" target="_blank" rel="noopener">Open in a new tab</a>.
-          </p>
+          <p class="rpe-fallback hidden" id="hubStatus" role="status"></p>
         </div>
       </section>
 
@@ -1687,7 +1681,7 @@
   // "is my deploy current?" is answerable at a glance instead of by guesswork.
   // major.minor.patch: minor goes up with each release (it carried on from the
   // old build counter, 30), patch for a fix to one.
-  var APP_VERSION = "1.43.1";
+  var APP_VERSION = "1.44.0";
 
   var PROFILES = {};        // name -> profile { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...] }] , rows:[...] }] }
   var DONE = {};            // name -> { rid: true }
@@ -4085,7 +4079,7 @@
 
     // Build stamp — lets a stale deploy be spotted immediately.
     var stamp = el("p", "dm-build");
-    stamp.textContent = "Power Logs " + APP_VERSION + " · Program Hub build " + HUB_BUILD;
+    stamp.textContent = "Power Logs " + APP_VERSION + (isOwner() ? " · Program Hub " + (hubCache ? hubCache.version : "not downloaded") : "");
     body.appendChild(stamp);
 
     // "+ Add exercise" at the foot of the day's list, opening the form in place.
@@ -5743,25 +5737,113 @@
     pushThemeToFrame("hubFrame");
     pushThemeToFrame("vbtFrame");
   }
-  // Load the Program Hub on first open (and reload if the theme changed while it
-  // was closed) with the theme in the URL so there's no wrong-palette flash.
-  // HUB_BUILD is bumped whenever program-hub.html changes; it rides along in the
-  // query string purely to defeat the browser's HTTP cache, which will otherwise
-  // happily serve a previously deployed copy of the file.
-  var HUB_BUILD = "9";
+  // ---- The Program Hub's copy
+  // The Hub isn't a public file. It lives in the database (owner_assets, readable
+  // by the owner alone) and is downloaded to this device whenever the owner is
+  // signed in and online, kept in IndexedDB so it opens offline. Signing out, or no
+  // longer being the owner, deletes it. It runs as an iframe's srcdoc, with its
+  // page parameters (embed, theme) handed over where a URL query would have been.
+  // HUB_BUILD is the build this app expects: bump it with program-hub.html's own
+  // "hub-N", then upload the new file (node publish-hub.js writes the SQL).
+  var HUB_ASSET = "program-hub";
+  var HUB_BUILD = "10";
+  var STORE_HUB_HELD = "spotter.hubHeld";   // "1" while a copy may be on this device: a failed delete is retried next launch
   var hubReadyFeatures = null;
+  var hubCache = null;                      // { version, html } once read this session
+  var hubBusy = null;
+  var hubWhy = "";                          // why a sync found nothing: "offline" or "missing"
+  function privIDB(mode, fn) {
+    return new Promise(function (res, rej) {
+      var open = indexedDB.open("spotter-private", 1);
+      open.onupgradeneeded = function () { open.result.createObjectStore("kv"); };
+      open.onerror = function () { rej(open.error); };
+      open.onsuccess = function () {
+        var db = open.result, tx = db.transaction("kv", mode), rq = fn(tx.objectStore("kv"));
+        tx.oncomplete = function () { db.close(); res(rq && rq.result); };
+        tx.onerror = tx.onabort = function () { db.close(); rej(tx.error); };
+      };
+    });
+  }
+  // (Tests plug in a stand-in as window.__spotterPrivateStore, like __spotterCloud.)
+  var HUB_STORE = window.__spotterPrivateStore || {
+    get: function (k) { return privIDB("readonly", function (st) { return st.get(k); }); },
+    put: function (k, v) { return privIDB("readwrite", function (st) { return st.put(v, k); }); },
+    del: function (k) { return privIDB("readwrite", function (st) { return st.delete(k); }); }
+  };
+  function hubHeldFlag(on) { try { if (on) localStorage.setItem(STORE_HUB_HELD, "1"); else localStorage.removeItem(STORE_HUB_HELD); } catch (e) {} }
+  function hubHeld() { try { return localStorage.getItem(STORE_HUB_HELD) === "1"; } catch (e) { return false; } }
+  // Sign-out, or not the owner: nothing of the Hub stays on this device.
+  function hubLocalClear() {
+    if (!hubCache && !hubHeld()) return Promise.resolve();
+    hubCache = null;
+    var f = $("hubFrame");
+    if (f) { f.removeAttribute("data-src"); f.removeAttribute("srcdoc"); try { f.src = "about:blank"; } catch (e) {} }
+    return HUB_STORE.del(HUB_ASSET).then(function () { hubHeldFlag(false); }, function () {});
+  }
+  function hubStored() {
+    return HUB_STORE.get(HUB_ASSET).then(function (r) { return r && r.html ? r : null; }, function () { return null; });
+  }
+  function hubDownload(api) {
+    return api.fetch("owner_assets", { ids: [HUB_ASSET], columns: "id,version,body" }).then(function (rows) {
+      var r = rows && rows[0];
+      if (!r || !r.body) return null;
+      var rec = { version: r.version || "", html: r.body };
+      hubHeldFlag(true);
+      return HUB_STORE.put(HUB_ASSET, rec).then(null, function () {}).then(function () { hubCache = rec; return rec; });
+    });
+  }
+  // Have the current Hub on this device. Owner only, quiet, and a failure (offline, or
+  // not uploaded yet) just leaves whatever copy there already is.
+  function hubSync() {
+    if (!isOwner() || !CLOUD.user) return Promise.resolve(hubCache);
+    if (hubBusy) return hubBusy;
+    var api = cloudApi();
+    hubBusy = (hubCache ? Promise.resolve(hubCache) : hubStored()).then(function (have) {
+      if (have && !hubCache) hubCache = have;
+      if (!api || navigator.onLine === false) { hubWhy = "offline"; return have; }
+      return api.fetch("owner_assets", { ids: [HUB_ASSET], columns: "id,version" }).then(function (rows) {
+        var r = rows && rows[0];
+        hubWhy = r ? "" : "missing";
+        if (!r || (have && have.version === r.version)) return have;
+        return hubDownload(api);
+      }, function () { hubWhy = "offline"; return have; });
+    }).then(function (rec) { hubBusy = null; return rec; }, function () { hubBusy = null; return hubCache; });
+    return hubBusy;
+  }
+  function hubDoc(html) {
+    var tag = "<script>window.__hubParams=" + JSON.stringify("embed=1&theme=" + currentThemeName()) + ";<\/script>", i = html.indexOf("<head>");
+    return i < 0 ? tag + html : html.slice(0, i + 6) + tag + html.slice(i + 6);
+  }
+  // Show the Hub in its frame when its tab opens (and again if the theme or the
+  // copy changed since it last did).
   function loadHubFrame() {
-    var f = $("hubFrame"); if (!f || !isOwner()) return;
-    var want = "program-hub.html?embed=1&theme=" + currentThemeName() + "&v=" + HUB_BUILD;
-    if (f.getAttribute("data-src") !== want) {
-      f.setAttribute("data-src", want);
-      hubReadyFeatures = null;
-      f.src = want;
-      // If the file that answers doesn't advertise the send capability, it's an
-      // older program-hub.html left over on the deploy. Say so plainly rather
-      // than leaving a missing button to be puzzled over.
-      setTimeout(checkHubBuild, 4000);
+    var f = $("hubFrame"), note = $("hubStatus");
+    if (!f || !isOwner()) return;
+    function show(rec) {
+      if (!rec) {
+        note.textContent = hubWhy === "offline"
+          ? "Connect to the internet once to download the Program Hub. After that it opens offline."
+          : hubWhy === "missing"
+            ? "The Program Hub hasn\u2019t been uploaded to the database yet."
+            : "The Program Hub couldn\u2019t be downloaded just now. Open this tab again in a moment.";
+        note.classList.remove("hidden");
+        return;
+      }
+      note.classList.add("hidden");
+      var want = rec.version + "|" + currentThemeName();
+      if (f.getAttribute("data-src") !== want) {
+        f.setAttribute("data-src", want);
+        hubReadyFeatures = null;
+        f.srcdoc = hubDoc(rec.html);
+        // If the copy doesn't advertise the send capability it's an older Hub: say so plainly.
+        setTimeout(checkHubBuild, 4000);
+      }
+      pushLifterToHub();
     }
+    if (hubCache) { show(hubCache); hubSync(); return; }    // open now; refresh quietly for next time
+    note.textContent = "Loading the Program Hub\u2026";
+    note.classList.remove("hidden");
+    hubSync().then(show);
   }
   // Hand the Program Hub the lifter in view so its builders can fill their blank
   // fields: name, block, class, bodyweight, and the Training maxes (the numbers
@@ -5783,7 +5865,8 @@
   }
   function checkHubBuild() {
     var warn = $("hubStale"); if (!warn) return;
-    var ok = hubReadyFeatures && hubReadyFeatures.indexOf("send") !== -1;
+    var n = parseInt(String((hubCache && hubCache.version) || "").replace(/\D/g, ""), 10);
+    var ok = hubReadyFeatures && hubReadyFeatures.indexOf("send") !== -1 && !(n < parseInt(HUB_BUILD, 10));
     warn.classList.toggle("hidden", !!ok);
   }
   // Take a program generated in the Program Hub tab and drop it into the donor
@@ -7263,6 +7346,7 @@
       if (syncAgain) { syncAgain = false; scheduleSync(300); }
       else if (!ok) scheduleSync(60000);          // offline or a hiccup: try again in a minute
       else maybeOfferUpload();
+      if (ok && isOwner()) hubSync();   // the Hub's copy, in the background
       setCloudStatus();
       updateMsgBadges();
       applyPendingOpen();
@@ -7328,6 +7412,7 @@
   function applyRoleUI() {
     document.documentElement.classList.toggle("can-files", isCoach());
     document.documentElement.classList.toggle("is-owner", isOwner());
+    if (!CLOUD.user || (CLOUD.account && !isOwner())) hubLocalClear();   // the Hub's copy goes with the sign-in or the role
     if (dmTab === "hub" && !isOwner()) setDMTab("manage");   // e.g. signed out, or no longer the owner
     var t = $("emptyAcctText"), b = $("emptySignIn");
     if (t) t.textContent = !CLOUD.user
@@ -7368,7 +7453,7 @@
       // Another account's synced lifters aren't this one's to see.
       Object.keys(PROFILES).forEach(function (n) { if (PROFILES[n].cloudId) removeLocalLifter(n); });
       CLOUD = cloudDefaults();
-      MSG = msgDefaults(); saveMsg(); NT = ntDefaults(); ntSave(); ntUI.all = false;
+      MSG = msgDefaults(); saveMsg(); NT = ntDefaults(); ntSave(); ntUI.all = false; hubLocalClear();
       writeAllStores();
     }
     if (!CLOUD.user) backupOnce();
@@ -7395,7 +7480,7 @@
           return api ? api.signOut().catch(function () {}) : null;
         }).then(function () {
           stopListen();
-          MSG = msgDefaults(); saveMsg(); NT = ntDefaults(); ntSave(); ntUI.all = false;
+          MSG = msgDefaults(); saveMsg(); NT = ntDefaults(); ntSave(); ntUI.all = false; hubLocalClear();
           clearTimeout(syncTimer);
           Object.keys(PROFILES).forEach(function (nm) { if (PROFILES[nm].cloudId) removeLocalLifter(nm); });
           CLOUD = cloudDefaults();
@@ -10132,9 +10217,12 @@
     document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") renderNotices(); });
     $("acctClose").onclick = closeAcct;
     $("aboutVer").textContent = APP_VERSION;
-    $("aboutParts").textContent = "Program Hub " + HUB_BUILD + " · Velocity Tracker " + VBT_BUILD;
     $("aboutYear").textContent = String(new Date().getFullYear());
-    $("aboutBtn").onclick = function () { closeNav(); $("aboutScrim").classList.add("show"); };
+    $("aboutBtn").onclick = function () {
+      closeNav();
+      $("aboutParts").textContent = (isOwner() ? "Program Hub " + (hubCache ? hubCache.version : "not downloaded") + " · " : "") + "Velocity Tracker " + VBT_BUILD;
+      $("aboutScrim").classList.add("show");
+    };
     // ⋯ menu (phones/tablets). Each item clicks the header button it stands in
     // for, inside the same tap, so file pickers and the share sheet still open.
     $("moreBtn").onclick = function (e) {

@@ -114,7 +114,9 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
     a.closeSheet();
   }
 
-  const bar = a => a.$("noticeBar");
+  // Coaches read them on Home; lifters get the banner at the top of the app.
+  const bar = a => (a === L ? a.$("noticeBar") : a.$("homeNotices"));
+  const empty = a => a.doc.querySelectorAll((a === L ? "#noticeBar" : "#homeNotices") + " .nt-row").length === 0;
   const rowsOf = a => [...bar(a).querySelectorAll(".nt-row")];
   const titles = a => rowsOf(a).map(r => r.querySelector("b").textContent);
   const stored = a => (a.store("spotter.notices.v1") || { list: [] }).list;
@@ -122,8 +124,9 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
 
   /* ---------------------------------------------------------- quiet to start */
   console.log("Nothing to say yet");
-  check("no banner when nothing has happened", bar(C).hidden && bar(L).hidden && rowsOf(C).length === 0);
-  check("the banner sits at the top of the app", bar(C).parentElement.classList.contains("content") && bar(C).getAttribute("aria-label") === "Notifications");
+  check("no banner when nothing has happened", empty(C) && bar(L).hidden && rowsOf(C).length === 0);
+  check("a coach's card says they're all caught up", /all caught up/.test(C.$("homeNotices").textContent) && C.$("noticeBar").hidden);
+  check("a lifter's banner sits at the top of the app; a coach's is the Notifications card on Home", L.$("noticeBar").parentElement.classList.contains("content") && L.$("noticeBar").getAttribute("aria-label") === "Notifications" && !!C.$("homeNotices").closest("#viewHome"));
 
   /* ----------------------------------------------------------- messages */
   console.log("\nA message");
@@ -135,9 +138,9 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("...with how long ago", /just now|min ago/.test(rowsOf(C)[0].textContent));
   check("it has an x to close it", !!rowsOf(C)[0].querySelector('button.nt-x[aria-label="Dismiss"]'));
   rowsOf(C)[0].querySelector(".nt-x").click(); await tick(50);
-  check("x closes it, and it stays closed", bar(C).hidden && stored(C).length === 0);
+  check("x closes it, and it stays closed", empty(C) && stored(C).length === 0);
   C.sync(); await tick(1800); await C.settle();
-  check("...even after another sync", bar(C).hidden);
+  check("...even after another sync", empty(C));
   check("the sender isn't told about their own message", bar(L).hidden);
 
   await send(L, "Also: is Thursday heavy?");
@@ -146,7 +149,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("two more become one row, not two", titles(C).length === 1 && titles(C)[0] === "2 new messages", titles(C).join("|"));
   check("...showing the latest", /Latest: Tom: And can I swap/.test(rowsOf(C)[0].textContent));
   rowsOf(C)[0].querySelector(".nt-main").click(); await tick(200);
-  check("tapping it opens that conversation and clears the banner", C.$("viewMessages").classList.contains("active") && bar(C).hidden);
+  check("tapping it opens that conversation and clears the banner", C.$("viewMessages").classList.contains("active") && empty(C));
   C.nav("Overview"); await tick(50);
 
   console.log("\nMessages that get read elsewhere");
@@ -154,10 +157,10 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   C.sync(); await tick(1800); await C.settle();
   check("a new one shows", titles(C).length === 1);
   C.nav("Messages"); await tick(200);
-  check("opening Messages (reading it) clears it", bar(C).hidden && stored(C).length === 0, titles(C).join("|"));
+  check("opening Messages (reading it) clears it", empty(C) && stored(C).length === 0, titles(C).join("|"));
   await send(L, "Typed while you're looking");
   C.sync(); await tick(1800); await C.settle();
-  check("a message that arrives while you're reading that thread makes no banner", bar(C).hidden);
+  check("a message that arrives while you're reading that thread makes no banner", empty(C));
   C.nav("Overview"); await tick(50);
 
   /* ----------------------------------------------------- finished days */
@@ -240,16 +243,16 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   await tick(100);
   const D = boot("coach again", { dev: C.dev, storage: Object.assign(C.storage(), { "spotter.notices.v1": JSON.stringify(seed) }) });
   await tick(500);
-  check("after days away: 5 kinds, only 3 rows showing", D.doc.querySelectorAll("#noticeBar .nt-row").length === 3, String(D.doc.querySelectorAll("#noticeBar .nt-row").length));
-  check("the newest is first, with how long ago", /Fake msg 1/.test(D.doc.querySelector("#noticeBar .nt-row").textContent) && /yesterday/.test(D.doc.querySelector("#noticeBar .nt-row").textContent), D.doc.querySelector("#noticeBar .nt-row").textContent);
-  check("the rest are one tap away", !!D.btn("Show 2 more", D.$("noticeBar")));
-  D.btn("Show 2 more", D.$("noticeBar")).click(); await tick(50);
-  const txt = D.$("noticeBar").textContent;
-  check("Show more reveals them, newest to oldest, and Show less folds them again", D.doc.querySelectorAll("#noticeBar .nt-row").length === 5 && !!D.btn("Show less", D.$("noticeBar")) &&
+  check("after days away: 5 kinds, only 3 rows showing", D.doc.querySelectorAll("#homeNotices .nt-row").length === 3, String(D.doc.querySelectorAll("#homeNotices .nt-row").length));
+  check("the newest is first, with how long ago", /Fake msg 1/.test(D.doc.querySelector("#homeNotices .nt-row").textContent) && /yesterday/.test(D.doc.querySelector("#homeNotices .nt-row").textContent), D.doc.querySelector("#homeNotices .nt-row").textContent);
+  check("the rest are one tap away", !!D.btn("Show 2 more", D.$("homeNotices")));
+  D.btn("Show 2 more", D.$("homeNotices")).click(); await tick(50);
+  const txt = D.$("homeNotices").textContent;
+  check("Show more reveals them, newest to oldest, and Show less folds them again", D.doc.querySelectorAll("#homeNotices .nt-row").length === 5 && !!D.btn("Show less", D.$("homeNotices")) &&
     ["Fake msg 1", "Fake session 2", "Fake trophy 3", "Fake program 4", "Fake note 5"].map(s => txt.indexOf(s)).every((p, i, a) => p >= 0 && (i === 0 || p > a[i - 1])), txt);
   check("older ones say how many days ago", /5 days ago/.test(txt));
-  D.btn("Clear all", D.$("noticeBar")).click(); await tick(100);
-  check("Clear all empties the banner", D.$("noticeBar").hidden && (D.store("spotter.notices.v1").list || []).length === 0);
+  D.btn("Clear all", D.$("homeNotices")).click(); await tick(100);
+  check("Clear all empties the banner", D.doc.querySelectorAll("#homeNotices .nt-row").length === 0 && (D.store("spotter.notices.v1").list || []).length === 0);
 
   const bad = [C, L, D].reduce((a, x) => a.concat(x.real()), []);
   check("no script errors on any device", bad.length === 0, bad.join(" | ").slice(0, 400));

@@ -1,0 +1,186 @@
+/* The coach landing page: "Welcome Coach <name>!", a Notifications card, a Lifters
+ * card (all lifters in a list), an Inbox card, and a Home button back from each.
+ * Run: node test-home.js
+ *
+ * Each "device" is a jsdom copy of power-logs.html with a stand-in for Supabase
+ * (window.__spotterCloud) signed in as whoever the test needs.
+ */
+const fs = require("fs");
+const path = require("path");
+const { JSDOM, VirtualConsole } = require("jsdom");
+
+const html = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
+let failures = 0, checks = 0;
+const check = (name, cond, extra = "") => {
+  checks++;
+  if (!cond) failures++;
+  console.log(`${cond ? "  ok  " : " FAIL "} ${name}${extra && !cond ? " — " + extra : ""}`);
+};
+const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
+async function until(fn, ms = 6000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) { try { if (await fn()) return true; } catch (e) {} await tick(50); }
+  return false;
+}
+const ME = "00000000-0000-4000-8000-0000000000aa";
+const CSV = (name, block) => `#Name,${name}\r\n#Block,${block}\r\n#Class,83\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps,RPE,Notes\r\n1,1,Squat,150,3,5,7,\r\n1,1,Bench,100,3,5,7,\r\n2,1,Squat,155,3,5,7,\r\n`;
+
+function world(over = {}) {
+  const w = Object.assign({ role: "owner", coach_status: "none", display_name: "Emm", email: "emm@test.invalid", signedIn: true }, over);
+  w.cloud = {
+    session: async () => (w.signedIn ? { id: ME, email: w.email } : null),
+    onSessionChange() {}, sendCode: async () => {}, verifyCode: async () => { w.signedIn = true; return { id: ME, email: w.email }; }, signOut: async () => { w.signedIn = false; },
+    fetch: async table => table === "accounts" ? [{ user_id: ME, email: w.email, role: w.role, coach_status: w.coach_status, display_name: w.display_name }] : [],
+    upsert: async () => {}, remove: async () => {}, invoke: async () => ({ sent: 0 }), insert: async () => {}, update: async () => {}, rpc: async () => null, listen: () => () => {},
+  };
+  return w;
+}
+const cached = (w) => JSON.stringify({ uploadAsked: true, user: { id: ME, email: w.email }, lastUserId: ME, account: { role: w.role, coach_status: w.coach_status, display_name: w.display_name } });
+
+async function boot(wd, storage = {}) {
+  const errors = [];
+  const dom = new JSDOM(html, {
+    runScripts: "dangerously", pretendToBeVisual: true,
+    url: "https://example.github.io/power-logs/power-logs.html",
+    virtualConsole: new VirtualConsole().on("jsdomError", e => errors.push(e.message)).on("error", m => errors.push(String(m))),
+    beforeParse(w) {
+      w.__spotterCloud = wd.cloud;
+      w.__spotterPrivateStore = { get: async () => null, put: async () => {}, del: async () => {} };
+      Object.keys(storage).forEach(k => w.localStorage.setItem(k, storage[k]));
+      if (!storage["spotter.cloud.v1"]) w.localStorage.setItem("spotter.cloud.v1", JSON.stringify({ uploadAsked: true }));
+    },
+  });
+  const w = dom.window, doc = w.document, $ = id => doc.getElementById(id);
+  w.Element.prototype.scrollIntoView = function () {};
+  w.scrollTo = function () {};
+  await new Promise(res => { if (doc.readyState === "complete") res(); else w.addEventListener("load", res); setTimeout(res, 4000); });
+  const app = {
+    w, doc, $, errors,
+    real: () => errors.filter(e => !/Not implemented|HTMLCanvasElement|getContext|Chart is not defined/i.test(e)),
+    storage: () => { const o = {}; for (let i = 0; i < w.localStorage.length; i++) { const k = w.localStorage.key(i); o[k] = w.localStorage.getItem(k); } return o; },
+    btn: (t, root) => [...(root || doc).querySelectorAll("button")].find(b => b.textContent.trim() === t || (b.querySelector(".ab-title") && b.querySelector(".ab-title").textContent === t)),
+    navs: () => [...doc.querySelectorAll("#sideNav .nav-item")].map(n => n.querySelector(".nav-label").textContent),
+    nav(label) { const b = [...doc.querySelectorAll("#sideNav .nav-item")].find(n => n.querySelector(".nav-label").textContent === label); if (b) b.click(); return !!b; },
+    active: () => [...doc.querySelectorAll(".view.active")].map(v => v.id).join(),
+    async load(text) {
+      const i = $("fileInput");
+      Object.defineProperty(i, "files", { value: [new w.File([text], "t.csv")], configurable: true });
+      i.dispatchEvent(new w.Event("change"));
+      await tick(300);
+    },
+  };
+  return app;
+}
+
+(async () => {
+  /* -------------------------------------------------------- set-up: a coach with lifters */
+  const WD = world();
+  const first = await boot(WD, { "spotter.cloud.v1": cached(WD) });
+  await first.load(CSV("Tom", "Prep"));
+  await first.load(CSV("Sam", "Peak"));
+  const saved = first.storage();
+
+  console.log("A coach opens the app");
+  const A = await boot(WD, saved);
+  await tick(300);
+  check("boots with no script errors", A.real().length === 0, A.real().join(" | ").slice(0, 300));
+  check("it opens on Home, not on a lifter", A.active() === "viewHome", A.active());
+  check("the title greets the coach by name", A.$("homeTitle").textContent === "Welcome Coach Emm!", A.$("homeTitle").textContent);
+  const caps = [...A.doc.querySelectorAll("#viewHome .home-cap")].map(c => c.textContent);
+  check("below it: Notifications, Lifters, then Messages, in that order", caps.join() === "Notifications,Lifters,Messages", caps.join());
+  check("the Notifications card is the existing banner, moved here", !!A.$("homeNotices").closest(".home-card") && /all caught up/.test(A.$("homeNotices").textContent) && A.$("noticeBar").hidden);
+  check("the Lifters card has a button for the list", !!A.btn("All lifters", A.$("homeLifters")));
+  check("the next card starts with Inbox", !!A.btn("Inbox", A.$("homeComms")));
+  check("the sidebar leads with Home and Lifters", A.navs().slice(0, 2).join() === "Home,Lifters", A.navs().join());
+  check("...and Home is the one marked", A.doc.querySelector("#sideNav .nav-item.active .nav-label").textContent === "Home");
+  check("the count of lifters is under the title", A.$("homeSub").textContent === "2 lifters", A.$("homeSub").textContent);
+
+  console.log("\nAll lifters");
+  A.btn("All lifters", A.$("homeLifters")).click(); await tick(100);
+  check("the button opens a list", A.active() === "viewLifters");
+  const rows = [...A.doc.querySelectorAll("#liftersBody .msg-thread")];
+  check("every lifter is on it, with their block and progress", rows.length === 2 && /Tom/.test(rows[0].textContent) && /Prep/.test(rows[0].textContent) && /83 kg/.test(rows[0].textContent) && /2 weeks/.test(rows[0].textContent) && /0% done/.test(rows[0].textContent), rows.map(r => r.textContent).join(" | "));
+  A.nav("Home"); await tick(50);
+  check("Home in the sidebar goes back", A.active() === "viewHome");
+  A.nav("Lifters"); await tick(50);
+  check("...and Lifters in the sidebar opens the list again", A.active() === "viewLifters");
+  A.$("liftersBack").click(); await tick(50);
+  check("the list has its own Home button", A.active() === "viewHome");
+  A.btn("All lifters", A.$("homeLifters")).click(); await tick(50);
+  [...A.doc.querySelectorAll("#liftersBody .msg-thread")].find(r => /Sam/.test(r.textContent)).click(); await tick(150);
+  check("tapping a lifter opens their program as it always did", A.active() === "viewOverview" && A.$("ovName").textContent === "Sam", A.active() + " " + A.$("ovName").textContent);
+  check("...with the usual sidebar: Overview, Analytics, Messages…, the weeks", ["Overview", "Analytics", "Trophies"].every(l => A.navs().includes(l)) && A.navs().some(l => /^Week 1/.test(l)), A.navs().join());
+  check("...and Home is still in it", A.navs().includes("Home"));
+  check("the lifter's page has a Home button of its own", !A.$("ovHome").hidden);
+  A.nav("Analytics"); await tick(100);
+  A.nav("Home"); await tick(50);
+  check("Home works from any lifter screen", A.active() === "viewHome");
+  A.btn("All lifters", A.$("homeLifters")).click(); await tick(50);
+  [...A.doc.querySelectorAll("#liftersBody .msg-thread")].find(r => /Tom/.test(r.textContent)).click(); await tick(100);
+  A.$("ovHome").click(); await tick(50);
+  check("...and from the Home button on the Overview", A.active() === "viewHome");
+
+  console.log("\nInbox");
+  A.btn("Inbox", A.$("homeComms")).click(); await tick(100);
+  check("the Inbox button opens the inbox view", A.active() === "viewInbox");
+  check("the inbox has a Home button", /Home/.test(A.$("inboxBack").textContent));
+  A.$("inboxBack").click(); await tick(50);
+  check("...which goes back to the landing page", A.active() === "viewHome");
+
+  console.log("\nBefore any lifter is loaded");
+  const E = await boot(WD, { "spotter.cloud.v1": cached(WD) });
+  await tick(300);
+  check("a coach with no lifters still lands on Home", E.active() === "viewHome", E.active());
+  check("...which says so", E.$("homeSub").textContent === "No lifters yet");
+  E.btn("All lifters", E.$("homeLifters")).click(); await tick(50);
+  check("the list explains", /No lifters yet/.test(E.$("liftersBody").textContent));
+
+  console.log("\nWho gets a name");
+  const W2 = world({ display_name: "", email: "jordan@test.invalid" });
+  const B = await boot(W2, { "spotter.cloud.v1": cached(W2) });
+  await tick(300);
+  check("a coach with no display name is greeted by their email's first part", B.$("homeTitle").textContent === "Welcome Coach Jordan!", B.$("homeTitle").textContent);
+
+  const W2b = world({ display_name: "Coach Emm" });
+  const B2 = await boot(W2b, { "spotter.cloud.v1": cached(W2b) });
+  await tick(300);
+  check("a name that already starts with Coach isn't doubled", B2.$("homeTitle").textContent === "Welcome Coach Emm!", B2.$("homeTitle").textContent);
+
+  console.log("\nSigning in");
+  const W3 = world({ signedIn: false, display_name: "Emm" });
+  const C = await boot(W3, Object.assign({}, saved, { "spotter.cloud.v1": JSON.stringify({ uploadAsked: true }) }));
+  await tick(200);
+  check("signed out, a device with lifters opens on a lifter (unchanged)", C.active() === "viewOverview", C.active());
+  C.$("acctBtn").click(); await tick();
+  C.$("acctEmail").value = "emm@test.invalid";
+  C.btn("Email me a code", C.$("acctBody")).click();
+  await until(() => C.$("acctCode"));
+  C.$("acctCode").value = "123456";
+  C.btn("Sign in", C.$("acctBody")).click();
+  check("signing in as a coach lands on Home", await until(() => C.active() === "viewHome"), C.active());
+  check("...greeting them", C.$("homeTitle").textContent === "Welcome Coach Emm!", C.$("homeTitle").textContent);
+
+  console.log("\nNot a coach");
+  const W4 = world({ role: "member", coach_status: "none", display_name: "" });
+  const D = await boot(W4, Object.assign({}, saved, { "spotter.cloud.v1": cached(W4) }));
+  await tick(400);
+  check("a lifter opens on their program, as before", D.active() === "viewOverview", D.active());
+  check("...with no Home or Lifters in the sidebar", !D.navs().includes("Home") && !D.navs().includes("Lifters"), D.navs().join());
+  check("...and no Home button", D.$("ovHome").hidden);
+  check("their notices stay a banner at the top of the app", !!D.$("noticeBar") && D.$("noticeBar").parentElement.classList.contains("content"));
+  const W5 = world({ role: "member", coach_status: "pending", display_name: "" });
+  const F = await boot(W5, Object.assign({}, saved, { "spotter.cloud.v1": cached(W5) }));
+  await tick(400);
+  check("a coach who hasn't been approved yet isn't sent to Home", F.active() === "viewOverview" && !F.navs().includes("Home"), F.active());
+
+  console.log("\nAnother coach");
+  const W6 = world({ role: "member", coach_status: "approved", display_name: "Jordan" });
+  const G = await boot(W6, Object.assign({}, saved, { "spotter.cloud.v1": cached(W6) }));
+  await tick(400);
+  check("an approved coach lands on Home too", G.active() === "viewHome" && G.$("homeTitle").textContent === "Welcome Coach Jordan!", G.active() + " " + G.$("homeTitle").textContent);
+
+  const bad = [first, A, E, B, C, D, F, G].reduce((a, x) => a.concat(x.real()), []);
+  check("no script errors on any device", bad.length === 0, bad.join(" | ").slice(0, 400));
+  console.log(`\n${checks} checks · ${failures === 0 ? "ALL PASSED" : failures + " FAILED"}\n`);
+  process.exit(failures === 0 ? 0 : 1);
+})().catch(e => { console.error(e); process.exit(1); });

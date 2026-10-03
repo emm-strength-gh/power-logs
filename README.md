@@ -41,6 +41,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-trophysync.js` | Trophies across devices on the real rules: earned trophies reach the coach, PR confirmation, awards given and taken back, standards, the notifications, and a trophy problem never holding up the log — `node test-trophysync.js`. |
 | `test-notices.js` | The in-app notice banner: messages, finished days, notes (coach or lifter), added weeks, trophies, the x, stacking and Show more / Clear all — `node test-notices.js`. |
 | `test-replies.js` | Messages: the emoji picker and replies (the reply bar, quotes, jumping to the original, swiping, saved on the server) — `node test-replies.js`. |
+| `test-home.js` | The coach landing page: greeting, cards, the lifters list, Home buttons, who gets it and when — `node test-home.js`. |
 | `test-cloudfake.js` | Not a test: the stand-in Supabase the tests plug in (`window.__spotterCloud`), and the in-process runner for the notify function. |
 | `test-vbt.js` | Velocity Tracker smoke test — `node test-vbt.js`. |
 | `make_icons.py` | Regenerates the icons from `icons/_source.png`. |
@@ -208,6 +209,22 @@ The Web Push **public** key is in `power-logs.html`; the private one is a secret
 the function in Supabase, never in this repo. Setting the function up is a one-off
 done in the Supabase dashboard (the private setup guide covers it). Until it is,
 messages still work, just without banners.
+
+## Coach home
+
+Coaches and the owner land on **Home** after signing in (and whenever they open the app):
+**Welcome Coach <name>!** (from "Your name" in the account sheet, else the start of their
+email), then three cards:
+
+1. **Notifications**: the notice banner, moved here for coaches (lifters still get it at the
+   top of the app).
+2. **Lifters**: **All lifters** opens a list of every lifter (block, class, weeks, % done, unread
+   messages); tapping one opens their program and profile exactly as before.
+3. **Messages**: **Inbox**, which has a Home button.
+
+**Home** is also the first item in the sidebar (next to **Lifters**) and a button at the top of a
+lifter's Overview. Lifters, and coaches not yet approved, don't see any of this. More buttons can
+go into these cards later.
 
 ## Who sees the Program Hub
 

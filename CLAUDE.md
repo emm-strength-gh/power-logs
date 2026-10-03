@@ -187,6 +187,11 @@ private script kept outside it (`private.settings`).
   opens offline, shown by `loadHubFrame()` as the iframe's `srcdoc` with `window.__hubParams`
   injected (the hub reads that when it has no URL query). `hubLocalClear()` deletes it on
   sign-out / non-owner, retried via `spotter.hubHeld`.
+- Coach home (`viewHome`, `viewLifters`; the "Coach home" section): `openHome()` for `CLOUD.user && isCoach()`
+  at launch, after a fresh sign-in (`goHomeAfterSync`) and from the sidebar's Home item and the
+  Overview's Home button; `renderHome()` fills the three cards. `renderNotices()` draws into
+  `#homeNotices` for coaches (the top `#noticeBar` is hidden for them) and into `#noticeBar` for
+  everyone else. `inHome`/`inLifters` are set by `showView()`.
 - In-app notices (the "In-app notices" section, `#noticeBar` at the top of `.content`):
   `NT` (`spotter.notices.v1`) holds `{id, kind, lifter, thread?, week?, who, text, at}`,
   made by `ntFromMessage`/`ntFromEvent` (in `pullMessages`), `ntFromWeekNote` (in
@@ -265,11 +270,12 @@ node test-trophies.js   # Trophies: standards by IPF class, levels, clubs, strea
 node test-trophysync.js # Trophies across devices on the real rules, plus their notifications
 node test-notices.js    # In-app notice banner: kinds, who wrote it, x, stacking
 node test-hubprivate.js # The Program Hub's private copy: owner download, offline, sign-out delete
+node test-home.js       # Coach landing page: greeting, cards, lifters list, Home buttons
 node test-replies.js    # Messages: emoji picker and replies
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all twenty. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all twenty-one. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of power-logs.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

@@ -984,3 +984,67 @@ begin
     alter publication supabase_realtime add table public.lifter_payments;
   end if;
 end $$;
+
+---------------------------------------------------------------- reactions
+-- One emoji reaction per person per thing (Instagram style): to a message (the lifter
+-- and their coaches, whoever can read it), or, coaches only, to a weekly note or a
+-- training day. Removing one sets emoji to null, so it syncs like any change.
+-- target_id: the message's id, the week ('2'), or the day ('2|1').
+create table if not exists public.lifter_reactions (
+  id          uuid primary key default gen_random_uuid(),
+  lifter_id   uuid not null references public.lifters(id) on delete cascade,
+  target_type text not null check (target_type in ('message', 'note', 'day')),
+  target_id   text not null check (length(target_id) between 1 and 64),
+  user_id     uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  emoji       text check (emoji is null or emoji in ('heart', 'up', '100', 'fire', 'sleep', 'tired', 'devil')),
+  updated_at  timestamptz not null default now(),
+  unique (lifter_id, target_type, target_id, user_id)
+);
+create index if not exists lifter_reactions_updated_idx on public.lifter_reactions (updated_at);
+
+create or replace function private.reactions_guard() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if tg_op = 'INSERT' then
+    new.user_id := auth.uid();
+  else
+    new.user_id := old.user_id; new.lifter_id := old.lifter_id;
+    new.target_type := old.target_type; new.target_id := old.target_id;
+  end if;
+  new.updated_at := now();
+  return new;
+end $$;
+drop trigger if exists reactions_guard on public.lifter_reactions;
+create trigger reactions_guard before insert or update on public.lifter_reactions
+  for each row execute function private.reactions_guard();
+
+alter table public.lifter_reactions enable row level security;
+revoke all on public.lifter_reactions from public, anon, authenticated;
+grant select, insert, update on public.lifter_reactions to authenticated;
+drop policy if exists read on public.lifter_reactions;
+create policy read on public.lifter_reactions for select to authenticated
+  using (private.can_see(lifter_id)
+         and (target_type <> 'message' or exists (
+           select 1 from public.messages m where m.id::text = target_id and m.lifter_id = lifter_reactions.lifter_id)));
+drop policy if exists add on public.lifter_reactions;
+create policy add on public.lifter_reactions for insert to authenticated
+  with check (user_id = (select auth.uid())
+    and ((target_type in ('note', 'day') and private.can_coach_live(lifter_id))
+      or (target_type = 'message' and private.can_log(lifter_id) and exists (
+           select 1 from public.messages m where m.id::text = target_id and m.lifter_id = lifter_reactions.lifter_id))));
+drop policy if exists change on public.lifter_reactions;
+create policy change on public.lifter_reactions for update to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid())
+    and ((target_type in ('note', 'day') and private.can_coach_live(lifter_id))
+      or (target_type = 'message' and private.can_log(lifter_id))));
+revoke execute on function private.reactions_guard() from public, anon;
+
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (select 1 from pg_publication_tables
+                     where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'lifter_reactions') then
+    alter publication supabase_realtime add table public.lifter_reactions;
+  end if;
+end $$;

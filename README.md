@@ -18,7 +18,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
 | `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
-| `supabase/selftest.sql` | Checks on those rules (145 at present). Paste and run after the schema; every row should say PASS. |
+| `supabase/selftest.sql` | Checks on those rules (163 at present). Paste and run after the schema; every row should say PASS. |
 | `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
 | `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
 | `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the original logo). |
@@ -43,6 +43,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-replies.js` | Messages: the emoji picker and replies (the reply bar, quotes, jumping to the original, swiping, saved on the server) — `node test-replies.js`. |
 | `test-home.js` | The coach landing page: greeting, cards, the lifters list, Home buttons, who gets it and when — `node test-home.js`. |
 | `test-payments.js` | Payments and the lifter's Home, end to end on the real rules: marking months paid/unpaid, day, amount, currency, the lifter's read-only view, and co-coaches kept out — `node test-payments.js`. |
+| `test-reactions.js` | Reactions: the seven emoji, messages (lifter and coach), coaches-only notes and days, one per person, read-only for lifters, the rules, and the notices — `node test-reactions.js`. |
 | `test-cloudfake.js` | Not a test: the stand-in Supabase the tests plug in (`window.__spotterCloud`), and the in-process runner for the notify function. |
 | `test-vbt.js` | Velocity Tracker smoke test — `node test-vbt.js`. |
 | `make_icons.py` | Regenerates the icons from `icons/_source.png`. |
@@ -282,6 +283,20 @@ there are two or more. Messages clear themselves once read, trophies once Trophi
 opened, and the rest once their week is opened. Notices are kept on the device for up
 to 30 days (`spotter.notices.v1`), are made as a sync brings in something someone else
 did (the first sync on a new device is silent), and are dropped on sign-out.
+
+## Reactions
+
+Seven emoji, Instagram style: ❤️ heart, 👍 thumbs up, 💯, 🔥 fire, 😴 sleepy, 😫 tired and 😈 devil.
+One reaction per person per thing: pick another and it replaces yours, tap your own to take it back.
+
+- **Messages:** the lifter and their coaches can react. The smiley beside a message opens the
+  seven; double-tapping a message gives it a ❤️. Chips under the message show who reacted (hold
+  or hover for names; several people on one emoji show a count).
+- **Weekly notes and training days:** only coaches can react (to the lifter's weekly note, or to
+  a day in the week view). Lifters see the reactions, read-only.
+- The person whose message, note or day it is gets an in-app notice ("owner reacted 🔥 to week 1 · day 2").
+- Synced after Payments (`lifter_reactions`; the database enforces who may react to what, and a
+  reaction on a private coach thread is visible only to that thread). Only synced lifters have them.
 
 ## Trophies and strength levels
 

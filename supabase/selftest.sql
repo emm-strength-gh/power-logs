@@ -415,6 +415,44 @@ begin
   r := pg_temp.act(c1, format($q$insert into public.lifter_payments (lifter_id, month, paid) values (%L, '2026-13', true)$q$, m));
   perform pg_temp.ok('...and only real months', r like 'refused%', r);
 
+  -- Reactions
+  r := pg_temp.act(l, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) select %L, 'message', id::text, 'heart' from public.messages where lifter_id = %L and body = 'hi Sam'$q$, m, m));
+  perform pg_temp.ok('the lifter reacts to a message in their thread', r = 'ok 1', r);
+  r := pg_temp.act(c1, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) select %L, 'message', id::text, 'fire' from public.messages where lifter_id = %L and body = 'hi coach'$q$, m, m));
+  perform pg_temp.ok('...and a coach does too', r = 'ok 1', r);
+  perform pg_temp.ok('both see both reactions', pg_temp.cnt(l, format('select * from public.lifter_reactions where lifter_id = %L', m)) = 2
+    and pg_temp.cnt(c1, format('select * from public.lifter_reactions where lifter_id = %L', m)) = 2);
+  r := pg_temp.act(l, format($q$update public.lifter_reactions set emoji = 'up' where lifter_id = %L and user_id = %L$q$, m, l));
+  perform pg_temp.ok('a reaction can be changed', r = 'ok 1' and (select emoji from public.lifter_reactions where lifter_id = m and user_id = l) = 'up', r);
+  r := pg_temp.act(l, format($q$update public.lifter_reactions set emoji = null where lifter_id = %L and user_id = %L$q$, m, l));
+  perform pg_temp.ok('...or taken back', r = 'ok 1' and (select emoji from public.lifter_reactions where lifter_id = m and user_id = l) is null, r);
+  r := pg_temp.act(l, format($q$update public.lifter_reactions set emoji = 'devil' where lifter_id = %L and user_id = %L$q$, m, c1));
+  perform pg_temp.ok('nobody changes someone else''s', r = 'ok 0' or r like 'refused%', r);
+  r := pg_temp.act(l, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji, user_id) select %L, 'message', id::text, 'sleep', %L from public.messages where lifter_id = %L and body = 'hi Sam'$q$, m, c1, m));
+  perform pg_temp.ok('...nor reacts as them', r like 'refused%' or (select count(*) from public.lifter_reactions where user_id = c1 and emoji = 'sleep') = 0, r);
+  r := pg_temp.act(c1, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) select %L, 'message', id::text, 'poop' from public.messages where lifter_id = %L limit 1$q$, m, m));
+  perform pg_temp.ok('only the seven allowed emoji', r like 'refused%', r);
+  r := pg_temp.act(x, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) select %L, 'message', id::text, 'heart' from public.messages where lifter_id = %L limit 1$q$, m, m));
+  -- (they can't even read the message to pick it from, so 0 rows go in; a direct insert is refused too)
+  perform pg_temp.ok('a stranger cannot react to a message', (r = 'ok 0' or r like 'refused%')
+    and pg_temp.act(x, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) values (%L, 'message', %L, 'heart')$q$, m, (select id::text from public.messages where lifter_id = m limit 1))) like 'refused%', r);
+  perform pg_temp.ok('...or see reactions', pg_temp.cnt(x, 'select * from public.lifter_reactions') = 0);
+  r := pg_temp.act(c1, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) values (%L, 'note', '1', 'heart')$q$, m));
+  perform pg_temp.ok('a coach reacts to a weekly note', r = 'ok 1', r);
+  r := pg_temp.act(c1, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) values (%L, 'day', '1|2', '100')$q$, m));
+  perform pg_temp.ok('...and to a day', r = 'ok 1', r);
+  perform pg_temp.ok('the lifter sees those', pg_temp.cnt(l, format($q$select * from public.lifter_reactions where lifter_id = %L and target_type in ('note', 'day')$q$, m)) = 2);
+  r := pg_temp.act(l, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) values (%L, 'day', '1|1', 'heart')$q$, m));
+  perform pg_temp.ok('the lifter cannot react to a note or a day (coaches only)', r like 'refused%', r);
+  r := pg_temp.act(l, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) values (%L, 'note', '1', 'heart')$q$, m));
+  perform pg_temp.ok('...either kind', r like 'refused%', r);
+  r := pg_temp.act(l, format($q$update public.lifter_reactions set target_type = 'day' where lifter_id = %L and user_id = %L$q$, m, l));
+  perform pg_temp.ok('...nor turn a message reaction into one', (select target_type from public.lifter_reactions where lifter_id = m and user_id = l) = 'message', r);
+  r := pg_temp.act(c1, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) values (%L, 'message', gen_random_uuid()::text, 'heart')$q$, m));
+  perform pg_temp.ok('a reaction to a message that isn''t there is refused', r like 'refused%', r);
+  r := pg_temp.act(c1, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) values (%L, 'note', '1', 'fire')$q$, b));
+  perform pg_temp.ok('a coach cannot react on a lifter that isn''t theirs', r like 'refused%', r);
+
   -- Clear (owner only)
   v := pg_temp.val(c1, format($q$select public.clear_thread(%L, 'team')::text$q$, m));
   perform pg_temp.ok('a coach cannot clear a conversation', v like 'refused%', v);

@@ -118,7 +118,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   const bubbles = a => [...a.doc.querySelectorAll("#msgList .msg-bubble")];
   const bubbleOf = (a, re) => bubbles(a).find(b => re.test(b.textContent));
   const sync = async a => { a.sync(); await tick(1800); await a.settle(); };
-  const replyBtn = (a, re) => bubbleOf(a, re).parentElement.querySelector(".msg-reply");
+  const replyBtn = (a, re) => bubbleOf(a, re).parentElement.querySelector('.msg-reply[aria-label^="Reply to"]');
   const dbRows = () => rows("select body, reply_to, id from public.messages order by created_at");
   const touch = (target, type, x) => { const e = new target.ownerDocument.defaultView.Event(type, { bubbles: true }); e.touches = type === "touchend" ? [] : [{ clientX: x, clientY: 0 }]; target.dispatchEvent(e); };
 
@@ -201,7 +201,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   console.log("\nWhile it's still sending");
   L.dev.state.offline = true;
   await send(L, "Typed offline");
-  check("a message that hasn't gone yet has no reply button", !bubbleOf(L, /Typed offline/).parentElement.querySelector(".msg-reply"));
+  check("a message that hasn't gone yet has no reply button", !bubbleOf(L, /Typed offline/).parentElement.querySelector('.msg-reply[aria-label^="Reply to"]'));
   L.dev.state.offline = false;
 
   const bad = [C, L].reduce((a, x) => a.concat(x.real()), []);

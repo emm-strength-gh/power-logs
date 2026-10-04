@@ -191,6 +191,9 @@ the lifter's sidebar, plus an **Inbox** for coaches listing every lifter they co
   box and in the reply, and tapping the quote jumps back to the original. The database
   keeps the pointer (`messages.reply_to`) and drops one that doesn't point at a message in
   the same thread.
+- **Swipe back:** in Messages (a thread or the list), swiping right on the empty space goes back
+  to the Overview with the left menu open. A swipe that starts on a message is that message's
+  reply gesture, so from a message it only counts when it starts at the very left edge.
 - **Seen:** under your latest message, "Seen" (private thread) or "Seen by Tom,
   Jordan" (shared thread) once they've opened it. A coach who joined after it was sent
   isn't counted.

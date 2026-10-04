@@ -204,6 +204,31 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("a message that hasn't gone yet has no reply button", !bubbleOf(L, /Typed offline/).parentElement.querySelector('.msg-reply[aria-label^="Reply to"]'));
   L.dev.state.offline = false;
 
+  console.log("\nSwiping back");
+  const swipe = (el, x0, x1, y1 = 0) => { touch(el, "touchstart", x0); touch(el, "touchmove", x1); const e = new L.w.Event("touchend", { bubbles: true }); e.touches = []; el.dispatchEvent(e); };
+  const toMsgs = async () => { L.nav("Messages"); await tick(150); };
+  await toMsgs();
+  const bg = L.doc.querySelector("#viewMessages .msg-head");
+  swipe(bg, 200, 240);
+  check("a short swipe right does nothing", L.$("viewMessages").classList.contains("active"));
+  swipe(bg, 240, 120);
+  check("a swipe to the left does nothing", L.$("viewMessages").classList.contains("active"));
+  swipe(bg, 100, 260);
+  check("swiping right on the empty space goes back to the Overview", L.$("viewOverview").classList.contains("active") && !L.$("viewMessages").classList.contains("active"));
+  check("...with the left navigation open", L.$("layout").classList.contains("nav-open"));
+  L.$("layout").classList.remove("nav-open");
+  await toMsgs();
+  const theirs = bubbleOf(L, /Glad it went well/).parentElement;
+  swipe(theirs, 100, 260);
+  check("a swipe that starts on a message is its reply gesture, not 'back'", L.$("viewMessages").classList.contains("active") && !!L.$("msgReplyBar"));
+  L.$("msgReplyBar").querySelector("button").click(); await tick(50);
+  swipe(theirs, 10, 170);
+  check("...unless it starts at the very left edge", L.$("viewOverview").classList.contains("active") && L.$("layout").classList.contains("nav-open"));
+  L.$("layout").classList.remove("nav-open");
+  await toMsgs();
+  swipe(L.$("msgInput"), 100, 260);
+  check("a swipe in the message box (selecting text) doesn't leave", L.$("viewMessages").classList.contains("active"));
+
   const bad = [C, L].reduce((a, x) => a.concat(x.real()), []);
   check("no script errors on any device", bad.length === 0, bad.join(" | ").slice(0, 400));
   console.log(`\n${checks} checks · ${failures === 0 ? "ALL PASSED" : failures + " FAILED"}\n`);

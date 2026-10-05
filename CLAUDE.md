@@ -207,6 +207,11 @@ private script kept outside it (`private.settings`).
   `reactSync()` after `paySync()`. Table `lifter_reactions`: messages need read access to the message
   (so private coach threads stay private); notes/days are coaches-only (`can_coach_live`). The notice
   kind `react` is made in `ntFromReaction()`.
+- The floating Messages window ("Floating Messages window" section, `#chatDock`): `updateChatDock()` (called by
+  `showView`) shows it for `chatEligible()` (a coach with a lifter they can message) on Overview/week. It renders
+  with the same `renderMessages()`/`renderThread()` into `#chatBody` instead of `#msgBody` (the other is cleared,
+  so each id exists once); `msgLive()` (= `inMessages || chatOpen()`) is what the refresh code checks, and
+  `msgToBottom()` scrolls the window's own list. State (`min`/`open`/`max`) in `spotter.chatDock.v1`.
 - In-app notices (the "In-app notices" section, `#noticeBar` at the top of `.content`):
   `NT` (`spotter.notices.v1`) holds `{id, kind, lifter, thread?, week?, who, text, at}`,
   made by `ntFromMessage`/`ntFromEvent` (in `pullMessages`), `ntFromWeekNote` (in
@@ -288,11 +293,12 @@ node test-hubprivate.js # The Program Hub's private copy: owner download, offlin
 node test-home.js       # Home: coach and lifter landing pages, cards, lifters list, Home buttons
 node test-payments.js   # Payments: coach marks months paid, lifter read-only, real rules
 node test-replies.js    # Messages: emoji picker and replies
+node test-chatdock.js   # The floating Messages window for coaches
 node test-reactions.js  # Reactions on messages, coach-only on notes and days
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all twenty-three. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all twenty-four. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of power-logs.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

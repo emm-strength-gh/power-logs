@@ -140,6 +140,44 @@ async function boot(wd, storage = {}) {
   check("...and appears in the list of lifters", (A.nav("Lifters"), [...A.doc.querySelectorAll("#liftersBody .msg-thread")].some(r => /Jo Reyes/.test(r.textContent))));
   check("signed in as a coach, it's uploaded to the account", WD.inserted && WD.inserted.some(r => r.name === "Jo Reyes"), JSON.stringify(WD.inserted || []).slice(0, 200));
 
+  console.log("\nSwipe gestures");
+  const sw = (a, el, x0, y0, x1, y1) => {
+    const ev = (type, x, y) => { const e = new a.w.Event(type, { bubbles: true }); e.touches = type === "touchend" ? [] : [{ clientX: x, clientY: y }]; el.dispatchEvent(e); };
+    ev("touchstart", x0, y0); ev("touchmove", x1, y1); ev("touchend", x1, y1);
+  };
+  A.nav("Home"); await tick(50);
+  const syncs = () => (WD.fetched || 0);
+  const before = A.$("toastMsg").textContent;
+  sw(A, A.$("viewHome"), 150, 100, 160, 260);
+  await tick(100);
+  check("pulling down at the top of Home syncs everything", /Syncing/.test(A.$("toastMsg").textContent) || /Up to date/.test(A.$("toastMsg").textContent), A.$("toastMsg").textContent);
+  check("...and says when it's done", await until(() => /Up to date|Couldn/.test(A.$("toastMsg").textContent), 4000), A.$("toastMsg").textContent);
+  A.$("toastMsg").textContent = "";
+  sw(A, A.$("viewHome"), 150, 100, 160, 130);
+  await tick(50);
+  check("a short pull does nothing", A.$("toastMsg").textContent === "");
+  Object.defineProperty(A.w, "pageYOffset", { value: 300, configurable: true });
+  sw(A, A.$("viewHome"), 150, 100, 160, 260);
+  await tick(50);
+  check("...and neither does a swipe down while scrolled part-way (that's just scrolling up)", A.$("toastMsg").textContent === "");
+  Object.defineProperty(A.w, "pageYOffset", { value: 0, configurable: true });
+  A.$("layout").classList.remove("nav-open");
+  A.nav("Lifters"); await tick(30);
+  [...A.doc.querySelectorAll("#liftersBody .msg-thread")].find(r => /Tom/.test(r.textContent)).click(); await tick(150);
+  sw(A, A.$("viewOverview"), 60, 200, 220, 210);
+  check("swiping right on the Overview opens the left navigation", A.$("layout").classList.contains("nav-open"));
+  A.$("layout").classList.remove("nav-open");
+  sw(A, A.$("viewOverview"), 220, 200, 60, 210);
+  check("swiping left doesn't", !A.$("layout").classList.contains("nav-open"));
+  sw(A, A.$("viewOverview"), 100, 200, 200, 400);
+  check("a diagonal swipe (mostly scrolling) doesn't", !A.$("layout").classList.contains("nav-open"));
+  A.nav("Analytics"); await tick(150);
+  sw(A, A.$("viewAnalytics"), 60, 300, 230, 310);
+  check("the same on Analytics", A.$("layout").classList.contains("nav-open"));
+  A.$("layout").classList.remove("nav-open");
+  const cv = A.$("viewAnalytics").querySelector("canvas");
+  if (cv) { sw(A, cv, 60, 300, 230, 310); check("...but not when it starts on a chart (that's the chart's)", !A.$("layout").classList.contains("nav-open")); }
+
   console.log("\nInbox");
   A.btn("Inbox", A.$("homeComms")).click(); await tick(100);
   check("the Inbox button opens the inbox view", A.active() === "viewInbox");

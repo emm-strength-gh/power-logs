@@ -245,6 +245,16 @@ are offered; "74kg" is saved as 74, open classes keep their +).
 It makes them an ordinary account again (a lifter, if they have a program), and they can ask to be a
 coach again (`decide_coach(…, 'cleared')`; only declined or removed requests can be deleted).
 
+## Gestures
+
+- **Home:** pull down at the top to sync everything (the log, messages, trophies, payments,
+  reactions). It says "Syncing…", then "Up to date". Pulling while scrolled part-way down is just scrolling.
+- **Overview and Analytics:** swipe right to open the left navigation. A touch that starts on a chart,
+  a field or something that scrolls sideways is that thing's, and a mostly-vertical swipe is a scroll.
+- **Messages:** swipe right on the empty space goes back to the Overview (see *Messages*); swipe a message
+  toward the middle to reply; hold a message to copy it. Opening Messages, focusing or typing in the box,
+  and sending all scroll to the newest message.
+
 ## Payments
 
 For a coach to track each month's payment from the lifters they created or loaded.

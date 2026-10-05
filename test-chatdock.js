@@ -169,14 +169,12 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   C.doc.querySelector("#reactPop .copy-opt").click(); await tick(80);
   check("holding or right-clicking a message still offers Copy", copied.join() === "Thursday is a heavy single, RPE 8", copied.join());
 
-  console.log("\nMaximise, restore, minimise");
-  C.$("chatMax").click(); await tick(50);
-  check("Maximise makes it bigger", C.$("chatWin").classList.contains("max") && C.$("chatMax").getAttribute("aria-label") === "Restore size" && store(C) === '"max"');
-  check("...and its thread is still there", /heavy single/.test(C.$("chatBody").textContent));
-  C.$("chatMax").click(); await tick(50);
-  check("pressing it again restores the size", !C.$("chatWin").classList.contains("max") && C.$("chatMax").getAttribute("aria-label") === "Maximize");
+  console.log("\nOpen and minimise");
+  check("open, the round button is gone (the window replaces it)", C.$("chatBubble").hidden && C.w.getComputedStyle(C.$("chatBubble")).display === "none", C.w.getComputedStyle(C.$("chatBubble")).display);
+  check("there's no maximise button", !C.$("chatMax") && ![...C.doc.querySelectorAll("#chatWin button")].some(b => /maxim|restore/i.test(b.getAttribute("aria-label") || "")));
+  check("the window is a small one (the CSS caps it at 330px tall)", /min\(330px/.test(C.doc.querySelector("style").textContent));
   C.$("chatMin").click(); await tick(50);
-  check("Minimise shrinks it back to the round button", C.$("chatWin").hidden && !C.$("chatBubble").hidden && store(C) === '"min"');
+  check("Minimise shrinks it back to the round button", C.$("chatWin").hidden && !C.$("chatBubble").hidden && C.w.getComputedStyle(C.$("chatBubble")).display !== "none" && store(C) === '"min"');
   check("...and clears the window's copy of the thread (no duplicate ids)", C.$("chatBody").children.length === 0);
   await send(L, "#msgBody", "One more thing");
   await settle(L); await settle(C);

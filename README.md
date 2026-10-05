@@ -44,7 +44,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-home.js` | The coach landing page: greeting, cards, the lifters list, Home buttons, who gets it and when — `node test-home.js`. |
 | `test-payments.js` | Payments and the lifter's Home, end to end on the real rules: marking months paid/unpaid, day, amount, currency, the lifter's read-only view, and co-coaches kept out — `node test-payments.js`. |
 | `test-reactions.js` | Reactions: the seven emoji, messages (lifter and coach), coaches-only notes and days, one per person, read-only for lifters, the rules, and the notices — `node test-reactions.js`. |
-| `test-chatdock.js` | The floating Messages window: minimised button and count, open/maximise/minimise, sending, replies, reactions, copy, where it shows, one set of ids on the page — `node test-chatdock.js`. |
+| `test-chatdock.js` | The floating Messages window: minimised button and count, open/minimise, sending, replies, reactions, copy, where it shows, one set of ids on the page — `node test-chatdock.js`. |
 | `test-cloudfake.js` | Not a test: the stand-in Supabase the tests plug in (`window.__spotterCloud`), and the in-process runner for the notify function. |
 | `test-vbt.js` | Velocity Tracker smoke test — `node test-vbt.js`. |
 | `make_icons.ps1` | Regenerates the icons from `icons/_source.png` (`powershell -ExecutionPolicy Bypass -File make_icons.ps1`; no Python needed). |
@@ -250,9 +250,8 @@ coach again (`decide_coach(…, 'cleared')`; only declined or removed requests c
 
 For coaches on a lifter's **Overview** or a **week**: a small window at the bottom right with the same
 Messages as the Messages page (every thread, the message box, replies, emoji, reactions, hold-to-copy,
-unread counts and Seen), so you can keep talking while you look at the program. It has two buttons:
-**Maximise** (bigger, press again to restore) and **Minimise**, which shrinks it to a round message
-button with the unread count. It's a lifter-by-lifter window (it follows the lifter you're viewing), stays in
+unread counts and Seen), so you can keep talking while you look at the program. It's a small window with one button, **Minimise**, which shrinks it to a round message
+button with the unread count (the round button shows only while it's minimised). It's a lifter-by-lifter window (it follows the lifter you're viewing), stays in
 the state you left it across pages and launches, and gives way to the real Messages page there. A message that
 arrives while it's minimised is counted, not marked read, until you open it. It isn't shown to lifters.
 

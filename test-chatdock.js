@@ -130,12 +130,14 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("the button shows the unread count", !C.$("chatBadge").hidden && C.$("chatBadge").textContent === "1", C.$("chatBadge").textContent);
   check("...and the message is not marked read just because it arrived", (await reads()) === 0);
 
+  const badgeCss = C.w.getComputedStyle(C.$("chatBadge"));
+  check("the unread count is a small red circle on the round button", badgeCss.backgroundColor === "rgb(229, 56, 59)" && badgeCss.display !== "none" && C.$("chatBubble").contains(C.$("chatBadge")), badgeCss.backgroundColor + " " + badgeCss.display);
   console.log("\nOpening it");
   C.$("chatBubble").click(); await tick(200);
   check("the window opens, titled with the lifter", !C.$("chatWin").hidden && C.$("chatBubble").hidden && C.$("chatTitle").textContent === "Tom");
   check("it has the same messages as the Messages view", /quick question about Thursday/.test(C.$("chatBody").textContent) && !!C.$("chatBody").querySelector("#msgList"));
   check("...with the message box, send button, emoji button", !!C.$("chatBody").querySelector("#msgInput") && !!C.btn("Send", C.$("chatBody")) && !!C.$("chatBody").querySelector("#msgEmojiBtn"));
-  check("reading it there marks it read", await until(async () => (await reads()) === 1) && C.$("chatBadge").hidden);
+  check("reading it there marks it read, and the red circle goes", await until(async () => (await reads()) === 1) && C.$("chatBadge").hidden && C.w.getComputedStyle(C.$("chatBadge")).display === "none");
   check("the choice is remembered", store(C) === '"open"', store(C));
   C.$("chatBody").querySelector("#msgEmojiBtn").click(); await tick(50);
   check("the emoji picker works inside it", !!C.$("chatBody").querySelector("#msgEmoji"));

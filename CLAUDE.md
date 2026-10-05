@@ -27,8 +27,8 @@ edges in more depth than this file.
 Supporting files: [manifest.webmanifest](manifest.webmanifest) (PWA metadata),
 [sw.js](sw.js) (service worker — see caching strategy below),
 [index.html](index.html) (redirect shim to `power-logs.html`),
-[icons/](icons/) (+ [make_icons.py](make_icons.py) to regenerate them from
-`icons/_source.png`).
+[icons/](icons/) (+ [make_icons.ps1](make_icons.ps1) to regenerate them from
+`icons/_source.png`: the 25 kg plate and notepad logo on the app's pastel sage).
 
 ## Embedding protocol (iframe ⇄ parent postMessage)
 

@@ -21,7 +21,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `supabase/selftest.sql` | Checks on those rules (163 at present). Paste and run after the schema; every row should say PASS. |
 | `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
 | `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
-| `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the original logo). |
+| `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the logo: a red 25 kg plate and a spiral notepad on a pastel sage tile). The header and About sheet use `icon-192.png` too. |
 | `.nojekyll` | Stops GitHub Pages running the files through Jekyll. |
 | `test-boot.js` | Smoke test — `npm install jsdom && node test-boot.js`. |
 | `test-weekrange.js` | Program Hub week-range export tests across all builders — `node test-weekrange.js`. |
@@ -46,7 +46,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-reactions.js` | Reactions: the seven emoji, messages (lifter and coach), coaches-only notes and days, one per person, read-only for lifters, the rules, and the notices — `node test-reactions.js`. |
 | `test-cloudfake.js` | Not a test: the stand-in Supabase the tests plug in (`window.__spotterCloud`), and the in-process runner for the notify function. |
 | `test-vbt.js` | Velocity Tracker smoke test — `node test-vbt.js`. |
-| `make_icons.py` | Regenerates the icons from `icons/_source.png`. |
+| `make_icons.ps1` | Regenerates the icons from `icons/_source.png` (`powershell -ExecutionPolicy Bypass -File make_icons.ps1`; no Python needed). |
 
 Everything uses **relative paths**, so it works from `username.github.io/repo-name/`
 without you editing anything.
@@ -591,8 +591,9 @@ from the cloud; signed out, export first.
 - **Folder scan stays desktop-only.** The app already says so in its own UI. The
   File System Access API isn't in Safari, so "Load CSV files" is the iPhone path.
   Nothing I changed affects this.
-- **512px icon is upscaled.** The only source was the 180px embedded logo, so the
-  large icon is slightly soft. If you have the original artwork, drop it in as
-  `icons/_source.png` and re-run `make_icons.py`.
+- **A changed icon reaches the home screen only when it's re-added.** iOS copies the icon when
+  you tap Add to Home Screen, so an installed app keeps the old one until you remove it and add
+  it again. The header logo and browser tab update on their own. To change the logo, replace
+  `icons/_source.png` (a full-bleed square) and run `make_icons.ps1`.
 - **Unsigned, unlisted, no expiry.** Not in the App Store, doesn't need to be, no
   re-signing, no developer account.

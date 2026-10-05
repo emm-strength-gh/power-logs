@@ -24,7 +24,7 @@
  * ordinary edits to power-logs.html are picked up by the network-first rule.
  */
 
-const CACHE_VERSION = "v13";
+const CACHE_VERSION = "v14";
 const CACHE_SHELL = `spotter-shell-${CACHE_VERSION}`;
 const CACHE_VENDOR = `spotter-vendor-${CACHE_VERSION}`;
 

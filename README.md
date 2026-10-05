@@ -191,6 +191,10 @@ the lifter's sidebar, plus an **Inbox** for coaches listing every lifter they co
   box and in the reply, and tapping the quote jumps back to the original. The database
   keeps the pointer (`messages.reply_to`) and drops one that doesn't point at a message in
   the same thread.
+- **Copy:** tap and hold a message (or right-click it on a computer) and a **Copy** button appears
+  above it; tapping it copies the whole message. Moving your finger (a swipe or a scroll) isn't a
+  hold, and on touch screens the system's own text-selection menu is switched off on messages so
+  the two don't fight.
 - **Swipe back:** in Messages (a thread or the list), swiping right on the empty space goes back
   to the Overview with the left menu open. A swipe that starts on a message is that message's
   reply gesture, so from a message it only counts when it starts at the very left edge.

@@ -204,6 +204,30 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("a message that hasn't gone yet has no reply button", !bubbleOf(L, /Typed offline/).parentElement.querySelector('.msg-reply[aria-label^="Reply to"]'));
   L.dev.state.offline = false;
 
+  console.log("\nTap and hold to copy");
+  const copied = [];
+  Object.defineProperty(L.w.navigator, "clipboard", { value: { writeText: async x => { copied.push(x); } }, configurable: true });
+  const hold = async (el, ms) => { touch(el, "touchstart", 100); await tick(ms); const e = new L.w.Event("touchend", { bubbles: true }); e.touches = []; el.dispatchEvent(e); };
+  L.nav("Messages"); await tick(150);
+  const target = bubbleOf(L, /Glad it went well/);
+  await hold(target, 150);
+  check("a quick tap doesn't open anything", !L.$("reactPop"));
+  await hold(target, 600);
+  check("holding a message opens a Copy button", !!L.$("reactPop") && L.$("reactPop").textContent === "Copy", L.$("reactPop") && L.$("reactPop").textContent);
+  L.$("reactPop").querySelector(".copy-opt").click(); await tick(100);
+  check("Copy puts the whole message on the clipboard", copied.length === 1 && copied[0] === "Glad it went well", JSON.stringify(copied));
+  check("...says so, and the button goes", /Copied/.test(L.$("toastMsg").textContent) && !L.$("reactPop"));
+  const moving = bubbleOf(L, /Plain message/);
+  touch(moving, "touchstart", 100); touch(moving, "touchmove", 140); await tick(600);
+  check("moving the finger (a swipe or scroll) isn't a hold", !L.$("reactPop"));
+  const e0 = new L.w.Event("touchend", { bubbles: true }); e0.touches = []; moving.dispatchEvent(e0);
+  moving.dispatchEvent(new L.w.MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+  check("right-click does the same on a computer", !!L.$("reactPop") && L.$("reactPop").textContent === "Copy");
+  await tick(30);
+  L.doc.dispatchEvent(new L.w.KeyboardEvent("keydown", { key: "Escape" })); await tick(50);
+  check("Escape closes it", !L.$("reactPop"));
+  check("a held message isn't also a double-tap heart", !L.doc.querySelector("#msgList .react-chip"));
+
   console.log("\nSwiping back");
   const swipe = (el, x0, x1, y1 = 0) => { touch(el, "touchstart", x0); touch(el, "touchmove", x1); const e = new L.w.Event("touchend", { bubbles: true }); e.touches = []; el.dispatchEvent(e); };
   const toMsgs = async () => { L.nav("Messages"); await tick(150); };

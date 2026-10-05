@@ -943,6 +943,9 @@ create table if not exists public.lifter_payments (
   updated_by uuid,
   primary key (lifter_id, month)
 );
+-- A month the coach deleted from the list. A row, not a real delete, so other devices
+-- learn of it through the same updated_at cursor as every other change.
+alter table public.lifter_payments add column if not exists removed boolean not null default false;
 create index if not exists lifter_payments_updated_idx on public.lifter_payments (updated_at);
 
 create or replace function private.made_lifter(lid uuid) returns boolean

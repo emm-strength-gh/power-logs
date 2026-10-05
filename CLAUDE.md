@@ -197,7 +197,9 @@ private script kept outside it (`private.settings`).
   read-only). Payments ("Payments" section): `PAY` (`spotter.payments.v1`), `payCanEdit()` = the
   coach who created the lifter (`lifterMeta.createdBy`) or a local-only lifter; `paySync()` after
   `troSync()` in `syncNow()`; table `lifter_payments` (RLS `private.made_lifter`). The month
-  editor reuses the Trophies form dialog (`troOpenForm`).
+  editor reuses the Trophies form dialog (`troOpenForm`). The list is the last twelve months plus
+  any added one, minus `gone` entries (`lifter_payments.removed`, a flag rather than a delete so other
+  devices learn of it); swipe-to-delete is `paySwipe`/`payDelete`, the + button `payAddMonth`.
 - New lifters from the app: `openNewLifter()` (Lifters page) → `createLifter()` builds the profile,
   `addEmptyWeek`/`addEmptyDay`, opens Manage Program and calls `uploadLifter()` when signed in as a
   coach. Weight class: `cleanClass()`/`setClass()` in the Lifter & program card.

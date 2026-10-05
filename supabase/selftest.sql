@@ -410,6 +410,12 @@ begin
   r := pg_temp.act(c2, format($q$insert into public.lifter_payments (lifter_id, month, paid) values (%L, '2026-09', true)$q$, m));
   perform pg_temp.ok('...nor write them', r like 'refused%', r);
   perform pg_temp.ok('a stranger sees none', pg_temp.cnt(x, 'select * from public.lifter_payments') = 0);
+  r := pg_temp.act(c1, format($q$update public.lifter_payments set paid = false, paid_on = null, amount = null, removed = true where lifter_id = %L and month = '2026-10'$q$, m));
+  perform pg_temp.ok('the coach can delete a month from the list', r = 'ok 1', r);
+  perform pg_temp.ok('...which the lifter sees as removed',
+    (select removed from public.lifter_payments where lifter_id = m and month = '2026-10') is true);
+  r := pg_temp.act(l, format($q$update public.lifter_payments set removed = false where lifter_id = %L$q$, m));
+  perform pg_temp.ok('the lifter cannot bring it back', r = 'ok 0' or r like 'refused%', r);
   r := pg_temp.act(c1, format($q$insert into public.lifter_payments (lifter_id, month, paid, currency) values (%L, '2026-08', true, 'EUR')$q$, m));
   perform pg_temp.ok('only pesos, pounds or dollars', r like 'refused%', r);
   r := pg_temp.act(c1, format($q$insert into public.lifter_payments (lifter_id, month, paid) values (%L, '2026-13', true)$q$, m));

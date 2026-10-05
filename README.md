@@ -18,7 +18,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
 | `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
-| `supabase/selftest.sql` | Checks on those rules (163 at present). Paste and run after the schema; every row should say PASS. |
+| `supabase/selftest.sql` | Checks on those rules (166 at present). Paste and run after the schema; every row should say PASS. |
 | `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
 | `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
 | `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the logo: a red 25 kg plate and a spiral notepad on a pastel sage tile). The header and About sheet use `icon-192.png` too. |
@@ -278,9 +278,11 @@ For a coach to track each month's payment from the lifters they created or loade
   **day** it was paid (today for the current month, otherwise the 1st, changeable), and the
   **amount** (optional) in **₱ PHP, £ GBP or $ USD**. The next month offers the last amount used.
   The currency buttons above the months set the default.
-- **Delete a record:** the coach swipes a paid month to the right to show a red **x**; tapping it
-  puts the month back to Unpaid (an Undo appears). The month editor has **Delete record** too, for a
-  computer. Lifters get neither. No database change: it saves the month as unpaid, as before.
+- **Delete a month:** the coach swipes a month to the right to show a red **x**; tapping it removes
+  that month from the list altogether (an Undo appears). The month editor has **Delete month** too,
+  for a computer. A round **+** button at the bottom right adds any month and year back (or a past
+  one), unpaid. Lifters get neither. A deleted month is kept in the database as a row with
+  `removed = true`, so the lifter's and the coach's other devices drop it too.
 - **Lifters** see the same months and amounts, and can't change anything.
 - Stored on the device in `spotter.payments.v1` (by lifter name) and synced after Trophies in
   `syncNow()`; a problem there never holds up the training log. Lifters only on the coach's device

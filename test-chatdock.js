@@ -180,6 +180,24 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   await settle(L); await settle(C);
   check("a message that comes in while it's minimised is counted, not read", C.$("chatBadge").textContent === "1" && !C.$("chatBadge").hidden && (await reads()) === 1, C.$("chatBadge").textContent + " / " + await reads());
 
+  console.log("\nTapping outside");
+  const down = (el) => el.dispatchEvent(new C.w.Event("pointerdown", { bubbles: true }));
+  C.$("chatBubble").click(); await tick(100);
+  down(C.$("chatBody")); await tick(50);
+  check("a tap inside the window leaves it open", !C.$("chatWin").hidden);
+  C.$("chatBody").querySelector('button[aria-label="React to this message"]').click(); await tick(50);
+  down(C.doc.querySelector("#reactPop .react-opt")); await tick(50);
+  check("...and so does a tap on its emoji picker (that lives outside it in the page)", !C.$("chatWin").hidden);
+  C.doc.dispatchEvent(new C.w.KeyboardEvent("keydown", { key: "Escape" })); await tick(30);
+  down(C.$("viewOverview")); await tick(80);
+  check("a tap outside it minimises it to the round button", C.$("chatWin").hidden && !C.$("chatBubble").hidden && store(C) === '"min"');
+  C.$("chatBubble").click(); await tick(100);
+  check("tapping the round button opens it (and that tap doesn't close it again)", !C.$("chatWin").hidden);
+  C.$("chatMin").click(); await tick(30);
+  down(C.$("viewOverview")); await tick(30);
+  check("outside taps do nothing when it's already a button", !C.$("chatBubble").hidden);
+  C.$("chatBubble").click(); await tick(100);
+
   console.log("\nWhere it shows");
   C.$("chatBubble").click(); await tick(150);
   check("reopened, it has the new message and clears the count", /One more thing/.test(C.$("chatBody").textContent) && C.$("chatBadge").hidden);

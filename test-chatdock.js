@@ -121,7 +121,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   console.log("The window's first look");
   check("a coach on a lifter's Overview has the floating window, minimised to a round button", !dock(C).hidden && !C.$("chatBubble").hidden && C.$("chatWin").hidden);
   check("the button is a small message bubble", !!C.$("chatBubble").querySelector("svg") && C.$("chatBubble").getAttribute("aria-label") === "Open messages");
-  check("a lifter doesn't get one", dock(L).hidden);
+  check("a lifter gets one too, on their own program", !dock(L).hidden && !L.$("chatBubble").hidden && L.$("chatWin").hidden);
 
   console.log("\nA message arrives while it's minimised");
   L.nav("Messages"); await tick(150);
@@ -219,6 +219,23 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   C.$("chatMin").click(); await tick(30);
   C.$("chatBubble").click(); await tick(600);
   check("opening it scrolls its own list to the newest message", sets.includes(999), JSON.stringify(sets.slice(0, 4)));
+
+  console.log("\nThe lifter's window");
+  L.nav("Overview"); await tick(100);
+  await send(C, "#chatBody", "Message from the window while you read this");
+  await settle(C); await settle(L);
+  check("a message from the coach is counted on the lifter's round button", L.$("chatBadge").textContent !== "0" && !L.$("chatBadge").hidden, L.$("chatBadge").textContent);
+  L.$("chatBubble").click(); await tick(200);
+  check("it opens with the coach's message, titled Messages", !L.$("chatWin").hidden && L.$("chatTitle").textContent === "Messages" && /Message from the window/.test(L.$("chatBody").textContent), L.$("chatTitle").textContent);
+  check("...with the lifter's own controls: the one-thread-with-all-coaches switch, box, emoji, reply", !!L.$("chatBody").querySelector(".msg-switch") && !!L.$("chatBody").querySelector("#msgInput") && !!L.$("chatBody").querySelector("#msgEmojiBtn") && !!L.$("chatBody").querySelector('.msg-reply[aria-label^="Reply to"]'));
+  await send(L, "#chatBody", "Thanks coach, will do");
+  await settle(L); await settle(C);
+  check("the lifter can answer from it", (await msgs()).some(m => m.body === "Thanks coach, will do"));
+  L.doc.dispatchEvent(new L.w.Event("pointerdown", { bubbles: true }));
+  L.$("viewOverview").dispatchEvent(new L.w.Event("pointerdown", { bubbles: true })); await tick(50);
+  check("a tap outside minimises theirs too", L.$("chatWin").hidden && !L.$("chatBubble").hidden);
+  L.nav("Home"); await tick(80);
+  check("and it's hidden on their Home", L.$("chatDock").hidden);
 
   const bad = [C, L].reduce((a, x) => a.concat(x.real()), []);
   check("no script errors on any device", bad.length === 0, bad.join(" | ").slice(0, 400));

@@ -248,12 +248,13 @@ coach again (`decide_coach(…, 'cleared')`; only declined or removed requests c
 
 ## Floating Messages window
 
-For coaches on a lifter's **Overview** or a **week**: a small window at the bottom right with the same
+For coaches **and lifters** on a lifter's **Overview** or a **week** (a lifter's own program): a small window at the bottom right with the same
 Messages as the Messages page (every thread, the message box, replies, emoji, reactions, hold-to-copy,
 unread counts and Seen), so you can keep talking while you look at the program. It's a small window with one button, **Minimise**, which shrinks it to a round message
 button with the unread count (the round button shows only while it's minimised). Tapping anywhere outside the open window minimises it too. It's a lifter-by-lifter window (it follows the lifter you're viewing), stays in
 the state you left it across pages and launches, and gives way to the real Messages page there. A message that
-arrives while it's minimised is counted, not marked read, until you open it. It isn't shown to lifters.
+arrives while it's minimised is counted, not marked read, until you open it. A lifter's window is titled
+*Messages* and has the lifter's own controls (the switch for one thread with all their coaches).
 
 ## Gestures
 

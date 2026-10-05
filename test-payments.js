@@ -162,6 +162,35 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   C.nav("Home"); await tick(50);
   check("Home now says 1 of 1 paid", /: 1 of 1 paid/.test(homeBtn(C, "Payments").textContent), homeBtn(C, "Payments").textContent);
 
+  console.log("\nSwipe a month to delete it");
+  homeBtn(C, "Payments").click(); await tick(100); C.$("payList").querySelector('[data-lifter="Tom"]').click(); await tick(100);
+  const swipeRow = (a, mk, dx) => { const el = a.doc.querySelector('#payMonths [data-item="' + mk + '"]'); const ev = (type, x) => { const e = new a.w.Event(type, { bubbles: true }); e.touches = type === "touchend" ? [] : [{ clientX: x, clientY: 0 }]; el.dispatchEvent(e); }; ev("touchstart", 20); ev("touchmove", 20 + dx); ev("touchend", 20 + dx); return el; };
+  check("a month with nothing recorded has no delete button to reveal", !C.doc.querySelector('#payMonths [data-item="' + (() => { const d = new Date(now.getFullYear(), now.getMonth() - 5, 1); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); })() + '"] .pay-del'));
+  check("a paid month has one, hidden until you swipe", !!C.doc.querySelector('#payMonths [data-item="' + MK + '"] .pay-del') && !C.doc.querySelector('#payMonths [data-item="' + MK + '"]').classList.contains("open"));
+  swipeRow(C, MK, 20);
+  check("a short swipe doesn't open it", !C.doc.querySelector('#payMonths [data-item="' + MK + '"]').classList.contains("open"));
+  const it = swipeRow(C, MK, 90);
+  check("swiping right slides the row over and shows an x", it.classList.contains("open") && it.querySelector(".msg-thread").style.transform === "translateX(72px)" && /Delete the .* payment/.test(it.querySelector(".pay-del").getAttribute("aria-label")));
+  it.querySelector(".msg-thread").click(); await tick(50);
+  check("tapping the open row closes it again (rather than opening the editor)", !it.classList.contains("open") && !C.$("troFormScrim").classList.contains("show"));
+  swipeRow(C, MK, 90);
+  C.doc.querySelector('#payMonths [data-item="' + MK + '"] .pay-del').click(); await tick(100);
+  check("the x deletes it: back to Unpaid", /Unpaid/.test(month(C, MK).textContent) && !C.doc.querySelector('#payMonths [data-item="' + MK + '"] .pay-del'));
+  check("...with an Undo", /Deleted/.test(C.$("toastMsg").textContent) && !C.$("toastUndoBtn").classList.contains("hidden"));
+  await C.settle();
+  const rd = (await payRows()).find(r => r.month === MK);
+  check("...and the database agrees", rd && rd.paid === false && rd.amount === null && rd.paid_on === null, JSON.stringify(rd));
+  C.$("toastUndoBtn").click(); await tick(100);
+  check("Undo brings the payment back", /Paid/.test(month(C, MK).textContent) && /£45\.50/.test(month(C, MK).textContent), month(C, MK).textContent);
+  await C.settle();
+  check("...in the database too", (await payRows()).find(r => r.month === MK).paid === true);
+  month(C, MK).click(); await tick(50);
+  check("the editor has Delete record too (a computer can't swipe)", !!C.btn("Delete record", C.$("troFormBody")));
+  C.$("troFormClose").click();
+  C.nav("Home"); await tick(50);
+  check("Home still counts it", /: 1 of 1 paid/.test(homeBtn(C, "Payments").textContent));
+  homeBtn(C, "Payments").click(); await tick(100); C.$("payList").querySelector('[data-lifter="Tom"]').click(); await tick(100);
+
   /* ------------------------------------------------------------ the lifter */
   console.log("\nThe lifter's Home");
   L.sync(); await tick(1500); await L.settle();

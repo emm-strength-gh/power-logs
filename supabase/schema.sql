@@ -1147,6 +1147,17 @@ begin
   end if;
 end $$;
 
+-- A new video is announced to the lifter's coaches: a lifter_events row (week = the video's id, so once per
+-- video) that the notify function turns into a push. Anyone who can add to the lifter's log may announce.
+alter table public.lifter_events drop constraint if exists lifter_events_kind_check;
+alter table public.lifter_events add constraint lifter_events_kind_check
+  check (kind in ('session_done', 'new_week', 'trophy', 'video'));
+drop policy if exists add on public.lifter_events;
+create policy add on public.lifter_events for insert to authenticated
+  with check ((kind = 'session_done' and private.is_athlete(lifter_id))
+           or (kind = 'trophy' and (private.is_athlete(lifter_id) or private.can_coach_live(lifter_id)))
+           or (kind = 'video' and private.can_log(lifter_id)));
+
 ---------------------------------------------------------------- storage meter
 -- For the owner's Home page: how full the free plan is. The database's size and the video
 -- files' total (the free plan allows 500 MB of database and 1 GB of files). Null for anyone else.

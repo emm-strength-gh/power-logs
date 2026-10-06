@@ -7,6 +7,7 @@
 // tampered app can't send it twice), works out who should hear about it, and
 // sends a Web Push to each of their devices that wants that kind.
 //
+// (A new video is announced the same way, to the lifter's coaches.)
 // Notification text never contains a message itself, only who or what:
 // banners show on locked screens.
 //
@@ -30,7 +31,7 @@ const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE
   auth: { persistSession: false },
 });
 
-type Note = { to: string[]; pref: "messages" | "sessions" | "weeks" | "trophies"; body: string; tag: string; url: string };
+type Note = { to: string[]; pref: "messages" | "sessions" | "weeks" | "trophies" | "videos"; body: string; tag: string; url: string };
 type Account = { user_id: string; role: string; coach_status: string; display_name: string; email: string };
 
 Deno.serve(async (req) => {
@@ -114,6 +115,16 @@ async function forEvent(uid: string, body: { event_id?: string; event?: Record<s
       to: coaches.map((c) => c.id).filter((c) => c !== uid), pref: "sessions",
       body: `${lifter.name} finished week ${ev.week} · day ${ev.day}`, tag: `done-${ev.id}`,
       url: `${SITE}power-logs.html?open=week&lifter=${ev.lifter_id}&week=${encodeURIComponent(ev.week)}`,
+    };
+  }
+  if (ev.kind === "video") {
+    // Names only, never the lift or the notes: banners show on locked screens.
+    const coaches = await activeCoaches(ev.lifter_id);
+    const from = uid === lifter.lifter_user_id ? lifter.name : coachLabel(coaches.find((c) => c.id === uid)?.acc);
+    return {
+      to: coaches.map((c) => c.id).filter((c) => c !== uid), pref: "videos",
+      body: `${from} uploaded a video`, tag: `video-${ev.lifter_id}`,
+      url: `${SITE}power-logs.html?open=videos&lifter=${ev.lifter_id}`,
     };
   }
   if (ev.kind === "trophy") {

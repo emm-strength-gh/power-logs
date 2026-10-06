@@ -168,8 +168,9 @@ async function pgServer() {
       return fn(tx);
     });
   }
-  function changed(from) {
-    for (const l of listeners) if (l.from !== from) setTimeout(() => l.fn("change"), 0);
+  // (the real realtime channel says which table changed)
+  function changed(from, table) {
+    for (const l of listeners) if (l.from !== from) setTimeout(() => l.fn(table || "change"), 0);
   }
 
   // Make sure an account exists for this email (signing up), as the auth service would.
@@ -226,7 +227,7 @@ async function pgServer() {
               on conflict (${keys.join(", ")}) do ${set.length && !skipExisting ? "update set " + set.join(", ") : "nothing"}`, cols.map(c => param(row[c])));
           }
         });
-        changed(api);
+        changed(api, table);
       },
       async insert(table, rows) {
         await online();
@@ -236,14 +237,14 @@ async function pgServer() {
             await tx.query(`insert into public.${ident(table)} (${cols.join(", ")}) values (${cols.map((_, i) => "$" + (i + 1)).join(", ")})`, cols.map(c => param(row[c])));
           }
         });
-        changed(api);
+        changed(api, table);
       },
       async update(table, id, patch) {
         await online();
         const cols = Object.keys(patch).map(ident);
         await asUser(me(), tx => tx.query(`update public.${ident(table)} set ${cols.map((c, i) => `${c} = $${i + 1}`).join(", ")} where id = $${cols.length + 1}`,
           cols.map(c => param(patch[c])).concat([id])));
-        changed(api);
+        changed(api, table);
       },
       async rpc(fn, args = {}) {
         await online();

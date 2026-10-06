@@ -473,6 +473,12 @@ begin
   perform pg_temp.ok('the lifter cannot delete it', r = 'ok 0' or r like 'refused%', r);
   r := pg_temp.act(c1, format($q$delete from public.lifter_videos where lifter_id = %L$q$, m));
   perform pg_temp.ok('their coach can', r = 'ok 3', r);
+  r := pg_temp.act(l, format($q$insert into public.lifter_events (lifter_id, kind, week) values (%L, 'video', %L)$q$, m, gen_random_uuid()::text));
+  perform pg_temp.ok('the lifter can announce a new video to their coaches', r = 'ok 1', r);
+  r := pg_temp.act(c1, format($q$insert into public.lifter_events (lifter_id, kind, week) values (%L, 'video', %L)$q$, m, gen_random_uuid()::text));
+  perform pg_temp.ok('...and a coach can', r = 'ok 1', r);
+  r := pg_temp.act(x, format($q$insert into public.lifter_events (lifter_id, kind, week) values (%L, 'video', %L)$q$, m, gen_random_uuid()::text));
+  perform pg_temp.ok('...a stranger cannot', r like 'refused%', r);
   v := pg_temp.val(o, 'select (public.owner_storage_usage() ->> ''video_count'')');
   perform pg_temp.ok('the owner can read the storage meter', v is not null, v);
   v := pg_temp.val(c1, 'select coalesce(public.owner_storage_usage()::text, ''null'')');

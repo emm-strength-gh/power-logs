@@ -47,6 +47,7 @@ const MB = 1048576;
         w.__spotterHooks = {};
         w.__spotterPrivateStore = { get: async k => priv.get(k), put: async (k, v) => { priv.set(k, v); }, del: async k => { priv.delete(k); } };
         w.__spotterVideo = {
+          thumbs: async (url, times, size, ctl, onThumb) => { w.__stripAsked = { n: times.length, size }; times.forEach((tm, i) => onThumb(i, "data:image/jpeg;base64,T" + i)); },
           load: async file => ({ url: "blob:clip-" + file.name, duration: eng.duration, width: 1080, height: 1920 }),
           // Compressing the whole clip in the background, while the person is still editing.
           start: job => {
@@ -120,7 +121,17 @@ const MB = 1048576;
         await until(() => app.ed() && app.ed().vw);
         await tick(50);
       },
-      slide(id, v) { $(id).value = String(v); $(id).dispatchEvent(new w.Event("input")); },
+      // The cut handles are dragged (the bar is 300 px wide here, as in the page when it has no layout).
+      slide(id, v) {
+        if (id === "vidStart" || id === "vidEnd") {
+          const ed = app.ed(), h = $(id === "vidStart" ? "vidHandleStart" : "vidHandleEnd"), dx = (v - (id === "vidStart" ? ed.start : ed.end)) / ed.dur * 300;
+          h.dispatchEvent(new w.MouseEvent("pointerdown", { clientX: 100, clientY: 0, bubbles: true }));
+          h.dispatchEvent(new w.MouseEvent("pointermove", { clientX: 100 + dx, clientY: 0, bubbles: true }));
+          h.dispatchEvent(new w.MouseEvent("pointerup", { clientX: 100 + dx, clientY: 0, bubbles: true }));
+          return;
+        }
+        $(id).value = String(v); $(id).dispatchEvent(new w.Event("input"));
+      },
       touch(el, type, pts) { const e = new w.Event(type, { bubbles: true, cancelable: true }); e.touches = pts.map(([x, y]) => ({ clientX: x, clientY: y })); el.dispatchEvent(e); },
     };
     return app;
@@ -218,10 +229,22 @@ const MB = 1048576;
   box.dispatchEvent(new L.w.MouseEvent("pointerup", { clientX: 0, clientY: 0, bubbles: true }));
   ed = L.ed();
   check("...but not off the picture", ed.cx <= 1080 - 540 + 0.5 && ed.cy >= -0.5, ed.cx + "," + ed.cy);
-  L.$("vidPreview").click();
-  check("Preview plays the kept part (muted) from the start", L.$("vidPreview").textContent === "Stop" && L.$("vidEditVideo").__paused === false);
-  L.$("vidPreview").click();
-  check("...and Stop stops it", L.$("vidPreview").textContent === "Preview" && L.$("vidEditVideo").__paused === true);
+  check("the cut bar has a row of pictures from along the clip", L.doc.querySelectorAll("#vidTiles .vid-tile").length >= 5 && [...L.doc.querySelectorAll("#vidTiles .vid-tile")].every(x => /^url\(/.test(x.style.backgroundImage)), String(L.doc.querySelectorAll("#vidTiles .vid-tile").length));
+  check("the handles and the dimmed parts follow the cut (4 s to 15 s of 20)", L.$("vidHandleStart").style.left === "20%" && /^calc\(75% /.test(L.$("vidHandleEnd").style.left) && L.$("vidDimL").style.width === "20%" && L.$("vidDimR").style.width === "25%" && L.$("vidSel").style.width === "55%", [L.$("vidHandleStart").style.left, L.$("vidHandleEnd").style.left, L.$("vidDimL").style.width, L.$("vidDimR").style.width].join(" "));
+  check("a play button sits in the middle of the picture", !L.$("vidPlayCenter").hidden && L.$("vidStage").contains(L.$("vidPlayCenter")));
+  L.$("vidPlayCenter").click();
+  check("pressing it plays the kept part from its start, and the button gets out of the way", L.$("vidEditVideo").__paused === false && L.$("vidPlayCenter").hidden && L.ed().previewing === true);
+  L.$("vidCrop").dispatchEvent(new L.w.MouseEvent("pointerdown", { clientX: 50, clientY: 50, bubbles: true }));
+  L.$("vidCrop").dispatchEvent(new L.w.MouseEvent("pointerup", { clientX: 50, clientY: 50, bubbles: true }));
+  check("a tap on the picture stops it, and the play button is back", L.$("vidEditVideo").__paused === true && !L.$("vidPlayCenter").hidden && L.ed().previewing === false);
+  L.$("vidPlayCenter").click();
+  L.slide("vidStart", 6);
+  check("moving a handle stops it too, and the picture jumps to that moment", L.ed().previewing === false && !L.$("vidPlayCenter").hidden && L.ed().start === 6);
+  L.slide("vidStart", 4);
+  L.slide("vidEnd", 3);
+  check("the handles can't be dragged past each other: they stop a second apart", L.ed().end - L.ed().start >= 1 - 1e-9 && L.ed().end >= 5 - 1e-9, L.ed().start + " " + L.ed().end);
+  L.slide("vidEnd", 15);
+  check("...and back out again", L.ed().start === 4 && L.ed().end === 15, L.ed().start + " " + L.ed().end);
 
   console.log("\nThe details, and the upload");
   L.$("vidNext").click();

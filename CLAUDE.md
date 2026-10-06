@@ -226,7 +226,7 @@ private script kept outside it (`private.settings`).
   the whole clip, in the background while the person edits: a handle with `pos/finished/failed/cut(start,end)/cancel`, a key frame
   every 0.5 s so `cut` can trim without a second encode). Both use `vidRun`: the clip is played through at up to `VID_RATE` x with
   requestVideoFrameCallback, repeating the last frame when one is skipped, seeking back for bigger gaps, and slowing down when
-  many repeat. The editor starts `start` on open and again `VID_BG_DELAY` after the crop settles; Upload uses the cut when its
+  many repeat. The editor's cut bar is `vidBuildStrip()` (`VID_ENGINE.thumbs`, a row of little pictures) with two draggable handles (`wireVidHandle`, `vidSetStart/vidSetEnd`) and a playhead; the centre play button is `vidPreviewStart`. The editor starts `start` on open (after the strip) and again `VID_BG_DELAY` after the crop settles; Upload uses the cut when its
   crop matches and it is ahead of the start of the kept part, else `transcode`. `vidMp4` is the MP4 writer. Videos watched are kept in IndexedDB
   (`vid:<id>`, index `vid:index`, flag `spotter.vidHeld`) and removed by `vidLocalClear()` wherever `vbtLocalClear()` runs. The owner's
   Home **Storage** card (`renderStorageCard`, RPC `owner_storage_usage`) is below Payments.

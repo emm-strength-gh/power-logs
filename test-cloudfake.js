@@ -274,6 +274,11 @@ async function pgServer() {
         if (!r.rows.length) throw new Error("Object not found");
         return files.get(bucket + "/" + name);
       },
+      async storageHas(bucket, name) {
+        await online();
+        const r = await asUser(me(), tx => tx.query("select 1 from storage.objects where bucket_id = $1 and name = $2", [bucket, name]));
+        return r.rows.length > 0;
+      },
       async storageRemove(bucket, names) {
         await online();
         const r = await asUser(me(), tx => tx.query("delete from storage.objects where bucket_id = $1 and name = any($2::text[]) returning name", [bucket, names]));

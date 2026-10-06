@@ -1075,6 +1075,10 @@ create table if not exists public.lifter_videos (
   thumb       text check (thumb is null or length(thumb) <= 60000),
   created_at  timestamptz not null default now()
 );
+-- The weight on the bar, as typed ("140 kg", "bodyweight"): added after the first release, so an alter for a database made before.
+alter table public.lifter_videos add column if not exists weight text;
+alter table public.lifter_videos drop constraint if exists lifter_videos_weight_check;
+alter table public.lifter_videos add constraint lifter_videos_weight_check check (weight is null or length(weight) <= 20);
 create index if not exists lifter_videos_lifter_idx on public.lifter_videos (lifter_id, created_at);
 
 create or replace function private.videos_guard() returns trigger

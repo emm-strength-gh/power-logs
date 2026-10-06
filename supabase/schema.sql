@@ -1077,6 +1077,10 @@ create table if not exists public.lifter_videos (
 );
 -- The weight on the bar, as typed ("140 kg", "bodyweight"): added after the first release, so an alter for a database made before.
 alter table public.lifter_videos add column if not exists weight text;
+-- Notes from whoever uploaded it (free text, emoji included).
+alter table public.lifter_videos add column if not exists notes text;
+alter table public.lifter_videos drop constraint if exists lifter_videos_notes_check;
+alter table public.lifter_videos add constraint lifter_videos_notes_check check (notes is null or length(notes) <= 1000);
 alter table public.lifter_videos drop constraint if exists lifter_videos_weight_check;
 alter table public.lifter_videos add constraint lifter_videos_weight_check check (weight is null or length(weight) <= 20);
 create index if not exists lifter_videos_lifter_idx on public.lifter_videos (lifter_id, created_at);

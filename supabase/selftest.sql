@@ -456,6 +456,10 @@ begin
   perform pg_temp.ok('a stranger cannot', r like 'refused%', r);
   r := pg_temp.act(l, format($q$insert into public.lifter_videos (lifter_id, lift, weight, size_bytes) values (%L, 'Bench', '140 kg', 1000)$q$, m));
   perform pg_temp.ok('a video can carry the weight', r = 'ok 1', r);
+  r := pg_temp.act(l, format($q$insert into public.lifter_videos (lifter_id, lift, notes, size_bytes) values (%L, 'Bench', E'Felt fast \U0001F525\nbar path drifted', 1000)$q$, m));
+  perform pg_temp.ok('...and notes, with line breaks and emoji', r = 'ok 1', r);
+  r := pg_temp.act(l, format($q$insert into public.lifter_videos (lifter_id, lift, notes, size_bytes) values (%L, 'Bench', repeat('x', 1001), 1000)$q$, m));
+  perform pg_temp.ok('...up to 1,000 characters of them', r like 'refused%', r);
   r := pg_temp.act(l, format($q$insert into public.lifter_videos (lifter_id, lift, weight, size_bytes) values (%L, 'Bench', '123456789012345678901', 1000)$q$, m));
   perform pg_temp.ok('...up to 20 characters of it', r like 'refused%', r);
   r := pg_temp.act(l, format($q$insert into public.lifter_videos (lifter_id, lift, size_bytes) values (%L, 'Bench', 31457281)$q$, m));
@@ -464,11 +468,11 @@ begin
   perform pg_temp.ok('a video needs a lift name', r like 'refused%', r);
   perform pg_temp.ok('the record says who added it, whatever the app claims', (select uploaded_by from public.lifter_videos where lifter_id = m limit 1) = l);
   perform pg_temp.ok('a stranger does not see it', pg_temp.cnt(x, 'select * from public.lifter_videos') = 0);
-  perform pg_temp.ok('the lifter and their coaches do', pg_temp.cnt(l, 'select * from public.lifter_videos') = 2 and pg_temp.cnt(c1, 'select * from public.lifter_videos') = 2 and pg_temp.cnt(c2, 'select * from public.lifter_videos') = 2);
+  perform pg_temp.ok('the lifter and their coaches do', pg_temp.cnt(l, 'select * from public.lifter_videos') = 3 and pg_temp.cnt(c1, 'select * from public.lifter_videos') = 3 and pg_temp.cnt(c2, 'select * from public.lifter_videos') = 3);
   r := pg_temp.act(l, format($q$delete from public.lifter_videos where lifter_id = %L$q$, m));
   perform pg_temp.ok('the lifter cannot delete it', r = 'ok 0' or r like 'refused%', r);
   r := pg_temp.act(c1, format($q$delete from public.lifter_videos where lifter_id = %L$q$, m));
-  perform pg_temp.ok('their coach can', r = 'ok 2', r);
+  perform pg_temp.ok('their coach can', r = 'ok 3', r);
   v := pg_temp.val(o, 'select (public.owner_storage_usage() ->> ''video_count'')');
   perform pg_temp.ok('the owner can read the storage meter', v is not null, v);
   v := pg_temp.val(c1, 'select coalesce(public.owner_storage_usage()::text, ''null'')');

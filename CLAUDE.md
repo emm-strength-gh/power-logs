@@ -212,7 +212,7 @@ private script kept outside it (`private.settings`).
   (so private coach threads stay private); notes/days are coaches-only (`can_coach_live`). The notice
   kind `react` is made in `ntFromReaction()`.
 - The floating Messages window ("Floating Messages window" section, `#chatDock`): `updateChatDock()` (called by
-  `showView`) shows it for `chatEligible()` (a coach with a lifter they can message) on Overview/week. It renders
+  `showView`) shows it for `chatEligible()` (a coach with a lifter they can message) on Overview, a week and Vid Review. It renders
   with the same `renderMessages()`/`renderThread()` into `#chatBody` instead of `#msgBody` (the other is cleared,
   so each id exists once); `msgLive()` (= `inMessages || chatOpen()`) is what the refresh code checks, and
   `msgToBottom()` scrolls the window's own list. State (`min`/`open`/`max`) in `spotter.chatDock.v1`.

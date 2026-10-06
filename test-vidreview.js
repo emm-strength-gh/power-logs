@@ -33,7 +33,8 @@ const MB = 1048576;
 (async () => {
   const server = await pgServer();
   const jobs = [];                                   // what the engine was asked to make
-  const eng = { size: 2 * MB, duration: 20, fail: null };
+  const eng = { size: 2 * MB, duration: 20, fail: null, noBg: false, bgFail: false, bgSpeed: 1000 };   // bgSpeed: seconds of video it compresses per second
+  const bgStarts = [], bgCuts = [];                  // background compressions begun, and the finished files cut from them
 
   function boot(label, reuse) {
     const dev = reuse ? reuse.dev : server.device(label), errors = [], priv = reuse ? reuse.priv : new Map();
@@ -47,6 +48,20 @@ const MB = 1048576;
         w.__spotterPrivateStore = { get: async k => priv.get(k), put: async (k, v) => { priv.set(k, v); }, del: async k => { priv.delete(k); } };
         w.__spotterVideo = {
           load: async file => ({ url: "blob:clip-" + file.name, duration: eng.duration, width: 1080, height: 1920 }),
+          // Compressing the whole clip in the background, while the person is still editing.
+          start: job => {
+            if (eng.noBg) return null;
+            const t0 = Date.now(), h = { crop: job.crop, cancelled: false, end: job.end, id: bgStarts.length };
+            bgStarts.push(h);
+            return {
+              crop: job.crop,
+              pos: () => Math.min(job.end, (Date.now() - t0) / 1000 * eng.bgSpeed),
+              finished: () => (Date.now() - t0) / 1000 * eng.bgSpeed >= job.end,
+              failed: () => eng.bgFail,
+              cut: (start, end) => { bgCuts.push({ start, end, crop: job.crop, id: h.id }); return { blob: new w.Blob([new Uint8Array(eng.size)], { type: "video/mp4" }), thumb: "data:image/jpeg;base64,/9j/BBBB", duration: Math.round((end - Math.floor(start * 2) / 2) * 10) / 10, width: 368, height: 654 }; },
+              cancel: () => { h.cancelled = true; },
+            };
+          },
           transcode: async (job, onProgress) => {
             jobs.push(JSON.parse(JSON.stringify({ start: job.start, end: job.end, crop: job.crop })));
             onProgress(0.5);
@@ -221,6 +236,11 @@ const MB = 1048576;
   check("Tom's phone keeps a copy of what he sent", await until(() => L.priv.has("vid:" + v1.id)) && L.storage()["spotter.vidHeld"] === "1");
   check("...and the card says so", await until(() => !!L.cards()[0].querySelector(".vid-held")));
 
+  console.log("\nCompressing while you edit");
+  check("the whole clip was already being compressed in the background as soon as it opened", bgStarts.length === 1 && bgStarts[0].end === 20 && bgStarts[0].crop.w === 1080, JSON.stringify(bgStarts.map(b => b.crop)));
+  check("this upload went straight to compressing, since the crop had just changed and the background copy was of the old one", jobs.length === 1 && bgCuts.length === 0);
+  check("...and the background copy was dropped", bgStarts.every(b => b.cancelled));
+
   console.log("\nA video that is too long");
   eng.size = 31 * MB;
   await L.pickFile("long.mov");
@@ -241,13 +261,14 @@ const MB = 1048576;
   L.$("vidEditClose").click();
   eng.duration = 20;
   eng.fail = "This browser can’t compress video.";
+  eng.noBg = true;   // (a phone that can't compress at all can't do it in the background either)
   await L.pickFile("old-phone.mov");
   L.$("vidNext").click();
   L.$("vidLift").value = "Squat";
   L.$("vidGo").click();
   check("if the phone can't compress, it says so and sends nothing", await until(() => /can.t compress/.test(L.$("vidError").textContent)) && (await vrows()).length === 1);
   L.$("vidEditClose").click();
-  eng.fail = null;
+  eng.fail = null; eng.noBg = false;
 
   /* ------------------------------------------------------------ the coach watches */
   console.log("\nThe coach watches it");
@@ -378,6 +399,77 @@ const MB = 1048576;
   const usage = await C.dev.rpc("owner_storage_usage");
   check("what the owner is told comes from the database", usage && Number(usage.video_bytes) === 2 * MB && usage.video_count === 1 && Number(usage.db_bytes) > 0, JSON.stringify(usage));
   check("nobody else gets the figures (a stranger is told nothing)", (await X.dev.rpc("owner_storage_usage")) === null);
+
+  /* ------------------------------------------------------------ compressing while you edit */
+  console.log("\nThe crop left alone: nothing to wait for");
+  C.nav("Overview"); C.nav("Vid Review"); await tick(300);
+  const nJobs = jobs.length, s0 = bgStarts.length, cut0 = bgCuts.length, vBefore = (await vrows()).length;
+  await C.pickFile("fast.mov");
+  check("opening a clip starts compressing it", bgStarts.length === s0 + 1 && !bgStarts[s0].cancelled);
+  C.slide("vidStart", 3); C.slide("vidEnd", 9);
+  await tick(150);
+  check("trimming does not start it again", bgStarts.length === s0 + 1);
+  C.$("vidNext").click();
+  C.$("vidLift").value = "Bench press"; C.$("vidReps").value = "1"; C.$("vidSet").value = "Set 3";
+  C.$("vidGo").click();
+  check("an unchanged crop: no second compression, the finished file is just cut to 3 s - 9 s", await until(() => bgCuts.length === cut0 + 1) && jobs.length === nJobs && bgCuts[cut0].start === 3 && bgCuts[cut0].end === 9, JSON.stringify(bgCuts.slice(cut0)) + " " + (jobs.length - nJobs));
+  check("...and it is uploaded like any other", await until(async () => !C.shown() && (await vrows()).length === vBefore + 1));
+  const vFast = (await vrows()).find(r => r.lift === "Bench press");
+  check("with the thumbnail of where the cut starts, and its details", vFast && vFast.set_label === "Set 3" && vFast.reps === "1" && Number(vFast.duration) === 6 && /BBBB/.test(vFast.thumb || ""), JSON.stringify(vFast && { s: vFast.set_label, d: vFast.duration, t: (vFast.thumb || "").slice(-8) }));
+  check("the background compression is stopped once used", bgStarts[s0].cancelled === true);
+
+  console.log("\nChanging the crop, then waiting a moment");
+  const s1 = bgStarts.length, c1 = bgCuts.length;
+  await C.pickFile("settled.mov");
+  C.slide("vidZoom", 60);
+  const cropBox = C.$("vidCrop");
+  cropBox.dispatchEvent(new C.w.MouseEvent("pointerdown", { clientX: 10, clientY: 10, bubbles: true }));
+  cropBox.dispatchEvent(new C.w.MouseEvent("pointermove", { clientX: 60, clientY: 10, bubbles: true }));
+  cropBox.dispatchEvent(new C.w.MouseEvent("pointerup", { clientX: 60, clientY: 10, bubbles: true }));
+  check("a crop still being changed doesn't restart it each time", bgStarts.length === s1 + 1);
+  await tick(1200);
+  check("once it settles it starts again, for the new box, dropping the old one", bgStarts.length === s1 + 2 && bgStarts[s1].cancelled && !bgStarts[s1 + 1].cancelled && bgStarts[s1 + 1].crop.w < 1080, JSON.stringify(bgStarts.slice(s1).map(b => b.crop)));
+  C.$("vidNext").click();
+  C.$("vidLift").value = "Deadlift";
+  C.$("vidGo").click();
+  check("...and Upload then uses that one, with no compression of its own", await until(() => bgCuts.length === c1 + 1) && jobs.length === nJobs && bgCuts[c1].crop.w === bgStarts[s1 + 1].crop.w);
+  await until(() => !C.shown());
+
+  console.log("\nWhen the background copy can't be used");
+  eng.bgSpeed = 0.2;                                   // slow: it has not got as far as the start of the part to keep
+  await C.pickFile("slow.mov");
+  C.slide("vidStart", 12); C.slide("vidEnd", 18);
+  await tick(150);
+  C.$("vidNext").click();
+  C.$("vidLift").value = "Squat";
+  const j0 = jobs.length, c2 = bgCuts.length;
+  C.$("vidGo").click();
+  check("if it hasn't reached the start of the kept part, compressing just that part is quicker, so that is what happens", await until(() => jobs.length === j0 + 1) && bgCuts.length === c2 && jobs[j0].start === 12 && jobs[j0].end === 18, JSON.stringify(jobs.slice(j0)));
+  await until(() => !C.shown());
+  eng.bgSpeed = 1000; eng.bgFail = true;
+  await C.pickFile("bgfail.mov");
+  await tick(150);
+  C.$("vidNext").click();
+  C.$("vidLift").value = "Squat";
+  const j1 = jobs.length;
+  C.$("vidGo").click();
+  check("if the background compression failed, it compresses now", await until(() => jobs.length === j1 + 1));
+  await until(() => !C.shown());
+  eng.bgFail = false; eng.noBg = true;
+  await C.pickFile("nobg.mov");
+  C.$("vidNext").click();
+  C.$("vidLift").value = "Squat";
+  const j2 = jobs.length;
+  C.$("vidGo").click();
+  check("a device that can't compress in the background still does it at Upload", await until(() => jobs.length === j2 + 1));
+  await until(() => !C.shown());
+  eng.noBg = false;
+  const sBefore = bgStarts.length;
+  await C.pickFile("closed.mov");
+  const open1 = bgStarts[bgStarts.length - 1];
+  check("opening starts one", bgStarts.length === sBefore + 1 && !open1.cancelled);
+  C.$("vidEditClose").click();
+  check("closing the editor stops it", open1.cancelled === true);
 
   const bad = [C, L, X].reduce((a, x) => a.concat(x.real()), []);
   check("no script errors on any device", bad.length === 0, bad.join(" | ").slice(0, 400));

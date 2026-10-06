@@ -384,8 +384,8 @@ begin
   -- The owner's private files (the Program Hub)
   insert into public.owner_assets (id, version, body) values ('selftest', 'v0', '<html></html>');
   perform pg_temp.ok('the owner reads the private files', pg_temp.cnt(o, $q$select * from public.owner_assets where id = 'selftest'$q$) = 1);
-  perform pg_temp.ok('...a coach does not', pg_temp.cnt(c1, 'select * from public.owner_assets') = 0);
-  perform pg_temp.ok('...nor a lifter, nor a stranger', pg_temp.cnt(l, 'select * from public.owner_assets') = 0 and pg_temp.cnt(x, 'select * from public.owner_assets') = 0);
+  perform pg_temp.ok('...a coach does not', pg_temp.cnt(c1, $q$select * from public.owner_assets where id = 'selftest'$q$) = 0);
+  perform pg_temp.ok('...nor a lifter, nor a stranger', pg_temp.cnt(l, $q$select * from public.owner_assets where id = 'selftest'$q$) = 0 and pg_temp.cnt(x, $q$select * from public.owner_assets where id = 'selftest'$q$) = 0);
   r := pg_temp.act(null, 'select * from public.owner_assets');
   perform pg_temp.ok('...nor anyone signed out', r like 'refused%', r);
   r := pg_temp.act(o, $q$insert into public.owner_assets (id, version, body) values ('mine', 'v1', 'x')$q$);
@@ -431,6 +431,45 @@ begin
   perform pg_temp.ok('only pesos, pounds or dollars', r like 'refused%', r);
   r := pg_temp.act(c1, format($q$insert into public.lifter_payments (lifter_id, month, paid) values (%L, '2026-13', true)$q$, m));
   perform pg_temp.ok('...and only real months', r like 'refused%', r);
+
+  -- Vid Review: the lifter and their coaches add and watch, only coaches delete
+  declare vn text := m::text || '/' || gen_random_uuid()::text || '.mp4';
+  begin
+  perform pg_temp.ok('the file name decides which lifter a video belongs to', private.vid_lifter(vn) = m and private.vid_lifter('x/y.mp4') is null and private.vid_lifter(m::text || '/../evil.mp4') is null);
+  v := pg_temp.val(l, format($q$select private.vid_can_add(%L)::text$q$, vn));
+  perform pg_temp.ok('the lifter can add a video to their own folder', v = 'true', v);
+  v := pg_temp.val(c1, format($q$select private.vid_can_add(%L)::text$q$, vn));
+  perform pg_temp.ok('...and so can their coach', v = 'true', v);
+  v := pg_temp.val(c2, format($q$select (private.vid_can_see(%L) and private.vid_can_add(%L))::text$q$, vn, vn));
+  perform pg_temp.ok('...and a coach it is shared with can watch and add too', v = 'true', v);
+  v := pg_temp.val(x, format($q$select (private.vid_can_see(%L) or private.vid_can_add(%L))::text$q$, vn, vn));
+  perform pg_temp.ok('...nor a stranger', v = 'false', v);
+  v := pg_temp.val(l, format($q$select private.vid_can_see(%L)::text$q$, vn));
+  perform pg_temp.ok('the lifter can watch their videos', v = 'true', v);
+  v := pg_temp.val(l, format($q$select private.vid_can_delete(%L)::text$q$, vn));
+  perform pg_temp.ok('but cannot delete one', v = 'false', v);
+  v := pg_temp.val(c1, format($q$select private.vid_can_delete(%L)::text$q$, vn));
+  perform pg_temp.ok('a coach can', v = 'true', v);
+  r := pg_temp.act(l, format($q$insert into public.lifter_videos (id, lifter_id, lift, reps, set_label, size_bytes, duration) values (%L, %L, 'Squat', '4', 'Top set', 2000000, 12.5)$q$, gen_random_uuid(), m));
+  perform pg_temp.ok('the lifter adds a video record', r = 'ok 1', r);
+  r := pg_temp.act(x, format($q$insert into public.lifter_videos (lifter_id, lift, size_bytes) values (%L, 'Bench', 1000)$q$, m));
+  perform pg_temp.ok('a stranger cannot', r like 'refused%', r);
+  r := pg_temp.act(l, format($q$insert into public.lifter_videos (lifter_id, lift, size_bytes) values (%L, 'Bench', 31457281)$q$, m));
+  perform pg_temp.ok('a file over 30 MB is refused', r like 'refused%', r);
+  r := pg_temp.act(l, format($q$insert into public.lifter_videos (lifter_id, lift, size_bytes) values (%L, '   ', 1000)$q$, m));
+  perform pg_temp.ok('a video needs a lift name', r like 'refused%', r);
+  perform pg_temp.ok('the record says who added it, whatever the app claims', (select uploaded_by from public.lifter_videos where lifter_id = m limit 1) = l);
+  perform pg_temp.ok('a stranger does not see it', pg_temp.cnt(x, 'select * from public.lifter_videos') = 0);
+  perform pg_temp.ok('the lifter and their coaches do', pg_temp.cnt(l, 'select * from public.lifter_videos') = 1 and pg_temp.cnt(c1, 'select * from public.lifter_videos') = 1 and pg_temp.cnt(c2, 'select * from public.lifter_videos') = 1);
+  r := pg_temp.act(l, format($q$delete from public.lifter_videos where lifter_id = %L$q$, m));
+  perform pg_temp.ok('the lifter cannot delete it', r = 'ok 0' or r like 'refused%', r);
+  r := pg_temp.act(c1, format($q$delete from public.lifter_videos where lifter_id = %L$q$, m));
+  perform pg_temp.ok('their coach can', r = 'ok 1', r);
+  v := pg_temp.val(o, 'select (public.owner_storage_usage() ->> ''video_count'')');
+  perform pg_temp.ok('the owner can read the storage meter', v is not null, v);
+  v := pg_temp.val(c1, 'select coalesce(public.owner_storage_usage()::text, ''null'')');
+  perform pg_temp.ok('...nobody else', v = 'null', v);
+  end;
 
   -- Reactions
   r := pg_temp.act(l, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) select %L, 'message', id::text, 'heart' from public.messages where lifter_id = %L and body = 'hi Sam'$q$, m, m));

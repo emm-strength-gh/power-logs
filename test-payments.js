@@ -118,7 +118,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   console.log("\nThe coach's Payments card");
   C.$("ovHome") && !C.$("ovHome").hidden ? C.$("ovHome").click() : C.nav("Home");
   await tick(100);
-  check("Home has a Payments card below Messages", [...C.doc.querySelectorAll("#viewHome .home-cap")].map(c => c.textContent).join() === "Notifications,Lifters,Messages,Payments");
+  check("Home has a Payments card below Messages (and the owner's Storage under it)", [...C.doc.querySelectorAll("#viewHome .home-cap")].map(c => c.textContent).join() === "Notifications,Lifters,Messages,Payments,Storage");
   check("...saying how many have paid this month", /: 0 of 1 paid/.test(homeBtn(C, "Payments").textContent), homeBtn(C, "Payments").textContent);
   homeBtn(C, "Payments").click(); await tick(100);
   check("it opens the Payments page", active(C) === "viewPayments");

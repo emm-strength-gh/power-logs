@@ -87,7 +87,7 @@ async function boot(wd, storage = {}) {
   check("it opens on Home, not on a lifter", A.active() === "viewHome", A.active());
   check("the title greets the coach by name", A.$("homeTitle").textContent === "Welcome Coach Emm!", A.$("homeTitle").textContent);
   const caps = [...A.doc.querySelectorAll("#viewHome .home-cap")].map(c => c.textContent);
-  check("below it: Notifications, Lifters, Messages, then Payments", caps.join() === "Notifications,Lifters,Messages,Payments", caps.join());
+  check("below it: Notifications, Lifters, Messages, Payments, then the owner's Storage", caps.join() === "Notifications,Lifters,Messages,Payments,Storage", caps.join());
   check("the Notifications card is the existing banner, moved here", !!A.$("homeNotices").closest(".home-card") && /all caught up/.test(A.$("homeNotices").textContent) && A.$("noticeBar").hidden);
   check("the Lifters card has a button for the list", !!A.btn("All lifters", A.$("homeLifters")));
   check("the next card starts with Inbox", !!A.btn("Inbox", A.$("homeComms")));
@@ -268,6 +268,7 @@ async function boot(wd, storage = {}) {
   const G = await boot(W6, Object.assign({}, saved, { "spotter.cloud.v1": cached(W6) }));
   await tick(400);
   check("an approved coach lands on Home too", G.active() === "viewHome" && G.$("homeTitle").textContent === "Welcome Coach Jordan!", G.active() + " " + G.$("homeTitle").textContent);
+  check("...but has no Storage card: that is the owner's alone", G.$("homeStorage").hidden && ![...G.doc.querySelectorAll("#viewHome .home-cap")].some(c => c.textContent === "Storage") && G.$("homeStorage").children.length === 0);
 
   const bad = [first, A, E, B, C, D, F, G].reduce((a, x) => a.concat(x.real()), []);
   check("no script errors on any device", bad.length === 0, bad.join(" | ").slice(0, 400));

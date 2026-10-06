@@ -216,6 +216,16 @@ private script kept outside it (`private.settings`).
   with the same `renderMessages()`/`renderThread()` into `#chatBody` instead of `#msgBody` (the other is cleared,
   so each id exists once); `msgLive()` (= `inMessages || chatOpen()`) is what the refresh code checks, and
   `msgToBottom()` scrolls the window's own list. State (`min`/`open`/`max`) in `spotter.chatDock.v1`.
+- Vid Review ("Vid Review" section; `viewVidReview`, `inVid`, nav item via `vidCanUse(name)`): `VID` (`spotter.vidreview.v1`: list of
+  `{id, lid, by, lift, reps, set, size, dur, at, thumb}`), synced by `vidSync(api)` after `reactSync` (throttled to a minute unless
+  `vidUI.dirty`/forced; the list without thumbnails, thumbnails only for ids not held; a video missing from the server is dropped).
+  Files live in the private bucket `vid-review` as `<lifter id>/<video id>.mp4` (policies on `storage.objects` call
+  `private.vid_can_see/add/delete`; table `lifter_videos`: the lifter and coaches add/read, only coaches delete). The cloud API gained
+  `storageUpload/storageDownload/storageRemove`; `fetchChunked` takes an `orderBy`. The video itself: `VID_ENGINE` (`window.__spotterVideo`
+  in tests) does `load(file)` and `transcode(job)` (WebCodecs H.264 368x654, crop + trim, no audio, played through with
+  requestVideoFrameCallback and gap-filling seeks, like VBT's export); `vidMp4` is the MP4 writer. Videos watched are kept in IndexedDB
+  (`vid:<id>`, index `vid:index`, flag `spotter.vidHeld`) and removed by `vidLocalClear()` wherever `vbtLocalClear()` runs. The owner's
+  Home **Storage** card (`renderStorageCard`, RPC `owner_storage_usage`) is below Payments.
 - In-app notices (the "In-app notices" section, `#noticeBar` at the top of `.content`):
   `NT` (`spotter.notices.v1`) holds `{id, kind, lifter, thread?, week?, who, text, at}`,
   made by `ntFromMessage`/`ntFromEvent` (in `pullMessages`), `ntFromWeekNote` (in
@@ -295,6 +305,7 @@ node test-trophysync.js # Trophies across devices on the real rules, plus their 
 node test-notices.js    # In-app notice banner: kinds, who wrote it, x, stacking
 node test-hubprivate.js # The Program Hub's private copy: owner download, offline, sign-out delete
 node test-vbtprivate.js # The Velocity Tracker's private copy: any signed-in account, offline, sign-out delete
+node test-vidreview.js  # Vid Review: crop/cut, upload, 30 MB rule, watch, zoom, coach-only delete, sign-out, the MP4 writer, the owner's storage meter
 node test-home.js       # Home: coach and lifter landing pages, cards, lifters list, Home buttons
 node test-payments.js   # Payments: coach marks months paid, lifter read-only, real rules
 node test-replies.js    # Messages: emoji picker and replies
@@ -303,7 +314,7 @@ node test-reactions.js  # Reactions on messages, coach-only on notes and days
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all twenty-five. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all twenty-six. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of power-logs.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

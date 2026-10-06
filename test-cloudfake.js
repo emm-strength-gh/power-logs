@@ -70,6 +70,12 @@ const AUTH_STUB = `
     select coalesce(nullif(current_setting('request.jwt.claim.sub', true), ''),
       (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub'))::uuid $$;
   create publication supabase_realtime;
+  create schema storage;
+  grant usage on schema storage to anon, authenticated;
+  create table storage.buckets (id text primary key, name text not null, public boolean default false, file_size_limit bigint, allowed_mime_types text[]);
+  create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets(id), name text, owner uuid, created_at timestamptz default now());
+  alter table storage.objects enable row level security;
+  grant all on storage.objects to anon, authenticated;
   alter default privileges in schema public grant all on tables to anon, authenticated;
 `;
 
@@ -81,6 +87,7 @@ async function pgServer() {
   await db.exec(`insert into private.settings (owner_email) values ('${OWNER_EMAIL}')`);
 
   const listeners = new Set();
+  const files = new Map();   // the stored files themselves: "bucket/name" -> Blob (the rules are on storage.objects)
   const invocations = [], pushes = [];
 
   // ---- supabase/functions/notify, run here. The admin client is a small
@@ -254,6 +261,24 @@ async function pgServer() {
         const r = await runNotify(me(), body);
         invocations.push({ from: label, body, result: r });
         return r;
+      },
+      // Storage: the same rules as the real thing, on storage.objects; the bytes are kept here.
+      async storageUpload(bucket, name, blob) {
+        await online();
+        await asUser(me(), tx => tx.query("insert into storage.objects (bucket_id, name, owner) values ($1, $2, $3)", [bucket, name, me()]));
+        files.set(bucket + "/" + name, blob);
+      },
+      async storageDownload(bucket, name) {
+        await online();
+        const r = await asUser(me(), tx => tx.query("select 1 from storage.objects where bucket_id = $1 and name = $2", [bucket, name]));
+        if (!r.rows.length) throw new Error("Object not found");
+        return files.get(bucket + "/" + name);
+      },
+      async storageRemove(bucket, names) {
+        await online();
+        const r = await asUser(me(), tx => tx.query("delete from storage.objects where bucket_id = $1 and name = any($2::text[]) returning name", [bucket, names]));
+        r.rows.forEach(x => files.delete(bucket + "/" + x.name));
+        return r.rows.map(x => x.name);
       },
       listen(fn) {
         const l = { from: api, fn };

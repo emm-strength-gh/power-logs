@@ -1057,3 +1057,99 @@ begin
     alter publication supabase_realtime add table public.lifter_reactions;
   end if;
 end $$;
+
+---------------------------------------------------------------- vid review
+-- Videos a lifter or a coach uploads for review: the file in the private storage bucket
+-- 'vid-review' (named <lifter id>/<video id>.mp4), its details and a tiny thumbnail here.
+-- The lifter and their coaches add and watch; only coaches delete (file and row).
+-- 30 MB is the most one file may be (the app also refuses before uploading).
+create table if not exists public.lifter_videos (
+  id          uuid primary key default gen_random_uuid(),
+  lifter_id   uuid not null references public.lifters(id) on delete cascade,
+  uploaded_by uuid,
+  lift        text not null check (length(btrim(lift)) between 1 and 60),
+  reps        text check (reps is null or length(reps) <= 20),
+  set_label   text check (set_label is null or length(set_label) <= 40),
+  size_bytes  integer not null check (size_bytes between 1 and 31457280),
+  duration    numeric(7, 1) check (duration is null or (duration >= 0 and duration < 100000)),
+  thumb       text check (thumb is null or length(thumb) <= 60000),
+  created_at  timestamptz not null default now()
+);
+create index if not exists lifter_videos_lifter_idx on public.lifter_videos (lifter_id, created_at);
+
+create or replace function private.videos_guard() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  new.uploaded_by := auth.uid();
+  new.created_at := now();
+  return new;
+end $$;
+drop trigger if exists videos_guard on public.lifter_videos;
+create trigger videos_guard before insert on public.lifter_videos
+  for each row execute function private.videos_guard();
+
+alter table public.lifter_videos enable row level security;
+revoke all on public.lifter_videos from public, anon, authenticated;
+grant select, insert, delete on public.lifter_videos to authenticated;
+drop policy if exists read on public.lifter_videos;
+create policy read on public.lifter_videos for select to authenticated using (private.can_see(lifter_id));
+drop policy if exists add on public.lifter_videos;
+create policy add on public.lifter_videos for insert to authenticated with check (private.can_log(lifter_id));
+drop policy if exists remove on public.lifter_videos;
+create policy remove on public.lifter_videos for delete to authenticated using (private.coaches(lifter_id));
+
+-- Which lifter does a file name belong to? Only names shaped <uuid>/<uuid>.mp4 count.
+create or replace function private.vid_lifter(name text) returns uuid
+language plpgsql immutable set search_path = '' as $$
+begin
+  if name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.mp4$' then
+    return split_part(name, '/', 1)::uuid;
+  end if;
+  return null;
+end $$;
+create or replace function private.vid_can_see(name text) returns boolean
+language sql stable set search_path = '' as $$ select coalesce(private.can_see(private.vid_lifter(name)), false) $$;
+create or replace function private.vid_can_add(name text) returns boolean
+language sql stable set search_path = '' as $$ select coalesce(private.can_log(private.vid_lifter(name)), false) $$;
+create or replace function private.vid_can_delete(name text) returns boolean
+language sql stable set search_path = '' as $$ select coalesce(private.coaches(private.vid_lifter(name)), false) $$;
+revoke execute on function private.videos_guard(), private.vid_lifter(text), private.vid_can_see(text), private.vid_can_add(text), private.vid_can_delete(text) from public, anon;
+grant execute on function private.vid_lifter(text), private.vid_can_see(text), private.vid_can_add(text), private.vid_can_delete(text) to authenticated;
+
+-- The bucket: private, mp4 only, 30 MB a file.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('vid-review', 'vid-review', false, 31457280, array['video/mp4'])
+on conflict (id) do update set public = false, file_size_limit = 31457280, allowed_mime_types = array['video/mp4'];
+drop policy if exists vid_read on storage.objects;
+create policy vid_read on storage.objects for select to authenticated
+  using (bucket_id = 'vid-review' and private.vid_can_see(name));
+drop policy if exists vid_add on storage.objects;
+create policy vid_add on storage.objects for insert to authenticated
+  with check (bucket_id = 'vid-review' and private.vid_can_add(name));
+drop policy if exists vid_remove on storage.objects;
+create policy vid_remove on storage.objects for delete to authenticated
+  using (bucket_id = 'vid-review' and private.vid_can_delete(name));
+
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (select 1 from pg_publication_tables
+                     where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'lifter_videos') then
+    alter publication supabase_realtime add table public.lifter_videos;
+  end if;
+end $$;
+
+---------------------------------------------------------------- storage meter
+-- For the owner's Home page: how full the free plan is. The database's size and the video
+-- files' total (the free plan allows 500 MB of database and 1 GB of files). Null for anyone else.
+create or replace function public.owner_storage_usage() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not private.is_owner() then return null; end if;
+  return jsonb_build_object(
+    'db_bytes', pg_database_size(current_database()),
+    'video_bytes', coalesce((select sum(size_bytes) from public.lifter_videos), 0)::bigint,
+    'video_count', (select count(*) from public.lifter_videos));
+end $$;
+revoke execute on function public.owner_storage_usage() from public, anon;
+grant execute on function public.owner_storage_usage() to authenticated;

@@ -16,11 +16,12 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-hubprivate.js` | The Program Hub's copy: downloaded for the owner, opens offline, newer versions, deleted on sign-out, never fetched by other coaches — `node test-hubprivate.js`. |
 | `VBT.html` | Velocity Tracker — barbell velocity and RPE from a video clip. **Not in the repo (gitignored) and not on the public site**: it lives in the database (`owner_assets`, readable by any signed-in account), is downloaded to the device once signed in and deleted on sign-out. Opens inside the app from the **Velocity Tracker** nav button. |
 | `publish-vbt.js` | Writes the SQL that uploads `VBT.html` to the database (`node publish-vbt.js`), after you change it. |
+| `test-vidreview.js` | Vid Review end to end on the real rules (stand-ins for the video engine and storage): crop and cut, details, the 30 MB limit, upload, watching, pinch zoom, only coaches delete, sign-out clears the device, the MP4 writer, the owner's storage meter — `node test-vidreview.js`. |
 | `test-vbtprivate.js` | The Velocity Tracker's copy: downloaded for any signed-in account, opens offline, newer versions, a message when signed out, deleted on sign-out — `node test-vbtprivate.js`. |
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
 | `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
-| `supabase/selftest.sql` | Checks on those rules (171 at present). Paste and run after the schema; every row should say PASS. |
+| `supabase/selftest.sql` | Checks on those rules (190 at present). Paste and run after the schema; every row should say PASS. |
 | `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
 | `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
 | `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the logo: a red 25 kg plate and a spiral notepad on a pastel sage tile). The header and About sheet use `icon-192.png` too. |
@@ -306,6 +307,20 @@ The **Program Hub** is the owner's alone, and it isn't a public file any more.
 - **Other coaches and lifters:** the Hub tab and the Import card's "Build one in Program Hub" button are hidden (`.owner-only`, from `applyRoleUI()` / `isOwner()`), their app never asks for the file, and the database wouldn't give it to them.
 - **Updating it:** change `program-hub.html`, bump its `hub-N` string and `HUB_BUILD` in `power-logs.html` together, run `node publish-hub.js`, paste the file it writes (in "Power Logs Cloud Setup", outside this repo) into Supabase's SQL editor and Run. No app deploy needed unless the app changed.
 - **History:** earlier commits in this public repo still contain the old public `program-hub.html`; removing it from `main` doesn't remove that.
+
+## Vid Review
+
+A page for videos a lifter or a coach wants reviewed ("Vid Review" in the left menu, for the lifter in view; it needs an account and a program shared with you).
+
+- **Uploading:** *Upload video* → pick a clip (it opens on the device only) → **crop and cut**: drag the portrait box over the picture, *Crop size* resizes it, *Start* and *End* cut the length, *Preview* plays just the kept part → *Next* → **details**: the *lift* (required, with suggestions), *reps* and *set* (any text: "4", "Top set", "Last warm up") → *Upload*.
+- **Compression** happens on the phone (WebCodecs; iPhones need iOS 16.4 or later): H.264, **368 × 654 portrait**, 30 fps, about 800 kbps, **no sound**. A 20-second clip comes out around 2 MB. It takes roughly as long as the clip. If the result is over **30 MB** it is not sent: "Video too long". Uploading needs a connection (nothing is queued).
+- **Where it goes:** the private storage bucket `vid-review` (named `<lifter id>/<video id>.mp4`, mp4 only, 30 MB a file), and a row in `lifter_videos` (lift, reps, set, size, length, a tiny JPEG thumbnail, who sent it). The lifter and their coaches add and watch; **only coaches delete**, which removes the file and the row (other devices drop their copy at their next sync). The free plan gives 1 GB of files.
+- **Watching:** the list shows thumbnails with "Squat · 4 reps · Top set", who sent it and when. Tapping one downloads it (first time only) and plays it. A copy is kept on the device in IndexedDB until the user signs out (a ✓ on the card says so; `spotter.vidHeld` retries a failed delete on the next launch). The player pinch-zooms (and wheel-zooms), the zoom stays while you rewind, replay or scrub, *Fit* resets it; there's -5 s, +5 s, Replay, and 1×/0.5×/0.25× speed.
+- **Code:** the engine (`VID_ENGINE`: `load`, `transcode`, and `vidMp4`, a video-only MP4 writer) is separate so tests plug in a stand-in as `window.__spotterVideo`; storage calls are `storageUpload/Download/Remove` on the cloud API. The rules are the table's policies and `storage.objects` policies that call `private.vid_can_see/add/delete` (in `schema.sql`).
+
+### The owner's storage meter
+
+Home has a **Storage** card below Payments for the owner only: video files against 1 GB and the database against 500 MB (the free plan's limits), from the owner-only `owner_storage_usage()` function. *Refresh* re-reads it.
 
 ## The Velocity Tracker is private too
 

@@ -18,7 +18,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
 | `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
-| `supabase/selftest.sql` | Checks on those rules (166 at present). Paste and run after the schema; every row should say PASS. |
+| `supabase/selftest.sql` | Checks on those rules (168 at present). Paste and run after the schema; every row should say PASS. |
 | `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
 | `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
 | `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the logo: a red 25 kg plate and a spiral notepad on a pastel sage tile). The header and About sheet use `icon-192.png` too. |
@@ -43,7 +43,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-replies.js` | Messages: the emoji picker and replies (the reply bar, quotes, jumping to the original, swiping, saved on the server) — `node test-replies.js`. |
 | `test-home.js` | The coach landing page: greeting, cards, the lifters list, Home buttons, who gets it and when — `node test-home.js`. |
 | `test-payments.js` | Payments and the lifter's Home, end to end on the real rules: marking months paid/unpaid, day, amount, currency, the lifter's read-only view, and co-coaches kept out — `node test-payments.js`. |
-| `test-reactions.js` | Reactions: the seven emoji, messages (lifter and coach), coaches-only notes and days, one per person, read-only for lifters, the rules, and the notices — `node test-reactions.js`. |
+| `test-reactions.js` | Reactions: the eleven emoji, messages (lifter and coach), coaches-only notes and days, one per person, read-only for lifters, the rules, and the notices — `node test-reactions.js`. |
 | `test-chatdock.js` | The floating Messages window: minimised button and count, open/minimise, sending, replies, reactions, copy, where it shows, one set of ids on the page — `node test-chatdock.js`. |
 | `test-cloudfake.js` | Not a test: the stand-in Supabase the tests plug in (`window.__spotterCloud`), and the in-process runner for the notify function. |
 | `test-vbt.js` | Velocity Tracker smoke test — `node test-vbt.js`. |
@@ -239,6 +239,11 @@ block title, weight class, bodyweight and optional 1-rep maxes. It creates an em
 Day 1), opens it in Manage Program to build as usual, and, signed in, uploads it to your account
 straight away. Add their sign-in email under Sharing.
 
+**Deleting:** each lifter on the Lifters page has a **⋯** (coaches who can edit them). **Delete program** clears every
+week, day, tick and note (on every device) and leaves an empty Week 1; the lifter stays, with their maxes, class,
+messages, trophies and payments. **Delete lifter** removes the lifter altogether (the same as *Delete lifter for
+everyone* under Sharing). Both ask first; neither can be undone, so save progress (JSON) first for a copy.
+
 **Weight class** is editable in Manage Program's *Lifter & program/block title* card (IPF classes
 are offered; "74kg" is saved as 74, open classes keep their +).
 
@@ -319,7 +324,8 @@ did (the first sync on a new device is silent), and are dropped on sign-out.
 
 ## Reactions
 
-Seven emoji, Instagram style: ❤️ heart, 👍 thumbs up, 💯, 🔥 fire, 😴 sleepy, 😫 tired and 😈 devil.
+Eleven emoji, Instagram style: ❤️ heart, 👍 thumbs up, 💯, 🔥 fire, 😴 sleepy, 😫 tired, 😈 devil, 😞 sad, 😭 crying, 😊 happy and 😟 worried
+(the database's list of allowed ones is in `schema.sql`).
 One reaction per person per thing: pick another and it replaces yours, tap your own to take it back.
 
 - **Messages:** the lifter and their coaches can react. The smiley beside a message opens the
@@ -433,7 +439,7 @@ its 1-rep max beside its training max; a row of 100/95/90/85/80% buttons sets th
 percentage the training maxes follow (grey numbers follow it, dark ones were typed by
 hand, and the small arrow puts a typed one back); **Add another lift** takes a 1-rep
 max, a training max, or both. Below that sits the **Notes** section: one
-free-text note per lifter, edited in the same sheet as Weekly notes (multi-line,
+free-text note per lifter, edited in the same sheet as Weekly notes (multi-line, with an emoji button and **Select all**,
 links become tappable). It never appears on the Overview or the week pages, and it
 syncs only between the lifter's coaches: the database never sends it to the lifter.
 It's stored separately from the program, so re-importing a lifter's CSV keeps it. It

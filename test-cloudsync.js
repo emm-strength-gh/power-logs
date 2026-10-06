@@ -369,6 +369,18 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   D.sync(); await D.settle();
   check("and Tom's phone loses it", !D.names().includes("Tom"), D.names().join());
 
+  console.log("\nThe owner deletes just Sam's program, from the Lifters page");
+  A.nav("Lifters"); await tick(100);
+  A.doc.querySelector('#liftersBody [data-more="Sam"]').click(); await tick(50);
+  A.btn("Delete program", A.$("troFormBody")).click(); await tick(50);
+  A.$("confirmYes").click(); await tick(200);
+  A.sync(); await A.settle();
+  const samProg = async () => (await lifters()).find(l => l.name === "Sam");
+  check("the server's copy is an empty Week 1", await until(async () => { const s = await samProg(); const pr = s && s.program; return !!pr && pr.weeks.length === 1 && pr.weeks[0].days.every(d => !d.rows.length); }), JSON.stringify((await samProg()).program).slice(0, 200));
+  check("...and Sam is still there, not deleted", (await samProg()).deleted_at === null && A.names().includes("Sam"));
+  B.sync(); await B.settle();
+  check("the PC gets the empty program too", B.names().includes("Sam"));
+
   console.log("\nThe owner deletes Sam for everyone");
   A.pick("Sam"); await tick();
   A.nav("Manage program"); await tick(100);

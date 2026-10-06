@@ -161,7 +161,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   const rep = (await msgs()).find(m => m.body === "Yes, same as last week");
   check("...and the reply is saved as a reply", !!rep && !!rep.reply_to);
   C.$("chatBody").querySelector('button[aria-label="React to this message"]').click(); await tick(50);
-  check("reactions work in it too", !!C.doc.querySelector("#reactPop") && C.doc.querySelectorAll("#reactPop .react-opt").length === 7);
+  check("reactions work in it too", !!C.doc.querySelector("#reactPop") && C.doc.querySelectorAll("#reactPop .react-opt").length === 11);
   C.doc.querySelector('#reactPop [data-emoji="fire"]').click(); await tick(80);
   check("...and show on the message", C.$("chatBody").querySelectorAll(".react-chip").length === 1);
   const mine = [...C.doc.querySelectorAll("#chatBody .msg-bubble")].find(b => /heavy single/.test(b.textContent));

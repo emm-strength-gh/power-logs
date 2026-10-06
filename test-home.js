@@ -140,6 +140,36 @@ async function boot(wd, storage = {}) {
   check("...and appears in the list of lifters", (A.nav("Lifters"), [...A.doc.querySelectorAll("#liftersBody .msg-thread")].some(r => /Jo Reyes/.test(r.textContent))));
   check("signed in as a coach, it's uploaded to the account", WD.inserted && WD.inserted.some(r => r.name === "Jo Reyes"), JSON.stringify(WD.inserted || []).slice(0, 200));
 
+  console.log("\nDelete a lifter or just their program");
+  const rowsNow = () => [...A.doc.querySelectorAll("#liftersBody .msg-thread")];
+  const more = nm => A.doc.querySelector('#liftersBody [data-more="' + nm + '"]');
+  const stored = () => JSON.parse(A.w.localStorage.getItem("spotter.profiles.v1"));
+  A.nav("Lifters"); await tick(50);
+  check("each lifter in the list has a ⋯ for coaches", rowsNow().length >= 3 && rowsNow().every(r => !!r.parentElement.querySelector(".ll-more")));
+  A.$("addLifterBtn").click(); await tick(50);
+  A.$("nlName").value = "Zed"; A.$("nlBlock").value = "Temp block"; A.$("nlSquat").value = "100";
+  A.btn("Create", A.$("troFormBody")).click(); await tick(200);
+  A.nav("Lifters"); await tick(50);
+  check("a new lifter is listed", !!more("Zed"));
+  more("Zed").click(); await tick(50);
+  check("the ⋯ offers Delete program and Delete lifter", A.$("troFormScrim").classList.contains("show") && !!A.btn("Delete program", A.$("troFormBody")) && !!A.btn("Delete lifter", A.$("troFormBody")));
+  A.btn("Delete program", A.$("troFormBody")).click(); await tick(50);
+  check("deleting a program asks first", A.$("confirmScrim").classList.contains("show") && /program/.test(A.$("confirmTitle").textContent));
+  A.$("confirmNo").click(); await tick(50);
+  check("Cancel changes nothing", stored().Zed.block === "Temp block");
+  more("Zed").click(); await tick(50);
+  A.btn("Delete program", A.$("troFormBody")).click(); await tick(50);
+  A.$("confirmYes").click(); await tick(100);
+  const z = stored().Zed;
+  check("the program is cleared to an empty Week 1, Day 1", z.weeks.length === 1 && z.weeks[0].days.length === 1 && z.weeks[0].days[0].rows.length === 0 && z.block === "", JSON.stringify(z.weeks).slice(0, 120));
+  check("...but the lifter stays, with their maxes", !!more("Zed") && z.maxes.Squat === "100");
+  more("Zed").click(); await tick(50);
+  A.btn("Delete lifter", A.$("troFormBody")).click(); await tick(50);
+  check("deleting a lifter asks first", A.$("confirmScrim").classList.contains("show") && /Delete Zed/.test(A.$("confirmTitle").textContent));
+  A.$("confirmYes").click(); await tick(150);
+  check("the lifter is gone from the list and the device", !more("Zed") && !stored().Zed && A.active() === "viewLifters");
+  check("...and the others are untouched", !!more("Tom") && !!more("Sam"));
+
   console.log("\nSwipe gestures");
   const sw = (a, el, x0, y0, x1, y1) => {
     const ev = (type, x, y) => { const e = new a.w.Event(type, { bubbles: true }); e.touches = type === "touchend" ? [] : [{ clientX: x, clientY: y }]; el.dispatchEvent(e); };

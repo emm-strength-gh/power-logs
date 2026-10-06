@@ -99,6 +99,18 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   check("weekly editor is titled for the week", $("wkNoteTitle").textContent === "Weekly notes" && $("wkNoteFor").textContent === "Week 1",
     $("wkNoteTitle").textContent + " / " + $("wkNoteFor").textContent);
   check("and opens empty for this week", $("wkNoteArea").value === "");
+  type("one two");
+  $("wkNoteSelAll").click();
+  check("Select all highlights everything written in the weekly notes", $("wkNoteArea").selectionStart === 0 && $("wkNoteArea").selectionEnd === 7);
+  $("wkNoteArea").setSelectionRange(3, 3);
+  $("wkNoteEmojiBtn").click();
+  check("the weekly notes have an emoji button that opens the picker", !!$("wkNoteEmojiSlot").querySelector("#msgEmoji") && $("wkNoteEmojiBtn").getAttribute("aria-expanded") === "true");
+  const em = $("wkNoteEmojiSlot").querySelector(".msg-emoji-grid button");
+  em.click();
+  check("an emoji lands at the cursor and is saved", $("wkNoteArea").value === "one" + em.textContent + " two" && JSON.parse(w.localStorage.getItem("spotter.weekNotes.v1") || "{}")[NAME]["1"] === $("wkNoteArea").value, $("wkNoteArea").value);
+  $("wkNoteEmojiBtn").click();
+  check("the button closes the picker again", !$("wkNoteEmojiSlot").querySelector("#msgEmoji"));
+  type("");
   type("Deload feel this week");
   $("wkNoteDone").click();
   const wk = JSON.parse(w.localStorage.getItem("spotter.weekNotes.v1") || "{}");

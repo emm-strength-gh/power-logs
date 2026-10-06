@@ -1,5 +1,5 @@
 /* Emoji reactions: on messages (lifter and coach), and, coaches only, on weekly notes
- * and training days. One per person, seven emoji, and the rules enforced by the database.
+ * and training days. One per person, eleven emoji, and the rules enforced by the database.
  * Run: node test-reactions.js
  *
  * A coach (the owner) and a lifter, each a jsdom copy of power-logs.html on one
@@ -109,7 +109,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   await L.signIn("tom@test.invalid");
   C.sync(); await C.settle();
   const settle = async a => { a.sync(); await tick(1800); await a.settle(); };
-  const SIX = ["heart", "up", "100", "fire", "sleep", "tired", "devil"];
+  const SIX = ["heart", "up", "100", "fire", "sleep", "tired", "devil", "sad", "cry", "happy", "worried"];
   const dbRx = () => rows("select target_type, target_id, emoji, a.email from public.lifter_reactions r left join public.accounts a on a.user_id = r.user_id order by r.updated_at");
   const chips = (a, sel) => [...a.doc.querySelectorAll(sel + " .react-chip")].map(c => c.textContent);
   const addBtn = (a, sel) => a.doc.querySelector(sel + " .react-add");
@@ -128,8 +128,8 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("a coach has a button to react to Day 1", !!dayBar(C, 1) && !!dayBar(C, 1).querySelector(".react-add"));
   check("the lifter sees no reaction row on a day nobody reacted to", !dayBar(L, 1));
   dayBar(C, 1).querySelector(".react-add").click(); await tick(50);
-  check("it offers exactly seven emoji", C.$("reactPop") && [...C.$("reactPop").querySelectorAll(".react-opt")].map(b => b.getAttribute("data-emoji")).join() === SIX.join(), C.$("reactPop") && C.$("reactPop").textContent);
-  check("heart, thumbs up, 100, fire, sleepy, tired and the blue devil", C.$("reactPop").textContent === "\u2764\uFE0F\uD83D\uDC4D\uD83D\uDCAF\uD83D\uDD25\uD83D\uDE34\uD83D\uDE2B\uD83D\uDE08", C.$("reactPop").textContent);
+  check("it offers exactly eleven emoji", C.$("reactPop") && [...C.$("reactPop").querySelectorAll(".react-opt")].map(b => b.getAttribute("data-emoji")).join() === SIX.join(), C.$("reactPop") && C.$("reactPop").textContent);
+  check("heart, thumbs up, 100, fire, sleepy, tired, the blue devil, then sad, crying, happy and worried", C.$("reactPop").textContent === "\u2764\uFE0F\uD83D\uDC4D\uD83D\uDCAF\uD83D\uDD25\uD83D\uDE34\uD83D\uDE2B\uD83D\uDE08\uD83D\uDE1E\uD83D\uDE2D\uD83D\uDE0A\uD83D\uDE1F", C.$("reactPop").textContent);
   await pick(C, "fire");
   check("picking one puts it on the day, as yours, and closes the picker", chips(C, "#wkList .day-group:nth-child(1)").join() === "\uD83D\uDD25" && !C.$("reactPop") && dayBar(C, 1).querySelector(".react-chip.mine"));
   await settle(C);
@@ -179,7 +179,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("...and on a day", /row-level security|violates|permission/i.test(refused || ""), refused);
   refused = null;
   try { await C.dev.upsert("lifter_reactions", [{ lifter_id: tomId, target_type: "note", target_id: "1", emoji: "poop" }], "lifter_id,target_type,target_id,user_id"); } catch (e) { refused = e.message; }
-  check("an emoji outside the seven is refused", /check|violates|constraint/i.test(refused || ""), refused);
+  check("an emoji outside the eleven is refused", /check|violates|constraint/i.test(refused || ""), refused);
 
   /* ---------------------------------------------------------- messages */
   console.log("\nReactions on messages");
@@ -192,7 +192,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   const reactBtn = (a, re) => bub(a, re).parentElement.querySelector('button[aria-label="React to this message"]');
   check("a coach can react to a message with the button beside it", !!reactBtn(C, /double today/));
   reactBtn(C, /double today/).click(); await tick(50);
-  check("the same seven are offered", [...C.$("reactPop").querySelectorAll(".react-opt")].length === 7);
+  check("the same eleven are offered", [...C.$("reactPop").querySelectorAll(".react-opt")].length === 11);
   await pick(C, "fire");
   check("it shows under the message, and the thread stays where it was", chips(C, "#msgList .msg-bubble").join() === "\uD83D\uDD25");
   await settle(C); await settle(L);

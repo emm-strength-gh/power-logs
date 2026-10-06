@@ -430,6 +430,10 @@ begin
     and pg_temp.cnt(c1, format('select * from public.lifter_reactions where lifter_id = %L', m)) = 2);
   r := pg_temp.act(l, format($q$update public.lifter_reactions set emoji = 'up' where lifter_id = %L and user_id = %L$q$, m, l));
   perform pg_temp.ok('a reaction can be changed', r = 'ok 1' and (select emoji from public.lifter_reactions where lifter_id = m and user_id = l) = 'up', r);
+  r := pg_temp.act(l, format($q$update public.lifter_reactions set emoji = 'worried' where lifter_id = %L and user_id = %L$q$, m, l));
+  perform pg_temp.ok('the sad, crying, happy and worried reactions are accepted', r = 'ok 1', r);
+  r := pg_temp.act(l, format($q$update public.lifter_reactions set emoji = 'poop' where lifter_id = %L and user_id = %L$q$, m, l));
+  perform pg_temp.ok('...but not anything else', r like 'refused%', r);
   r := pg_temp.act(l, format($q$update public.lifter_reactions set emoji = null where lifter_id = %L and user_id = %L$q$, m, l));
   perform pg_temp.ok('...or taken back', r = 'ok 1' and (select emoji from public.lifter_reactions where lifter_id = m and user_id = l) is null, r);
   r := pg_temp.act(l, format($q$update public.lifter_reactions set emoji = 'devil' where lifter_id = %L and user_id = %L$q$, m, c1));

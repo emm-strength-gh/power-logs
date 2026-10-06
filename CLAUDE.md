@@ -202,10 +202,12 @@ private script kept outside it (`private.settings`).
   devices learn of it); swipe-to-delete is `paySwipe`/`payDelete`, the + button `payAddMonth`.
 - New lifters from the app: `openNewLifter()` (Lifters page) → `createLifter()` builds the profile,
   `addEmptyWeek`/`addEmptyDay`, opens Manage Program and calls `uploadLifter()` when signed in as a
-  coach. Weight class: `cleanClass()`/`setClass()` in the Lifter & program card.
+  coach. Weight class: `cleanClass()`/`setClass()` in the Lifter & program card. Each Lifters-page row has a ⋯
+  (`lifterMenu()`) for `deleteProgramFlow()` (clears to an empty Week 1; synced by the normal program/log diff)
+  and `deleteLifterFlow()` (sets `lifters.deleted_at`; also behind Sharing's *Delete lifter for everyone*).
 - Reactions ("Reactions" section): `REACT` (`spotter.reactions.v1`, by lifter id) keyed `lid|type|target|uid`
   (types `message`, `note`, `day`; targets the message id, the week, `week|day`); `reactBar()` draws the chips
-  and button, `reactPick()` the seven-emoji bubble, `reactSet()` changes yours (removal = `emoji: null`),
+  and button, `reactPick()` the eleven-emoji bubble (`REACT_SET`; the allowed keys are also a check constraint in schema.sql), `reactSet()` changes yours (removal = `emoji: null`),
   `reactSync()` after `paySync()`. Table `lifter_reactions`: messages need read access to the message
   (so private coach threads stay private); notes/days are coaches-only (`can_coach_live`). The notice
   kind `react` is made in `ntFromReaction()`.

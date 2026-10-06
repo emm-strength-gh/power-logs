@@ -999,10 +999,14 @@ create table if not exists public.lifter_reactions (
   target_type text not null check (target_type in ('message', 'note', 'day')),
   target_id   text not null check (length(target_id) between 1 and 64),
   user_id     uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  emoji       text check (emoji is null or emoji in ('heart', 'up', '100', 'fire', 'sleep', 'tired', 'devil')),
+  emoji       text check (emoji is null or emoji in ('heart', 'up', '100', 'fire', 'sleep', 'tired', 'devil', 'sad', 'cry', 'happy', 'worried')),
   updated_at  timestamptz not null default now(),
   unique (lifter_id, target_type, target_id, user_id)
 );
+-- Four more (sad, crying, happy, worried) than the first release: widen the list on a database made before.
+alter table public.lifter_reactions drop constraint if exists lifter_reactions_emoji_check;
+alter table public.lifter_reactions add constraint lifter_reactions_emoji_check
+  check (emoji is null or emoji in ('heart', 'up', '100', 'fire', 'sleep', 'tired', 'devil', 'sad', 'cry', 'happy', 'worried'));
 create index if not exists lifter_reactions_updated_idx on public.lifter_reactions (updated_at);
 
 create or replace function private.reactions_guard() returns trigger

@@ -208,20 +208,27 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   const calls = [];
   L.w.scrollTo = (x, y) => calls.push(y);
   Object.defineProperty(L.doc.body, "scrollHeight", { value: 4321, configurable: true });
+  Object.defineProperty(L.w, "innerHeight", { value: 800, configurable: true });
   L.nav("Overview"); await tick(50);
   calls.length = 0;
   L.nav("Messages"); await tick(600);
-  check("opening Messages scrolls to the bottom, newest message and the box", calls.includes(4321), JSON.stringify(calls.slice(0, 5)));
-  check("...and again once the slide-in settles", calls.filter(y => y === 4321).length >= 3);
+  check("opening Messages scrolls to the bottom, newest message and the box", calls.includes(3521), JSON.stringify(calls.slice(0, 5)));
+  check("...and again once the slide-in settles", calls.filter(y => y === 3521).length >= 3);
   calls.length = 0;
   L.$("msgInput").value = "typing"; L.$("msgInput").dispatchEvent(new L.w.Event("input")); await tick(50);
-  check("typing keeps the bottom in view", calls.includes(4321));
+  check("typing keeps the bottom in view", calls.includes(3521));
   calls.length = 0;
   L.$("msgInput").dispatchEvent(new L.w.Event("focus")); await tick(500);
-  check("so does focusing the box (when the keyboard comes up)", calls.includes(4321));
+  check("so does focusing the box (when the keyboard comes up)", calls.includes(3521));
   calls.length = 0;
   L.btn("Send", L.$("msgBody")).click(); await tick(100);
-  check("sending a message scrolls to it", calls.includes(4321));
+  check("sending a message scrolls to it", calls.includes(3521));
+
+  calls.length = 0;
+  Object.defineProperty(L.doc.body, "scrollHeight", { value: 640, configurable: true });
+  L.$("msgInput").dispatchEvent(new L.w.Event("focus")); await tick(500);
+  check("a page shorter than the screen (an empty thread) is never scrolled, so the box stays in sight", calls.length > 0 && calls.every(y => y === 0), JSON.stringify(calls));
+  Object.defineProperty(L.doc.body, "scrollHeight", { value: 4321, configurable: true });
 
   console.log("\nTap and hold to copy");
   const copied = [];

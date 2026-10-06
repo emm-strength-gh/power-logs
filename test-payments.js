@@ -237,6 +237,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   L.sync(); await tick(1500); await L.settle();
   L.nav("Home"); await tick(100);
   check("Tom lands on a Home of his own, greeted by his program's name", active(L) === "viewHome" && L.$("homeTitle").textContent === "Welcome Tom!", L.$("homeTitle").textContent);
+  check("the left menu no longer repeats the lifter's name, but keeps its line so the pills stay put", L.$("sideName").textContent === "" && L.$("sideTags").children.length >= 1 && L.w.getComputedStyle(L.$("sideName")).minHeight !== "0px" && L.w.getComputedStyle(L.$("sideName")).minHeight !== "auto");
   const lcaps = [...L.doc.querySelectorAll("#viewHome .home-card:not([hidden]) .home-cap")].map(c => c.textContent);
   check("...with Notifications, Programs, Messages and Payments", lcaps.join() === "Notifications,Programs,Messages,Payments", lcaps.join());
   check("Programs lists his program, not a list of lifters", L.$("homePrograms").querySelectorAll("[data-lifter]").length === 1 && /Prep/.test(L.$("homePrograms").textContent) && !homeBtn(L, "All lifters"));

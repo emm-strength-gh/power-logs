@@ -34,11 +34,11 @@ function world(over = {}) {
     session: async () => (w.signedIn ? { id: ME, email: "me@test.invalid" } : null),
     onSessionChange() {}, sendCode: async () => {}, verifyCode: async () => ({ id: ME, email: "me@test.invalid" }), signOut: async () => { w.signedIn = false; },
     fetch: async (table, o) => {
-      w.calls.push([table, (o && o.columns) || ""]);
+      w.calls.push([table, (o && o.columns) || "", ((o && o.ids) || []).join()]);
       if (w.offline) throw new Error("offline");
       if (table === "accounts") return [{ user_id: ME, email: "me@test.invalid", role: w.role, coach_status: w.coach_status, display_name: "" }];
       if (table === "owner_assets") {
-        if (w.role !== "owner") return [];                  // the database's rule: nothing for anyone else
+        if (w.role !== "owner" || !(o && o.ids && o.ids[0] === "program-hub")) return [];   // the database's rule: nothing of the Hub for anyone else (the Velocity Tracker is a separate row)
         const row = { id: "program-hub", version: w.version, updated_at: "2026-01-01T00:00:00Z" };
         if (o && /body/.test(o.columns || "")) row.body = hubDoc(w.version);
         return [row];
@@ -185,7 +185,7 @@ async function boot(wd, storage = {}) {
   const H = await boot(W8, { "spotter.hubHeld": "1", "spotter.cloud.v1": JSON.stringify({ uploadAsked: true }) });
   await H.load();
   await tick(800);
-  check("never asks for the Hub", !W8.calls.some(c => c[0] === "owner_assets"), JSON.stringify(W8.calls.filter(c => c[0] === "owner_assets")));
+  check("never asks for the Hub", !W8.calls.some(c => c[0] === "owner_assets" && c[2] === "program-hub"), JSON.stringify(W8.calls.filter(c => c[0] === "owner_assets")));
   check("has no tab for it", !H.doc.documentElement.classList.contains("is-owner") && H.w.getComputedStyle(H.hubTab()).display === "none", H.w.getComputedStyle(H.hubTab()).display);
   check("a copy left on the device from before is deleted", await until(() => !W.store.has("program-hub")));
   H.nav("Manage program"); await tick(100);
@@ -199,7 +199,7 @@ async function boot(wd, storage = {}) {
   await tick(600);
   I.$("aboutBtn").click();
   check("...and About says nothing about it", !/Program Hub/.test(I.$("aboutParts").textContent), I.$("aboutParts").textContent);
-  check("a lifter never asks for it either", !W9.calls.some(c => c[0] === "owner_assets") && !W.store.has("program-hub"));
+  check("a lifter never asks for it either", !W9.calls.some(c => c[0] === "owner_assets" && c[2] === "program-hub") && !W.store.has("program-hub"));
 
   const bad = [A, B, C, D, D2, E, F, G, H, I].reduce((a, x) => a.concat(x.real()), []);
   check("no script errors on any device", bad.length === 0, bad.join(" | ").slice(0, 400));

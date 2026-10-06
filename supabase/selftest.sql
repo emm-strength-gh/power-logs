@@ -393,6 +393,17 @@ begin
   r := pg_temp.act(o, $q$update public.owner_assets set body = 'x' where id = 'selftest'$q$);
   perform pg_temp.ok('...nor changes it', r like 'refused%', r);
   delete from public.owner_assets where id = 'selftest';
+  -- ...except what is marked for members (the Velocity Tracker): every signed-in account reads it, nobody signed out
+  insert into public.owner_assets (id, version, body, members) values ('selftest-members', 'v0', '<html></html>', true);
+  perform pg_temp.ok('a file marked for members is read by a coach, a lifter and a stranger signed in',
+    pg_temp.cnt(c1, $q$select * from public.owner_assets where id = 'selftest-members'$q$) = 1
+    and pg_temp.cnt(l, $q$select * from public.owner_assets where id = 'selftest-members'$q$) = 1
+    and pg_temp.cnt(x, $q$select * from public.owner_assets where id = 'selftest-members'$q$) = 1);
+  r := pg_temp.act(null, 'select * from public.owner_assets');
+  perform pg_temp.ok('...but not by anyone signed out', r like 'refused%', r);
+  r := pg_temp.act(l, $q$update public.owner_assets set members = false where id = 'selftest-members'$q$);
+  perform pg_temp.ok('...and a member cannot change it', r like 'refused%', r);
+  delete from public.owner_assets where id = 'selftest-members';
 
   -- Payments: the coach who created the lifter (c1 made M) keeps them; the lifter reads them
   r := pg_temp.act(c1, format($q$insert into public.lifter_payments (lifter_id, month, paid, paid_on, amount, currency, updated_by) values (%L, '2026-10', true, '2026-10-03', 2500, 'PHP', %L)$q$, m, l));

@@ -921,11 +921,13 @@ create table if not exists public.owner_assets (
 drop trigger if exists touch on public.owner_assets;
 create trigger touch before insert or update on public.owner_assets
   for each row execute function private.touch_at();
+-- members: also readable by every signed-in account, not just the owner (the Velocity Tracker).
+alter table public.owner_assets add column if not exists members boolean not null default false;
 alter table public.owner_assets enable row level security;
 revoke all on public.owner_assets from public, anon, authenticated;
 grant select on public.owner_assets to authenticated;
 drop policy if exists read on public.owner_assets;
-create policy read on public.owner_assets for select to authenticated using (private.is_owner());
+create policy read on public.owner_assets for select to authenticated using (private.is_owner() or members);
 
 ---------------------------------------------------------------- payments
 -- A coach's record of each month's payment from a lifter they created. Unpaid

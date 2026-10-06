@@ -267,6 +267,12 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   C.sync(); await C.settle();
   C.nav("Inbox"); await tick();
   check("the inbox shows it", /Finished week 1 · day 1/.test(C.$("inboxBody").textContent), C.$("inboxBody").textContent);
+  C.$("inboxBody").querySelector(".msg-thread").click(); await tick(200);
+  check("opening a lifter's chat from the inbox offers Back to Inbox", !!C.btn("‹ Back to Inbox", C.$("msgBody")), C.$("msgBody").textContent.slice(0, 120));
+  C.btn("‹ Back to Inbox", C.$("msgBody")).click(); await tick(100);
+  check("...which goes back to the inbox", C.$("viewInbox").classList.contains("active") && !C.$("viewMessages").classList.contains("active"));
+  L.nav("Messages"); await tick();
+  check("a lifter has no such button", !L.btn("‹ Back to Inbox", L.$("msgBody")));
 
   /* ----------------------------------------------------- new weeks */
   console.log("\nThe coach adds a week");

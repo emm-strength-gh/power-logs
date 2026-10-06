@@ -117,6 +117,20 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
     !!progCard && !!btn("Export CSV", progCard) && !!btn("Compare two programs", progCard) &&
     !!progCard.querySelector('input[aria-label="Lifter name"]') && !!progCard.querySelector('input[aria-label="Block or program title"]'));
 
+  console.log("\nEdit program notes");
+  const storedPN = () => JSON.parse(w.localStorage.getItem("spotter.profiles.v1"))[NAME].programNotes || "";
+  check("the card has an Edit program notes button", !!btn("Edit program notes", progCard));
+  btn("Edit program notes", progCard).click(); await tick(50);
+  check("it opens the notes editor for the program notes", $("wkNoteScrim").classList.contains("show") && $("wkNoteTitle").textContent === "Program notes" && /Clear the text to erase/.test($("wkNoteSaved").textContent), $("wkNoteTitle").textContent);
+  $("wkNoteArea").value = "== Goals ==\nPeak for nationals"; $("wkNoteArea").dispatchEvent(new w.Event("input"));
+  $("wkNoteDone").click(); await tick(50);
+  check("what is typed becomes the program notes", storedPN() === "== Goals ==\nPeak for nationals", storedPN());
+  btn("Edit program notes", progCard).click(); await tick(50);
+  check("it reopens with them, to change or erase", $("wkNoteArea").value === "== Goals ==\nPeak for nationals");
+  $("wkNoteArea").value = ""; $("wkNoteArea").dispatchEvent(new w.Event("input"));
+  $("wkNoteDone").click(); await tick(50);
+  check("clearing the text erases them", storedPN() === "", storedPN());
+
   console.log("\nThe Lifter & program/block title card collapses");
   const progSub = () => progCard.querySelector(".pn-sub").textContent;
   check("it's titled Lifter & program/block title, and open to start with", progCard.querySelector(".pn-title").textContent === "Lifter & program/block title" && progCard.classList.contains("open"));

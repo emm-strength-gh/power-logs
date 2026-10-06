@@ -8,6 +8,9 @@ test-assets/
 # The Program Hub is the owner's: it lives in the database (see publish-hub.js), never on the public site.
 program-hub.html
 
+# The Velocity Tracker is kept in the database too (see publish-vbt.js): not on the public site.
+VBT.html
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db

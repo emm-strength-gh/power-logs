@@ -8,7 +8,7 @@ in, it also syncs through Supabase (see *Accounts + sync*). This folder is a git
 `origin/main` (https://github.com/emm-strength-gh/power-logs), kept
 byte-for-byte identical to it — deploy by committing the files you changed and
 `git push origin main`. `node_modules/`, `test-assets/` (a personal video) and
-`program-hub.html` (owner-only; see below) are gitignored and must never be published:
+`program-hub.html` (owner-only; see below) and `VBT.html` (members-only, same mechanism) are gitignored and must never be published:
 the repo is public.
 
 Full user-facing/deploy documentation is in [README.md](README.md) — read that
@@ -21,7 +21,7 @@ edges in more depth than this file.
 |---|---|---|
 | [power-logs.html](power-logs.html) | **The main app** ("Power Logs"). Lifter profiles, weekly program view, done/skip tracking, notes, custom items, Manage Program (day/week editing, coaches only), accounts + cloud sync, Analytics, Compare, plate calculator, rest timer, warm-up calculator, JSON/CSV import-export. Hosts the other three apps in iframes. | Yes — this is the PWA entry point (`start_url`). |
 | [program-hub.html](program-hub.html) | Program **builders**: Meet Peak v2 Gen Pop (balanced 16-week peak, first card), Taper (2 weeks: last heavy week + taper, three lifter types), Gustav, Wendler, equipped lifting, single-lift (squat/bench/deadlift), combined, Lilliebridge, KSB, CVBT, MDL, fatigue-managed, etc. Generates a CSV program. | Not served: gitignored, kept in the database (`owner_assets`, owner-only) and copied to the owner's device. Opens inside Power Logs as the **Program Hub** tab in Manage Program. |
-| [VBT.html](VBT.html) | **Velocity Tracker**. Loads a video clip, tracks the barbell path frame-by-frame, computes bar speed/RPE per rep, detects stalls/grinds, exports an annotated MP4 (custom `mp4Mux` muxer + WebCodecs) or CSV. | Yes, and opens inside Power Logs from the **Velocity Tracker** nav button. |
+| [VBT.html](VBT.html) | **Velocity Tracker**. Loads a video clip, tracks the barbell path frame-by-frame, computes bar speed/RPE per rep, detects stalls/grinds, exports an annotated MP4 (custom `mp4Mux` muxer + WebCodecs) or CSV. | Not served: gitignored, kept in the database (`owner_assets` with `members = true`, readable by any signed-in account) and copied to the device (`vbtSync()`, IndexedDB `HUB_STORE`, deleted on sign-out by `vbtLocalClear()`). Opens inside Power Logs from the **Velocity Tracker** nav button as an iframe `srcdoc` (`window.__vbtParams`). Upload with `node publish-vbt.js`. |
 | [rpe-estimator.html](rpe-estimator.html) | RPE ↔ %1RM load-chart tool (Chart.js). | Yes, and opens inside Power Logs (RPE Estimator in the sidebar). |
 
 Supporting files: [manifest.webmanifest](manifest.webmanifest) (PWA metadata),
@@ -267,7 +267,7 @@ Four independent counters, all manual, no build tooling enforces them:
   **both** whenever program-hub.html changes, then `node publish-hub.js` and run
   its SQL in Supabase (the file isn't deployed by git). power-logs.html flags a
   copy older than `HUB_BUILD` as out of date.
-- `VBT_BUILD` in power-logs.html, same pattern for VBT.html.
+- `VBT_BUILD` in power-logs.html, same pattern for VBT.html (its `vbt-N` string; `node publish-vbt.js` then the SQL in Supabase).
 
 ## Testing
 
@@ -294,6 +294,7 @@ node test-trophies.js   # Trophies: standards by IPF class, levels, clubs, strea
 node test-trophysync.js # Trophies across devices on the real rules, plus their notifications
 node test-notices.js    # In-app notice banner: kinds, who wrote it, x, stacking
 node test-hubprivate.js # The Program Hub's private copy: owner download, offline, sign-out delete
+node test-vbtprivate.js # The Velocity Tracker's private copy: any signed-in account, offline, sign-out delete
 node test-home.js       # Home: coach and lifter landing pages, cards, lifters list, Home buttons
 node test-payments.js   # Payments: coach marks months paid, lifter read-only, real rules
 node test-replies.js    # Messages: emoji picker and replies
@@ -302,7 +303,7 @@ node test-reactions.js  # Reactions on messages, coach-only on notes and days
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all twenty-four. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all twenty-five. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of power-logs.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

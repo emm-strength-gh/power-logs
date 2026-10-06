@@ -14,11 +14,13 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `program-hub.html` | The program builders (Gustav, Wendler, and the rest). **Not in the repo (gitignored) and not on the public site**: it lives in the database, owner-only, and the app copies it to the owner's device. Shown inside the app as the **Program Hub** tab in Manage Program. See *Who sees the Program Hub*. |
 | `publish-hub.js` | Writes the SQL that uploads `program-hub.html` to the database (`node publish-hub.js`), after you change it. |
 | `test-hubprivate.js` | The Program Hub's copy: downloaded for the owner, opens offline, newer versions, deleted on sign-out, never fetched by other coaches — `node test-hubprivate.js`. |
-| `VBT.html` | Velocity Tracker — barbell velocity and RPE from a video clip. Opens inside the app from the **Velocity Tracker** nav button, and also works standalone. Precached for offline use. |
+| `VBT.html` | Velocity Tracker — barbell velocity and RPE from a video clip. **Not in the repo (gitignored) and not on the public site**: it lives in the database (`owner_assets`, readable by any signed-in account), is downloaded to the device once signed in and deleted on sign-out. Opens inside the app from the **Velocity Tracker** nav button. |
+| `publish-vbt.js` | Writes the SQL that uploads `VBT.html` to the database (`node publish-vbt.js`), after you change it. |
+| `test-vbtprivate.js` | The Velocity Tracker's copy: downloaded for any signed-in account, opens offline, newer versions, a message when signed out, deleted on sign-out — `node test-vbtprivate.js`. |
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
 | `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
-| `supabase/selftest.sql` | Checks on those rules (168 at present). Paste and run after the schema; every row should say PASS. |
+| `supabase/selftest.sql` | Checks on those rules (171 at present). Paste and run after the schema; every row should say PASS. |
 | `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
 | `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
 | `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the logo: a red 25 kg plate and a spiral notepad on a pastel sage tile). The header and About sheet use `icon-192.png` too. |
@@ -186,6 +188,7 @@ the lifter's sidebar, plus an **Inbox** for coaches listing every lifter they co
   home-screen app (iOS 16.4 or later).
 - Messages are cached on the device to read offline; ones written offline are sent
   when it's back online.
+- **Back to Inbox:** a coach in a lifter's chat has a **‹ Back to Inbox** button at the top.
 - **Emoji and replies:** the smiley beside the message box opens an emoji picker (tabs, plus
   the ones you used last); tapping one drops it at the cursor. **Reply** (the arrow beside
   a message, or swipe it toward the middle of the screen) quotes that message above the
@@ -304,6 +307,13 @@ The **Program Hub** is the owner's alone, and it isn't a public file any more.
 - **Updating it:** change `program-hub.html`, bump its `hub-N` string and `HUB_BUILD` in `power-logs.html` together, run `node publish-hub.js`, paste the file it writes (in "Power Logs Cloud Setup", outside this repo) into Supabase's SQL editor and Run. No app deploy needed unless the app changed.
 - **History:** earlier commits in this public repo still contain the old public `program-hub.html`; removing it from `main` doesn't remove that.
 
+## The Velocity Tracker is private too
+
+`VBT.html` is gitignored (never pushed) and stored in `owner_assets` like the Program Hub, but marked `members`, so **any signed-in account** can read it (and nobody signed out). It works the same way on the device: downloaded once signed in and kept in IndexedDB so it opens offline, a newer version is fetched in the background, and **signing out deletes it** (retried on the next launch if that fails, via `spotter.vbtHeld`). Signed out, the Velocity Tracker page says to sign in. `sw.js` doesn't cache it.
+
+- **Updating it:** change `VBT.html`, bump its `vbt-N` string and `VBT_BUILD` in `power-logs.html` together, run `node publish-vbt.js`, paste the file it writes (in "Power Logs Cloud Setup") into Supabase's SQL editor and Run.
+- **History:** earlier commits in this public repo still contain the old public `VBT.html`; removing it from `main` doesn't remove that.
+
 ## The notice banner
 
 Signed in, anything that happened while you were away shows as a banner at the top of
@@ -411,7 +421,9 @@ That's why the dropdown opens a sheet instead.
 1. **Lifter & program/block title** (a collapsible card; it remembers whether you left it open, and
    when collapsed its header still reads "Name · Block"): the lifter's name (a coach can
    rename them; a synced lifter is renamed on every device, theirs included),
-   block/title, **Export CSV**, **Compare two programs**.
+   block/title, **Export CSV**, **Compare two programs** and **Edit program notes** (the card on the
+   Overview: type to add or change it, clear the text to erase it; a line like `== Heading ==`
+   becomes a heading).
 2. **Edit a day:** pick the week and day (Undo on the right).
    - **+ Add exercise** sits at the foot of the day's list and opens the form in place.
    - **Days & weeks** (add a day or week, delete the day or week) sits right under it.

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="robots" content="noindex" />
+<title>EmmStrength Power Logs</title>
+<!-- The only public page of the app. It signs you in, then downloads Power Logs itself from the
+     database (once per version; it is kept on the device so it opens offline) and starts it in
+     this window. The app is not a file on this site: see publish-app.js. -->
+<link rel="manifest" href="./manifest.webmanifest" />
+<meta id="themeColorMeta" name="theme-color" content="#f1f3ee" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Power Logs" />
+<meta name="format-detection" content="telephone=no" />
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  * { touch-action: manipulation; box-sizing: border-box; }
+  :root {
+    --bg: #f1f3ee; --surface: #ffffff; --ink: #1b2420; --muted: #6b736c; --pine: #2e5a4e; --pine-dark: #244a40;
+    --clay: #b34732; --border: #e2e5df; --border-strong: #d2d6cd;
+    --shadow: 0 1px 2px rgba(27,36,32,.05), 0 8px 24px rgba(27,36,32,.06);
+    color-scheme: light;
+  }
+  html[data-theme="dark"] {
+    --bg: #14171a; --surface: #1d2125; --ink: #e8eae6; --muted: #9aa39d; --pine: #6bbfa3; --pine-dark: #5aab90;
+    --clay: #e08a73; --border: #2c3137; --border-strong: #3a4047;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Inter", system-ui, sans-serif; background: var(--bg); color: var(--ink);
+    -webkit-font-smoothing: antialiased; min-height: 100vh; min-height: 100dvh;
+    display: grid; place-items: center;
+    padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+  }
+  .gate { width: 100%; max-width: 380px; text-align: center; }
+  .mark { width: 76px; height: 76px; border-radius: 18px; display: block; margin: 0 auto 14px; }
+  h1 { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 26px; letter-spacing: -.01em; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 22px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); padding: 20px 18px; text-align: left; }
+  .msg { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink); }
+  .msg.center { text-align: center; color: var(--muted); }
+  .err { margin: 10px 0 0; font-size: 13px; color: var(--clay); line-height: 1.4; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 0 0 6px; }
+  input {
+    width: 100%; font: inherit; font-size: 16px; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--border-strong); border-radius: 12px; padding: 11px 13px;
+  }
+  input:focus-visible, button:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+  input.code { letter-spacing: .3em; text-align: center; font-size: 22px; font-weight: 600; }
+  .row { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  button {
+    font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; border: none; border-radius: 999px; padding: 12px 18px;
+    transition: background .15s ease, transform .05s ease;
+  }
+  button:active { transform: translateY(1px); }
+  button[disabled] { opacity: .6; cursor: default; }
+  .solid { background: var(--pine); color: #fff; }
+  html[data-theme="dark"] .solid { color: #14171a; }
+  .solid:hover { background: var(--pine-dark); }
+  .ghost { background: transparent; color: var(--muted); font-weight: 500; font-size: 14px; padding: 8px 12px; }
+  .hint { color: var(--muted); font-size: 12.5px; line-height: 1.45; margin: 14px 4px 0; text-align: center; }
+  .spin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--border-strong); border-top-color: var(--pine); margin: 0 auto 12px; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+</style>
+</head>
+<body>
+<main class="gate">
+  <img class="mark" src="./icons/icon-192.png" alt="" />
+  <h1>Power Logs</h1>
+  <p class="sub">EmmStrength training log</p>
+  <section class="card" id="card" aria-live="polite"><p class="msg center">Opening&hellip;</p></section>
+  <p class="hint" id="hint"></p>
+  <noscript><p class="hint">Power Logs needs JavaScript.</p></noscript>
+</main>
+<script>
+(function () {
+  "use strict";
+  // Same project, publishable key and session slot as the app, so signing in here is signing in there.
+  var CLOUD_URL = "https://tkudwvzhsxdvxyyxcfeh.supabase.co";
+  var CLOUD_KEY = "sb_publishable_-EagRB14aP5mB7BJDpeq2A_Czjmlgu3";
+  var SDK_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js";
+  var CHART_URL = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js";
+  var ASSET = "app";                      // owner_assets.id of the app (readable by any signed-in account)
+  var STORE_HELD = "spotter.appHeld";     // "1" while a copy may be on this device: a failed delete is retried next launch
+  var AUTH_KEY = "spotter.auth";
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  var ui = { step: "email", email: "", err: "", busy: false };
+  var sbClient = null, sbApi = null;
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, txt) { var n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+
+  try {
+    var th = localStorage.getItem("spotter.theme");
+    if (!th && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) th = "dark";
+    if (th) document.documentElement.setAttribute("data-theme", th);
+    if (th === "dark") $("themeColorMeta").setAttribute("content", "#14171a");
+  } catch (e) {}
+
+  /* ------------------------------------------------ the copy kept on this device (IndexedDB, as the other tools') */
+  function idb(mode, fn) {
+    return new Promise(function (res, rej) {
+      var open = indexedDB.open("spotter-private", 1);
+      open.onupgradeneeded = function () { open.result.createObjectStore("kv"); };
+      open.onerror = function () { rej(open.error); };
+      open.onsuccess = function () {
+        var db = open.result, tx = db.transaction("kv", mode), rq = fn(tx.objectStore("kv"));
+        tx.oncomplete = function () { db.close(); res(rq && rq.result); };
+        tx.onerror = tx.onabort = function () { db.close(); rej(tx.error); };
+      };
+    });
+  }
+  // (Tests plug in a stand-in as window.__spotterPrivateStore, as the app does.)
+  var STORE = window.__spotterPrivateStore || {
+    get: function (k) { return idb("readonly", function (st) { return st.get(k); }); },
+    put: function (k, v) { return idb("readwrite", function (st) { return st.put(v, k); }); },
+    del: function (k) { return idb("readwrite", function (st) { return st.delete(k); }); }
+  };
+  function held(on) { try { if (on) localStorage.setItem(STORE_HELD, "1"); else localStorage.removeItem(STORE_HELD); } catch (e) {} }
+  function stored() { return STORE.get(ASSET).then(function (r) { return r && r.html ? r : null; }, function () { return null; }); }
+  // Signed out (here or elsewhere): nothing of the app stays on this device.
+  function wipe() { return STORE.del(ASSET).then(function () { held(false); }, function () {}); }
+
+  /* ------------------------------------------------ the sign-in */
+  function looksSignedIn() {
+    if (window.__spotterCloud) return true;           // a test stand-in
+    try {
+      var s = JSON.parse(localStorage.getItem(AUTH_KEY) || "null");
+      return !!(s && (s.refresh_token || s.access_token));
+    } catch (e) { return false; }
+  }
+  function loadScript(url, ready, ms) {
+    return new Promise(function (resolve) {
+      if (window.__spotterCloud || ready()) { resolve(true); return; }
+      var s = document.createElement("script"), done = false, tm;
+      function fin(ok) { if (done) return; done = true; clearTimeout(tm); resolve(!!ok && ready()); }
+      tm = setTimeout(function () { fin(false); }, ms || 6000);
+      s.src = url; s.onload = function () { fin(true); }; s.onerror = function () { fin(false); };
+      document.head.appendChild(s);
+    });
+  }
+  function ensureSdk() { return loadScript(SDK_URL, function () { return !!(window.supabase && window.supabase.createClient); }); }
+  // The app's own copies of these libraries load while it is written into the page; having them first
+  // means it never starts without them.
+  function ensureCharts() { return loadScript(CHART_URL, function () { return !!window.Chart; }, 4000); }
+  function withTimeout(p, ms) {
+    return new Promise(function (resolve, reject) {
+      var tm = setTimeout(function () { reject(new Error("timed out")); }, ms);
+      p.then(function (v) { clearTimeout(tm); resolve(v); }, function (e) { clearTimeout(tm); reject(e); });
+    });
+  }
+  function retryable(err) {
+    var m = (err && err.message) || "";
+    return !!err && (err.name === "AuthRetryableFetchError" || /fetch|network|timed out|load failed/i.test(m) || err.status === 0 || err.status >= 500);
+  }
+  // Just the calls the page needs, in the shape of the app's cloud API (window.__spotterCloud in tests).
+  function api() {
+    if (window.__spotterCloud) return window.__spotterCloud;
+    if (sbApi) return sbApi;
+    if (!window.supabase || !window.supabase.createClient) return null;
+    try {
+      sbClient = window.supabase.createClient(CLOUD_URL, CLOUD_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: AUTH_KEY }
+      });
+    } catch (e) { return null; }
+    var sb = sbClient;
+    function data(res) {
+      if (res && res.error) throw res.error;
+      return res ? res.data : null;
+    }
+    function who(session) {
+      return session && session.user ? { id: session.user.id, email: String(session.user.email || "").toLowerCase() } : null;
+    }
+    sbApi = {
+      // null = no (valid) sign-in; a network problem rejects instead, so a signed-in device still opens offline
+      session: function () {
+        return sb.auth.getSession().then(function (r) {
+          if (r && r.error && retryable(r.error)) throw r.error;
+          return who(r && r.data && r.data.session);
+        });
+      },
+      sendCode: function (email) { return sb.auth.signInWithOtp({ email: email, options: { shouldCreateUser: true } }).then(data); },
+      verifyCode: function (email, code) {
+        return sb.auth.verifyOtp({ email: email, token: code, type: "email" }).then(function (r) { return who(data(r).session); });
+      },
+      fetch: function (table, o) {
+        var q = sb.from(table).select(o.columns || "*");
+        if (o.ids) q = q.in("id", o.ids);
+        return q.then(data);
+      }
+    };
+    return sbApi;
+  }
+  function friendlyAuthError(err) {
+    var m = (err && err.message) || "";
+    if (navigator.onLine === false || /fetch|network|load failed/i.test(m)) return "You’re offline. Connect and try again.";
+    if (/rate|seconds|too many/i.test(m)) return "Too many tries. Wait a minute, then try again.";
+    if (/expired|invalid|otp|token/i.test(m)) return "That code didn’t work or has expired. Use the newest email, or send a new code.";
+    return m || "Something went wrong. Try again.";
+  }
+
+  /* ------------------------------------------------ the app */
+  function download(a) {
+    return a.fetch("owner_assets", { ids: [ASSET], columns: "id,version,body" }).then(function (rows) {
+      var r = rows && rows[0];
+      if (!r || !r.body) return null;
+      var rec = { version: r.version || "", html: r.body };
+      held(true);
+      return STORE.put(ASSET, rec).then(null, function () {}).then(function () { return rec; });
+    });
+  }
+  // Start it in this window: its own address, query (?open=...) and storage carry straight over.
+  function boot(rec) {
+    busy("Opening Power Logs…");
+    return Promise.all([ensureSdk(), ensureCharts()]).then(function () {
+      try { if (sbClient && sbClient.auth && sbClient.auth.stopAutoRefresh) sbClient.auth.stopAutoRefresh(); } catch (e) {}
+      window.__spotterShell = true;     // the app hands back here when the sign-in ends
+      document.open();
+      document.write(rec.html);
+      document.close();
+    });
+  }
+  // Signed in: use the copy on the device if it is the current version, otherwise fetch the new one.
+  function launch() {
+    busy("Opening Power Logs…");
+    return stored().then(function (copy) {
+      if (!looksSignedIn()) return wipe().then(showSignIn);
+      function fallback(why) { return copy ? boot(copy) : showProblem(why); }
+      if (navigator.onLine === false) return fallback("offline");
+      return ensureSdk().then(function () {
+        var a = api();
+        if (!a) return fallback("offline");
+        return withTimeout(a.session(), 8000).then(function (user) {
+          if (!user) return wipe().then(showSignIn);     // the sign-in ended elsewhere
+          return withTimeout(a.fetch("owner_assets", { ids: [ASSET], columns: "id,version" }), 10000).then(function (rows) {
+            var r = rows && rows[0];
+            if (!r) return fallback("missing");
+            if (copy && copy.version === r.version) return boot(copy);
+            busy(copy ? "Updating Power Logs…" : "Downloading Power Logs…", copy ? "" : "This happens once on this device. After that it opens offline.");
+            return withTimeout(download(a), 90000).then(function (rec) { return rec ? boot(rec) : fallback("missing"); },
+                                                        function () { return fallback("failed"); });
+          }, function () { return fallback("offline"); });
+        }, function () { return fallback("offline"); });
+      });
+    });
+  }
+
+  /* ------------------------------------------------ what's on screen */
+  function setHint(t) { $("hint").textContent = t || ""; }
+  function busy(msg, hint) {
+    var c = $("card"); clear(c);
+    c.appendChild(el("div", "spin"));
+    c.appendChild(el("p", "msg center", msg));
+    setHint(hint);
+  }
+  function showProblem(why) {
+    var c = $("card"); clear(c);
+    c.appendChild(el("p", "msg", why === "missing"
+      ? "Power Logs hasn’t been uploaded to the database yet. Try again in a moment."
+      : why === "failed"
+        ? "Power Logs couldn’t be downloaded just now. Try again in a moment."
+        : "Connect to the internet once to download Power Logs. After that it opens offline."));
+    var row = el("div", "row");
+    var b = el("button", "solid", "Try again"); b.type = "button"; b.onclick = launch; row.appendChild(b);
+    c.appendChild(row);
+    setHint("");
+  }
+  function showSignIn() {
+    var c = $("card"); clear(c);
+    var code = ui.step === "code";
+    var form = el("form"); form.noValidate = true;
+    var lab = el("label", "", code ? "Code from the email" : "Email");
+    var inp = el("input", code ? "code" : "");
+    inp.id = code ? "gateCode" : "gateEmail";
+    lab.setAttribute("for", inp.id);
+    if (code) { inp.type = "text"; inp.inputMode = "numeric"; inp.autocomplete = "one-time-code"; inp.maxLength = 10; inp.placeholder = "000000"; }
+    else { inp.type = "email"; inp.inputMode = "email"; inp.autocomplete = "email"; inp.placeholder = "you@example.com"; inp.value = ui.email; }
+    inp.disabled = ui.busy;
+    form.appendChild(lab); form.appendChild(inp);
+    if (ui.err) form.appendChild(el("p", "err", ui.err));
+    var row = el("div", "row");
+    var go = el("button", "solid", ui.busy ? (code ? "Signing in…" : "Sending…") : (code ? "Sign in" : "Email me a code"));
+    go.type = "submit"; go.disabled = ui.busy; row.appendChild(go);
+    if (code) {
+      var again = el("button", "ghost", "Send a new code"); again.type = "button"; again.disabled = ui.busy; again.onclick = sendCode;
+      var other = el("button", "ghost", "Use a different email"); other.type = "button"; other.disabled = ui.busy;
+      other.onclick = function () { ui.step = "email"; ui.err = ""; showSignIn(); };
+      row.appendChild(again); row.appendChild(other);
+    }
+    form.appendChild(row);
+    form.onsubmit = function (e) { e.preventDefault(); if (code) verify(); else sendCode(); };
+    c.appendChild(form);
+    setHint(code ? "We emailed a code to " + ui.email + ". It can take a minute." : "Sign in with your email. We’ll email you a code, so there’s no password.");
+    if (!ui.busy) { try { inp.focus(); } catch (e) {} }
+  }
+  function sendCode() {
+    var inp = $("gateEmail"), email = String(inp ? inp.value : ui.email).trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) { ui.err = "Enter your email address."; showSignIn(); return; }
+    ui.email = email; ui.busy = true; ui.err = ""; showSignIn();
+    ensureSdk().then(function () {
+      var a = api();
+      if (!a) throw new Error("You’re offline. Connect and try again.");
+      return a.sendCode(email);
+    }).then(function () { ui.step = "code"; ui.busy = false; showSignIn(); },
+            function (err) { ui.busy = false; ui.err = friendlyAuthError(err); showSignIn(); });
+  }
+  function verify() {
+    var code = String(($("gateCode") || {}).value || "").replace(/\D/g, "");
+    if (code.length < 6) { ui.err = "Enter the code from the email."; showSignIn(); return; }
+    ui.busy = true; ui.err = ""; showSignIn();
+    api().verifyCode(ui.email, code).then(function (user) {
+      if (!user) throw new Error("invalid code");
+      ui = { step: "email", email: "", err: "", busy: false };
+      return launch();
+    }).catch(function (err) { ui.busy = false; ui.err = friendlyAuthError(err); showSignIn(); });
+  }
+
+  /* ------------------------------------------------ offline support for this page itself */
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("./sw.js").then(function (reg) {
+        reg.addEventListener("updatefound", function () {
+          var sw = reg.installing; if (!sw) return;
+          sw.addEventListener("statechange", function () {
+            if (sw.state === "installed" && navigator.serviceWorker.controller) sw.postMessage({ type: "SKIP_WAITING" });
+          });
+        });
+      }).catch(function () {});
+    });
+  }
+
+  launch();
+})();
+</script>
+</body>
+</html>

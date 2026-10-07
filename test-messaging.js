@@ -1,7 +1,7 @@
 /* Messages, finished sessions, new-week alerts and notifications, end to end.
  * Run: node test-messaging.js
  *
- * Like test-cloudsync.js: each device is its own jsdom copy of power-logs.html
+ * Like test-cloudsync.js: each device is its own jsdom copy of app.html
  * on one in-memory Postgres (supabase/schema.sql, real row-level security).
  * The notify Edge Function runs in-process (test-cloudfake.js), so every push
  * it would send is in server.pushes. Each device gets a stand-in for the
@@ -12,7 +12,7 @@ const path = require("path");
 const { JSDOM, VirtualConsole } = require("jsdom");
 const { pgServer, OWNER_EMAIL, GOOD_CODE } = require("./test-cloudfake");
 
-const html = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
+const html = fs.readFileSync(path.join(__dirname, "app.html"), "utf8");
 let failures = 0, checks = 0;
 const check = (name, cond, extra = "") => {
   checks++;
@@ -38,7 +38,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
     const push = { sub: null, swListeners: [], unsubscribed: 0 };
     const dom = new JSDOM(html, {
       runScripts: "dangerously", pretendToBeVisual: true,
-      url: "https://example.github.io/power-logs/power-logs.html",
+      url: "https://example.github.io/power-logs/app.html",
       virtualConsole: new VirtualConsole().on("jsdomError", e => errors.push(e.message)).on("error", m => errors.push(String(m))),
       beforeParse(w) {
         w.__spotterCloud = dev;
@@ -319,7 +319,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   await C.send("Deload next week");
   C.sync(); await C.settle();
   check("then no message banners reach Tom", pushesTo("lifter").length === lBefore);
-  L.push.swListeners.forEach(fn => fn({ data: { type: "spotter-open", url: "https://example.github.io/power-logs/power-logs.html?open=week&lifter=" + tomId + "&week=3" } }));
+  L.push.swListeners.forEach(fn => fn({ data: { type: "spotter-open", url: "https://example.github.io/power-logs/app.html?open=week&lifter=" + tomId + "&week=3" } }));
   check("tapping a banner while the app is open goes to the week", await until(() => L.$("viewWeek").classList.contains("active") && /Week 3/.test(L.$("viewWeek").textContent)));
 
   console.log("\nA problem with messages never holds up the training log");

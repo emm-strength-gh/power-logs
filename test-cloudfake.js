@@ -1,4 +1,4 @@
-/* Stand-ins for Supabase, plugged into power-logs.html as window.__spotterCloud
+/* Stand-ins for Supabase, plugged into app.html as window.__spotterCloud
  * (see cloudApi() there). Not a test itself; the test-*.js files require it.
  *
  *   coachCloud()  Signed in as the owner, and a server with nothing on it. For

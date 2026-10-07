@@ -14,6 +14,10 @@ VBT.html
 # The RPE Calculator too (publish-rpe.js).
 rpe-calculator.html
 
+# The app itself too: index.html is the public sign-in page, which downloads the app from the database
+# (see publish-app.js). Kept here as the working copy, and what the tests load.
+app.html
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db

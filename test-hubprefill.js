@@ -2,7 +2,7 @@
  * Run: node test-hubprefill.js
  *
  * Part 1 drives program-hub.html (embedded) with spotter-lifter messages.
- * Part 2 checks power-logs.html sends them, signed in as a coach through the
+ * Part 2 checks app.html sends them, signed in as a coach through the
  * stand-in cloud in test-cloudfake.js (Manage Program is for coaches).
  */
 const fs = require("fs");
@@ -109,7 +109,7 @@ const DEAD  = ["in-deadlift", "w-deadlift", "e-rdead", "d-max", "cb-dead", "lb-d
 
   /* ---------------------------------------------------- part 2: power logs */
   console.log("\nPower Logs sends the lifter");
-  const app = boot("power-logs.html", "https://example.github.io/spotter/power-logs.html", installCoach);
+  const app = boot("app.html", "https://example.github.io/spotter/app.html", installCoach);
   const aw = app.w, a$ = id => aw.document.getElementById(id);
   await new Promise(res => { if (aw.document.readyState === "complete") res(); else aw.addEventListener("load", res); setTimeout(res, 4000); });
   const input = a$("fileInput");

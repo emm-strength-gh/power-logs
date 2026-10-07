@@ -1,14 +1,15 @@
 # EmmStrength Power Logs
 
 An installable iPhone/desktop PWA for powerlifting training logs. No build step,
-no framework, no server of our own — four self-contained HTML files with inline
-`<script>`/`<style>`, deployed as static files to GitHub Pages and installed to
+no framework, no server of our own — self-contained HTML files with inline
+`<script>`/`<style>`. Only the small sign-in page (`index.html`) is deployed as a static file to GitHub Pages; the app
+itself (`app.html`) is kept in Supabase and downloaded to a signed-in device (see *The app itself is private*). It is installed to
 the iOS home screen via Safari. Data lives in `localStorage` on-device; signed
 in, it also syncs through Supabase (see *Accounts + sync*). This folder is a git repo tracking
 `origin/main` (https://github.com/emm-strength-gh/power-logs), kept
 byte-for-byte identical to it — deploy by committing the files you changed and
 `git push origin main`. `node_modules/`, `test-assets/` (a personal video) and
-`program-hub.html` (owner-only; see below) and `VBT.html` and `rpe-calculator.html` (members-only, same mechanism) are gitignored and must never be published:
+`app.html`, `program-hub.html` (owner-only; see below) and `VBT.html` and `rpe-calculator.html` (members-only, same mechanism) are gitignored and must never be published:
 the repo is public.
 
 Full user-facing/deploy documentation is in [README.md](README.md) — read that
@@ -19,20 +20,21 @@ edges in more depth than this file.
 
 | File | Role | Standalone? |
 |---|---|---|
-| [power-logs.html](power-logs.html) | **The main app** ("Power Logs"). Lifter profiles, weekly program view, done/skip tracking, notes, custom items, Manage Program (day/week editing, coaches only), accounts + cloud sync, Analytics, Compare, plate calculator, rest timer, warm-up calculator, JSON/CSV import-export. Hosts the other three apps in iframes. | Yes — this is the PWA entry point (`start_url`). |
+| `app.html` | **The main app** ("Power Logs"). Lifter profiles, weekly program view, done/skip tracking, notes, custom items, Manage Program (day/week editing, coaches only), accounts + cloud sync, Analytics, Compare, plate calculator, rest timer, warm-up calculator, JSON/CSV import-export. Hosts the other three apps in iframes. | Not served: gitignored, kept in `owner_assets` (id `app`, `members`) and started by `index.html` after sign-in. Opened directly (tests, the local file) it runs as before. Upload with `node publish-app.js`. |
 | [program-hub.html](program-hub.html) | Program **builders**: Meet Peak v2 Gen Pop (balanced 16-week peak, first card), Taper (2 weeks: last heavy week + taper, three lifter types), Gustav, Wendler, equipped lifting, single-lift (squat/bench/deadlift), combined, Lilliebridge, KSB, CVBT, MDL, fatigue-managed, etc. Generates a CSV program. | Not served: gitignored, kept in the database (`owner_assets`, owner-only) and copied to the owner's device. Opens inside Power Logs as the **Program Hub** tab in Manage Program. |
 | [VBT.html](VBT.html) | **Velocity Tracker**. Loads a video clip, tracks the barbell path frame-by-frame, computes bar speed/RPE per rep, detects stalls/grinds, exports an annotated MP4 (custom `mp4Mux` muxer + WebCodecs) or CSV. | Not served: gitignored, kept in the database (`owner_assets` with `members = true`, readable by any signed-in account) and copied to the device (`vbtSync()`, IndexedDB `HUB_STORE`, deleted on sign-out by `vbtLocalClear()`). Opens inside Power Logs from the **Velocity Tracker** nav button as an iframe `srcdoc` (`window.__vbtParams`). Upload with `node publish-vbt.js`. |
 | `rpe-calculator.html` | **RPE Calculator**: RPE ↔ %1RM load-chart tool (Chart.js). Gitignored; kept in `owner_assets` (id `rpe`, `members`), like VBT. | Opens inside Power Logs (RPE Calculator in the sidebar), signed in only. |
 
 Supporting files: [manifest.webmanifest](manifest.webmanifest) (PWA metadata),
 [sw.js](sw.js) (service worker — see caching strategy below),
-[index.html](index.html) (redirect shim to `power-logs.html`),
+[index.html](index.html) (**the public sign-in page**; downloads and starts the app; the PWA `start_url`),
+[power-logs.html](power-logs.html) (a redirect to it, so old home-screen icons, bookmarks and push links keep working),
 [icons/](icons/) (+ [make_icons.ps1](make_icons.ps1) to regenerate them from
 `icons/_source.png`: the 25 kg plate and notepad logo on the app's pastel sage).
 
 ## Embedding protocol (iframe ⇄ parent postMessage)
 
-`power-logs.html` embeds the other three as iframes and talks to them only via
+`app.html` embeds the other three as iframes and talks to them only via
 `postMessage` — never reaches into their DOM directly. Each embedded page:
 
 - Only activates embed behavior when loaded with `?embed=1` in the query
@@ -45,13 +47,13 @@ Supporting files: [manifest.webmanifest](manifest.webmanifest) (PWA metadata),
 - Announces readiness once its message listener is live:
   `spotter-rpe-ready`, `spotter-vbt-ready`, `spotter-hub-ready` (the hub's
   ready message also carries `features: [...]`, checked by `checkHubBuild()`
-  in power-logs.html to detect a stale deployed copy).
+  in app.html to detect a stale deployed copy).
 
 Program Hub additionally:
 - Sends `spotter-hub-height` so the parent can resize the iframe to fit
   content (one scrollable document instead of nested scroll areas).
 - Sends `spotter-hub-program` with a generated CSV (**Send to Manage
-  Program** button) — `loadDonorFromHub()` in power-logs.html parses it and
+  Program** button) — `loadDonorFromHub()` in app.html parses it and
   drops it into the Manage Program **donor** slot, exactly like a file import.
 - Sends `spotter-hub-toast` to surface a message via the parent's toast UI.
 - Receives `spotter-lifter` (`pushLifterToHub()`: on hub-ready, on opening
@@ -63,10 +65,10 @@ Program Hub additionally:
   Wendler/Massthetics derive their own TM, so their TM % goes to 100% while
   their max fields hold prefilled TMs.
 
-## Data model (power-logs.html)
+## Data model (app.html)
 
 Everything lives in `localStorage` under versioned keys (`STORE_*` near the
-top of the `<script>` in power-logs.html, e.g. `spotter.profiles.v1`). Bump
+top of the `<script>` in app.html, e.g. `spotter.profiles.v1`). Bump
 the `.vN` suffix if you ever change a stored shape incompatibly.
 
 - `PROFILES`: `name -> { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...]}]}] }`
@@ -122,7 +124,7 @@ undoable.
 
 ## Accounts + sync (Supabase)
 
-The "Cloud: accounts + sync" section of power-logs.html. localStorage stays the
+The "Cloud: accounts + sync" section of app.html. localStorage stays the
 working copy; the database is Supabase (project URL + **publishable** key are in
 the page, public by design). **Who may see or change what is enforced only by
 row-level security in [supabase/schema.sql](supabase/schema.sql)**; the app's own
@@ -154,7 +156,7 @@ private script kept outside it (`private.settings`).
   `lifters.name` first, then `renameLocal()` moves every name-keyed store; other
   devices notice `row.name` differing from `shadow.name` on pull and follow. Row
   ids keep the old name inside them (they're only ids).
-- Messages (the "Messages" section of power-logs.html, below the account sheet):
+- Messages (the "Messages" section of app.html, below the account sheet):
   thread `team` = lifter + all their coaches, else one per coach keyed by the
   coach's user id; the lifter chooses (`lifter_settings.team_thread`, RPC
   `set_team_thread`). A coach reads the team thread only from their
@@ -166,7 +168,7 @@ private script kept outside it (`private.settings`).
   `lifter_events`. Notifications: Web Push via the `notify` Edge Function
   (`supabase/functions/notify/index.ts`), called by the app with just an id;
   it claims `notified_at` so each thing is announced once. `sw.js` shows them
-  and opens `power-logs.html?open=messages|week&lifter=…` (`applyPendingOpen`).
+  and opens `power-logs.html?open=messages|week&lifter=…` (the redirect, then `applyPendingOpen`).
   VAPID public key in the page; the private key is a Supabase secret only.
   "Seen": `message_reads` are readable by everyone in the thread
   (`private.in_thread`); mine go to `MSG.reads`, others' to `MSG.seen`
@@ -240,7 +242,7 @@ private script kept outside it (`private.settings`).
   from `setCloudStatus()`; reading clears them (`markRead`, `openTrophies`, `openWeek`).
   Reset with `MSG` on sign-out / account change. No database change.
 - Trophies and strength levels (the "Trophies and strength levels" section of
-  power-logs.html, before Theme): `troDefs()` is the catalogue (every trophy with its
+  app.html, before Theme): `troDefs()` is the catalogue (every trophy with its
   `test(model)`), `troModel()` the lifter's numbers (best of 1RM, confirmed PR, Epley
   from Done sets of <= 6 reps; standards from `TRO_STD` at the IPF class limit, GL
   points), `troCheck()` records what is newly true (silent on the first look,
@@ -256,6 +258,10 @@ private script kept outside it (`private.settings`).
 - Changing the database: edit `supabase/schema.sql` (keep it re-runnable), run
   `node test-cloudsql.js`, and have the user paste it into Supabase **before**
   deploying app code that needs it.
+
+## The app itself is private (index.html + owner_assets 'app')
+
+`index.html` is the only public page (with `power-logs.html`, a redirect kept for old home-screen icons, bookmarks and push links, `sw.js`, the manifest and icons). It signs in with an email code (same project, key and `spotter.auth` slot as the app), then keeps the app in IndexedDB (`spotter-private`/`kv`, key `app`, flag `spotter.appHeld`, same store as the other tools) and starts it with `document.open/write/close`, after loading Chart.js and supabase-js itself (a script tag written by `document.write` can be blocked on a slow network). Launch order: no sign-in -> wipe the copy, show the form; signed in -> version check (`owner_assets.version`, 8 s) -> download if different -> start; offline or timed out -> start the copy, or "connect once". It sets `window.__spotterShell` first: the app's `appLeave()` (sign-out, `SIGNED_OUT`, a null session online) then deletes the copy and goes back to `./index.html`; `signingOut` stops the auth event from leaving before `signOutFlow()` has tidied up. Tests stand in via `__spotterCloud` / `__spotterPrivateStore` as elsewhere, and the shell skips loading libraries when `__spotterCloud` exists. `node publish-app.js` writes the upload SQL (version = `APP_VERSION` + file hash, pieces in one transaction).
 
 ## Theming
 
@@ -273,16 +279,17 @@ Four independent counters, all manual, no build tooling enforces them:
   (added/renamed files) or a pinned library version (Chart.js, supabase-js) changes. Bumping drops
   every old cache on next activation. Do **not** bump for ordinary HTML edits
   — those are served network-first already.
-- `APP_VERSION` in power-logs.html (e.g. `1.30.0`) — cosmetic, shown in the
+- `APP_VERSION` in app.html (e.g. `1.30.0`) — cosmetic, shown in the
   About sheet (header ⓘ button) and at the foot of Manage Program so "is my
   deploy current?" is answerable at a glance. Bump the minor number for each
   release, the patch number for a fix to one.
-- `HUB_BUILD` in power-logs.html (must match the `hub-N` string
+- `HUB_BUILD` in app.html (must match the `hub-N` string
   program-hub.html announces in its `spotter-hub-ready` message) — bump
   **both** whenever program-hub.html changes, then `node publish-hub.js` and run
-  its SQL in Supabase (the file isn't deployed by git). power-logs.html flags a
+  its SQL in Supabase (the file isn't deployed by git). app.html flags a
   copy older than `HUB_BUILD` as out of date.
-- `VBT_BUILD` in power-logs.html, same pattern for VBT.html (its `vbt-N` string; `node publish-vbt.js` then the SQL in Supabase).
+- The app has no build string: `node publish-app.js` versions it as `APP_VERSION` + a hash of the file.
+- `VBT_BUILD` in app.html, same pattern for VBT.html (its `vbt-N` string; `node publish-vbt.js` then the SQL in Supabase).
 - `RPE_BUILD`, same again for rpe-calculator.html (`rpe-N`; `node publish-rpe.js`). Both private tools run on `makePrivateTool()` (download to IndexedDB when signed in, delete on sign-out).
 
 ## Testing
@@ -294,7 +301,7 @@ built HTML files directly:
 npm install         # one-time: jsdom, and PGlite (in-memory Postgres) for the cloud tests
 node test-boot.js       # PWA wiring smoke test (manifest, icons, saveFile routing, sw coverage)
 node test-weekrange.js  # Program Hub week-range export parsing, across all builders
-node test-genpop.js     # Meet Peak v2 Gen Pop: balance, loads, attempts, Clean, real import into power-logs.html
+node test-genpop.js     # Meet Peak v2 Gen Pop: balance, loads, attempts, Clean, real import into app.html
 node test-taper.js      # Taper builder: each lifter type's last heavy days, light sessions, rest, volume cut, Clean, import
 node test-lifterorder.js # Rearrange lifters: sheet, dropdown entry, persistence, reload, unload
 node test-dmnotes.js    # Manage Program Notes: coach-only, editor, links, backups, Weekly notes regression
@@ -311,6 +318,7 @@ node test-trophysync.js # Trophies across devices on the real rules, plus their 
 node test-notices.js    # In-app notice banner: kinds, who wrote it, x, stacking
 node test-hubprivate.js # The Program Hub's private copy: owner download, offline, sign-out delete
 node test-vbtprivate.js # The Velocity Tracker's private copy: any signed-in account, offline, sign-out delete
+node test-shell.js      # index.html: sign-in, first download, offline, new versions, ended sign-in, the real app started and signed out
 node test-rpeprivate.js # The RPE Calculator's private copy: same rules
 node test-announce.js   # Announcements: owner to everyone, coach to their lifters, the Home pop-up, closing, deleting
 node test-vidreview.js  # Vid Review: crop/cut, upload, 30 MB rule, watch, zoom, coach-only delete, sign-out, the MP4 writer, the owner's storage meter
@@ -322,8 +330,8 @@ node test-reactions.js  # Reactions on messages, coach-only on notes and days
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all twenty-eight. The Program Hub's analytics (`renderHubAnalytics()`) is a
-port of power-logs.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
+`npm test` runs all twenty-nine. The Program Hub's analytics (`renderHubAnalytics()`) is a
+port of app.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:
 `beforeParse(w) { installCoach(w); }` from test-cloudfake.js, which plugs a
@@ -348,7 +356,7 @@ own TM %; then bump `HUB_BUILD` and the `hub-N` string together.
   `# ` lines raw (not through `csvRow`), and never with user-typed text in them,
   because a quoted line no longer starts with `#` and the Hub's `splitCSV` drops it.
 - Keep variation names out of the competition-lift charts: `AN_EXCLUDED` in
-  power-logs.html matches by substring ("pause squat", "paused deadlift", "close
+  app.html matches by substring ("pause squat", "paused deadlift", "close
   grip", "larsen", ...). Anything else containing "squat"/"bench"/"deadlift" is
   counted as that lift, e.g. "Bulgarian split squat" would count as squat volume.
 
@@ -369,7 +377,7 @@ install a home-screen PWA).
   no framework), one giant IIFE per file (`(function () { "use strict"; ... })()`).
   Match this style rather than introducing `let`/`const`/classes/modules.
 - `$(id)` / `el(tag, cls, txt)` / `clear(node)` are the DOM helpers used
-  everywhere in power-logs.html instead of a framework.
+  everywhere in app.html instead of a framework.
 - `safeRead`/`safeWrite` wrap every localStorage access in try/catch (private
   browsing / storage-blocked contexts must degrade, not throw).
 - Comments explain *why*, not *what* — this codebase already follows that

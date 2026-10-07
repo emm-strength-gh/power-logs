@@ -1,7 +1,7 @@
 /* Messages: the emoji picker and replies to a message.
  * Run: node test-replies.js
  *
- * A coach and a lifter, each a jsdom copy of power-logs.html on one in-memory
+ * A coach and a lifter, each a jsdom copy of app.html on one in-memory
  * Postgres with the real rules (supabase/schema.sql).
  */
 const fs = require("fs");
@@ -9,7 +9,7 @@ const path = require("path");
 const { JSDOM, VirtualConsole } = require("jsdom");
 const { pgServer, OWNER_EMAIL, GOOD_CODE } = require("./test-cloudfake");
 
-const html = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
+const html = fs.readFileSync(path.join(__dirname, "app.html"), "utf8");
 let failures = 0, checks = 0;
 const check = (name, cond, extra = "") => {
   checks++;
@@ -32,7 +32,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
     const dev = reuse ? reuse.dev : server.device(label), errors = [], push = { sub: null };
     const dom = new JSDOM(html, {
       runScripts: "dangerously", pretendToBeVisual: true,
-      url: "https://example.github.io/power-logs/power-logs.html",
+      url: "https://example.github.io/power-logs/app.html",
       virtualConsole: new VirtualConsole().on("jsdomError", e => errors.push(e.message)).on("error", m => errors.push(String(m))),
       beforeParse(w) {
         w.__spotterCloud = dev;

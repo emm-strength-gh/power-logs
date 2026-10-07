@@ -1,6 +1,6 @@
 /* Writes the SQL that puts VBT.html into the database, where any signed-in account can read it
  * (and nobody signed out). Run it after changing VBT.html (and bump its "vbt-N" and VBT_BUILD in
- * power-logs.html first), then paste the output file into Supabase's SQL editor and Run.
+ * app.html first), then paste the output file into Supabase's SQL editor and Run.
  *
  *   node publish-vbt.js [out.sql]
  *
@@ -11,9 +11,9 @@ const path = require("path");
 const src = fs.readFileSync(path.join(__dirname, "VBT.html"), "utf8");
 const version = (src.match(/build: "(vbt-\d+)"/) || [])[1];
 if (!version) throw new Error('VBT.html has no build: "vbt-N" in its ready message');
-const app = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
+const app = fs.readFileSync(path.join(__dirname, "app.html"), "utf8");
 const expect = (app.match(/var VBT_BUILD = "(\d+)";/) || [])[1];
-if ("vbt-" + expect !== version) throw new Error(`power-logs.html expects vbt-${expect} but VBT.html says ${version}. Bump them together.`);
+if ("vbt-" + expect !== version) throw new Error(`app.html expects vbt-${expect} but VBT.html says ${version}. Bump them together.`);
 if (src.includes("$vbt$")) throw new Error("VBT.html contains the $vbt$ quote tag");
 const out = process.argv[2] || path.join(__dirname, "..", "Power Logs Cloud Setup", "vbt-upload.sql");
 fs.writeFileSync(out,

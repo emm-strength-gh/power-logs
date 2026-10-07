@@ -1,6 +1,6 @@
 # EmmStrength Power Logs — iPhone home-screen app
 
-`power-logs.html` wrapped as an installable PWA. Runs full-screen with its own icon,
+The app (`app.html`, kept out of this repo: see *The app itself is private too*) wrapped as an installable PWA. Runs full-screen with its own icon,
 works offline including charts, and exports JSON/CSV through the iOS share sheet.
 
 Separate repo from the Program Hub. Same deploy pattern.
@@ -9,7 +9,9 @@ Separate repo from the Program Hub. Same deploy pattern.
 
 | File | Purpose |
 |---|---|
-| `power-logs.html` | The app. Same code plus a PWA `<head>`, touch field sizing, share-sheet exports, persistent-storage request, and service worker registration. |
+| `app.html` | The app. Same code plus a PWA `<head>`, touch field sizing, share-sheet exports, persistent-storage request, and service worker registration. **Not in the repo (gitignored) and not on the public site**: it lives in the database (`owner_assets` id `app`, readable by any signed-in account) and `index.html` downloads it after sign-in. This folder keeps the working copy, and the tests load it. |
+| `publish-app.js` | Writes the SQL that uploads `app.html` to the database (`node publish-app.js`), after you change it. |
+| `test-shell.js` | The sign-in page: sign-in flow, first download, offline, newer versions, a sign-in that ended, delete-on-sign-out, and the real app started and signed out through it — `node test-shell.js`. |
 | `rpe-calculator.html` | The RPE Calculator — RPE → %1RM load chart. **Not in the repo (gitignored) and not on the public site**, like the Velocity Tracker: it lives in the database (`owner_assets`, readable by any signed-in account), is downloaded to the device once signed in and deleted on sign-out. Opens inside the app from the **RPE Calculator** nav button. |
 | `publish-rpe.js` | Writes the SQL that uploads `rpe-calculator.html` to the database (`node publish-rpe.js`), after you change it. |
 | `program-hub.html` | The program builders (Gustav, Wendler, and the rest). **Not in the repo (gitignored) and not on the public site**: it lives in the database, owner-only, and the app copies it to the owner's device. Shown inside the app as the **Program Hub** tab in Manage Program. See *Who sees the Program Hub*. |
@@ -26,7 +28,8 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
 | `supabase/selftest.sql` | Checks on those rules (215 at present). Paste and run after the schema; every row should say PASS. |
 | `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
-| `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
+| `index.html` | **The only public page**: the sign-in screen (email code), which then downloads the app from the database, keeps it on the device and starts it in the same window. It is also the home-screen `start_url`. |
+| `power-logs.html` | Just forwards to `index.html` (keeping `?open=...`), so home-screen icons, bookmarks and notification links made before the move still work. |
 | `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the logo: a red 25 kg plate and a spiral notepad on a pastel sage tile). The header and About sheet use `icon-192.png` too. |
 | `.nojekyll` | Stops GitHub Pages running the files through Jekyll. |
 | `test-boot.js` | Smoke test — `npm install jsdom && node test-boot.js`. |
@@ -222,7 +225,7 @@ How the notifications travel: after saving a message or event, the app calls the
 function looks it up, checks the caller made it and it hasn't been announced yet,
 works out who should hear about it, and sends a Web Push to each of their devices;
 the service worker (`sw.js`) shows it and opens the right screen when it's tapped.
-The Web Push **public** key is in `power-logs.html`; the private one is a secret on
+The Web Push **public** key is in `app.html`; the private one is a secret on
 the function in Supabase, never in this repo. Setting the function up is a one-off
 done in the Supabase dashboard (the private setup guide covers it). Until it is,
 messages still work, just without banners.
@@ -310,7 +313,7 @@ The **Program Hub** is the owner's alone, and it isn't a public file any more.
 - **On the owner's device:** once signed in and online, the app downloads it and keeps a copy in IndexedDB, so the Hub opens offline. It checks the version in the background (a few bytes) and downloads a newer one when there is one; the new one opens the next time the tab is opened. It runs inside the app in a frame, with its page settings handed over by the app.
 - **Signing out deletes it.** So does no longer being the owner. If the delete ever fails, the device remembers (`spotter.hubHeld`) and retries on the next launch.
 - **Other coaches and lifters:** the Hub tab and the Import card's "Build one in Program Hub" button are hidden (`.owner-only`, from `applyRoleUI()` / `isOwner()`), their app never asks for the file, and the database wouldn't give it to them.
-- **Updating it:** change `program-hub.html`, bump its `hub-N` string and `HUB_BUILD` in `power-logs.html` together, run `node publish-hub.js`, paste the file it writes (in "Power Logs Cloud Setup", outside this repo) into Supabase's SQL editor and Run. No app deploy needed unless the app changed.
+- **Updating it:** change `program-hub.html`, bump its `hub-N` string and `HUB_BUILD` in `app.html` together, run `node publish-hub.js`, paste the file it writes (in "Power Logs Cloud Setup", outside this repo) into Supabase's SQL editor and Run. No app deploy needed unless the app changed.
 - **History:** earlier commits in this public repo still contain the old public `program-hub.html`; removing it from `main` doesn't remove that.
 
 ## Vid Review
@@ -337,18 +340,27 @@ On the receiving side it is a **pop-up on the Home page**: the announcements sta
 - **Where:** tables `announcements` (`scope` `all` or `lifters`) and `announcement_closed`; who may read/write is in `schema.sql` (`private.can_read_announcement`). A coach can't announce to everyone, a lifter can't announce, the author or the owner can delete.
 - **Code:** `ANN` (`spotter.announce.v1`), `annSync()` (in `syncNow`, at most once a minute unless a change is announced), `annShow()` (called by `showView` and `renderHome`), `openAnnounce()`/`annSend()`.
 
+## The app itself is private too
+
+Only `index.html` (the sign-in page), `power-logs.html` (a redirect), `sw.js`, the manifest and the icons are public. The app is `app.html`: gitignored, stored in `owner_assets` as id `app` with `members = true` (any signed-in account, nobody signed out), exactly like the other tools.
+
+- **Launch:** `index.html` checks for a sign-in (the same `spotter.auth` slot as the app). No sign-in: it deletes any stored copy and shows the email-code form. Signed in: it asks for the version (`APP_VERSION-<hash of the file>`), downloads the app when that differs from the stored copy (IndexedDB `spotter-private`, key `app`, flag `spotter.appHeld`), loads Chart.js and supabase-js, then writes the app into the same window (`document.open/write/close`) so its address, `?open=...` and storage carry straight over. Offline, or if the check times out, it starts the stored copy; with no copy it says to connect once.
+- **Signing out:** the app (when started by the page, `window.__spotterShell`) calls `appLeave()`, which deletes the copy and returns to `index.html`. The same happens if the session ends elsewhere. A failed delete is retried at the next launch.
+- **Opened directly** (the tests, or the local file) the app behaves as before, signed out and all.
+- **History:** earlier commits of this public repo contained the old public app; they have to be rewritten out (`git filter-branch`) and force-pushed. Anyone who cloned earlier still has them. Anyone can create an account with an email code, so this keeps the code from the public, not from account holders.
+
 ## The Velocity Tracker is private too
 
 `VBT.html` is gitignored (never pushed) and stored in `owner_assets` like the Program Hub, but marked `members`, so **any signed-in account** can read it (and nobody signed out). It works the same way on the device: downloaded once signed in and kept in IndexedDB so it opens offline, a newer version is fetched in the background, and **signing out deletes it** (retried on the next launch if that fails, via `spotter.vbtHeld`). Signed out, the Velocity Tracker page says to sign in. `sw.js` doesn't cache it.
 
-- **Updating it:** change `VBT.html`, bump its `vbt-N` string and `VBT_BUILD` in `power-logs.html` together, run `node publish-vbt.js`, paste the file it writes (in "Power Logs Cloud Setup") into Supabase's SQL editor and Run.
+- **Updating it:** change `VBT.html`, bump its `vbt-N` string and `VBT_BUILD` in `app.html` together, run `node publish-vbt.js`, paste the file it writes (in "Power Logs Cloud Setup") into Supabase's SQL editor and Run.
 - **History:** earlier commits in this public repo still contain the old public `VBT.html`; removing it from `main` doesn't remove that.
 
 ## The RPE Calculator is private too
 
-`rpe-calculator.html` (the old `rpe-estimator.html`, renamed) works exactly like the Velocity Tracker: gitignored, stored in `owner_assets` as id `rpe` with `members = true`, downloaded once signed in into IndexedDB (opens offline), refreshed in the background when a newer version is up, and **deleted on sign-out** (retried on the next launch via `spotter.rpeHeld`). Signed out, its page says to sign in. Both tools share one mechanism, `makePrivateTool()` in `power-logs.html`.
+`rpe-calculator.html` (the old `rpe-estimator.html`, renamed) works exactly like the Velocity Tracker: gitignored, stored in `owner_assets` as id `rpe` with `members = true`, downloaded once signed in into IndexedDB (opens offline), refreshed in the background when a newer version is up, and **deleted on sign-out** (retried on the next launch via `spotter.rpeHeld`). Signed out, its page says to sign in. Both tools share one mechanism, `makePrivateTool()` in `app.html`.
 
-- **Updating it:** change `rpe-calculator.html`, bump its `rpe-N` string and `RPE_BUILD` in `power-logs.html` together, run `node publish-rpe.js`, paste the file it writes (in "Power Logs Cloud Setup") into Supabase's SQL editor and Run.
+- **Updating it:** change `rpe-calculator.html`, bump its `rpe-N` string and `RPE_BUILD` in `app.html` together, run `node publish-rpe.js`, paste the file it writes (in "Power Logs Cloud Setup") into Supabase's SQL editor and Run.
 - **History:** earlier commits in this public repo still contain the old public `rpe-estimator.html`.
 
 ## The notice banner
@@ -395,7 +407,7 @@ lifter's IPF weight class is the limit their bodyweight falls under (men 59, 66,
 placed on five rungs for that class: Beginner, Novice, Intermediate, Advanced, Elite.
 The thresholds are the Strength Level community's percentiles (Beginner beats about
 5% of lifters, Novice 20%, Intermediate 50%, Advanced 80%, Elite 95%), interpolated to
-each class limit and rounded to 2.5 kg (the table is `TRO_STD` in power-logs.html; the
+each class limit and rounded to 2.5 kg (the table is `TRO_STD` in app.html; the
 open classes 120+ and 84+ use 130 kg and 95 kg). The **overall level** is the average
 of the three lifts, rounded down. It is community data, not competition data, and the
 women's sample is smaller, so it is a guide.
@@ -641,11 +653,10 @@ but harmless, so I left it.
 
 ## Updating the app later
 
-If you change `program-hub.html`, see *Who sees the Program Hub* above: bump its `hub-N` and `HUB_BUILD` in `power-logs.html` together, then `node publish-hub.js` and run the SQL it writes. If the copy a device holds is older than the app expects, the Program Hub tab says so outright instead of just missing its Send button.
+If you change `program-hub.html`, see *Who sees the Program Hub* above: bump its `hub-N` and `HUB_BUILD` in `app.html` together, then `node publish-hub.js` and run the SQL it writes. If the copy a device holds is older than the app expects, the Program Hub tab says so outright instead of just missing its Send button.
 
 
-Push a new `power-logs.html` and reopen. HTML is fetched network-first, so you get
-the new build whenever you're online, with the old one as offline fallback. Bump
+To release an app change: run the tests, then `node publish-app.js` and paste the file it writes (in "Power Logs Cloud Setup") into Supabase's SQL editor and Run. Nothing needs pushing to GitHub. Every signed-in device checks the version when it opens (a small request), downloads the new one first if it differs, and otherwise starts from its stored copy; offline it starts from the copy. Only changes to `index.html`, `sw.js`, the manifest or the icons are pushed with git (HTML there is fetched network-first). Bump
 `CACHE_VERSION` in `sw.js` only if you add/rename files or change the Chart.js or
 supabase-js version.
 

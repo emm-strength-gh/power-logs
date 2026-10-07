@@ -2,7 +2,7 @@
   "name": "EmmStrength Power Logs",
   "short_name": "Power Logs",
   "description": "Training log and session tracker: load a program CSV, tick sets off, add notes and custom work, and export progress as JSON or CSV.",
-  "start_url": "./power-logs.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],

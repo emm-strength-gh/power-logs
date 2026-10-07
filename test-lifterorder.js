@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const { JSDOM, VirtualConsole } = require("jsdom");
 
-const html = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
+const html = fs.readFileSync(path.join(__dirname, "app.html"), "utf8");
 let failures = 0, checks = 0;
 const check = (name, cond, extra = "") => {
   checks++;
@@ -21,7 +21,7 @@ async function boot(seed) {
   const dom = new JSDOM(html, {
     runScripts: "dangerously",
     pretendToBeVisual: true,
-    url: "https://example.github.io/spotter/power-logs.html",
+    url: "https://example.github.io/spotter/app.html",
     virtualConsole: new VirtualConsole()
       .on("jsdomError", e => errors.push(e.message))
       .on("error", m => errors.push(String(m))),

@@ -2,7 +2,7 @@
  * device: downloaded when signed in, opens offline, deleted on sign-out.
  * Run: node test-hubprivate.js
  *
- * Each "device" is a jsdom copy of power-logs.html with a stand-in for Supabase
+ * Each "device" is a jsdom copy of app.html with a stand-in for Supabase
  * (window.__spotterCloud) and for IndexedDB (window.__spotterPrivateStore), so
  * what is kept on the device can be looked at directly. test-cloudsql.js covers
  * the database rule itself (only the owner can read owner_assets).
@@ -11,7 +11,7 @@ const fs = require("fs");
 const path = require("path");
 const { JSDOM, VirtualConsole } = require("jsdom");
 
-const html = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
+const html = fs.readFileSync(path.join(__dirname, "app.html"), "utf8");
 let failures = 0, checks = 0;
 const check = (name, cond, extra = "") => {
   checks++;
@@ -59,7 +59,7 @@ async function boot(wd, storage = {}) {
   const errors = [];
   const dom = new JSDOM(html, {
     runScripts: "dangerously", pretendToBeVisual: true,
-    url: "https://example.github.io/power-logs/power-logs.html",
+    url: "https://example.github.io/power-logs/app.html",
     virtualConsole: new VirtualConsole().on("jsdomError", e => errors.push(e.message)).on("error", m => errors.push(String(m))),
     beforeParse(w) {
       w.__spotterCloud = wd.cloud;

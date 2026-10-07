@@ -1,7 +1,7 @@
 /* Accounts + sync, end to end: several devices, one database.
  * Run: node test-cloudsync.js
  *
- * Each "device" is its own jsdom copy of power-logs.html. They share one
+ * Each "device" is its own jsdom copy of app.html. They share one
  * in-memory Postgres running supabase/schema.sql (test-cloudfake.js pgServer),
  * so every read and write goes through the same row-level security as live.
  * Everything is driven through the page (account sheet, week view, Manage
@@ -12,7 +12,7 @@ const path = require("path");
 const { JSDOM, VirtualConsole } = require("jsdom");
 const { pgServer, OWNER_EMAIL, GOOD_CODE } = require("./test-cloudfake");
 
-const html = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
+const html = fs.readFileSync(path.join(__dirname, "app.html"), "utf8");
 let failures = 0, checks = 0;
 const check = (name, cond, extra = "") => {
   checks++;
@@ -38,7 +38,7 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
     const dev = server.device(label), errors = [];
     const dom = new JSDOM(html, {
       runScripts: "dangerously", pretendToBeVisual: true,
-      url: "https://example.github.io/spotter/power-logs.html",
+      url: "https://example.github.io/spotter/app.html",
       virtualConsole: new VirtualConsole().on("jsdomError", e => errors.push(e.message)).on("error", m => errors.push(String(m))),
       beforeParse(w) { w.__spotterCloud = dev; },
     });

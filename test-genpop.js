@@ -37,8 +37,8 @@ check("hub card links to the builder", !!w.document.querySelector('.gen-card[dat
 check("builder view exists", !!$("view-gpop"));
 {
   const hubN = (fs.readFileSync(path.join(__dirname, "program-hub.html"), "utf8").match(/build: "hub-(\d+)"/) || [])[1];
-  const appN = (fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8").match(/var HUB_BUILD = "(\d+)";/) || [])[1];
-  check("hub's announced build matches power-logs.html's HUB_BUILD", !!hubN && hubN === appN, `hub-${hubN} vs HUB_BUILD ${appN}`);
+  const appN = (fs.readFileSync(path.join(__dirname, "app.html"), "utf8").match(/var HUB_BUILD = "(\d+)";/) || [])[1];
+  check("hub's announced build matches app.html's HUB_BUILD", !!hubN && hubN === appN, `hub-${hubN} vs HUB_BUILD ${appN}`);
 }
 
 /* Reset first, so a refused build can't be mistaken for the previous one still on screen. */
@@ -194,7 +194,7 @@ check("a max under 20kg refuses to build", build({ S: 195, B: 15, D: 245 }) === 
 /* ------------------------------------------- real import into Power Logs */
 console.log("\nImport into Power Logs (real parser)");
 (async () => {
-  const app = boot("power-logs.html", "https://example.github.io/spotter/power-logs.html");
+  const app = boot("app.html", "https://example.github.io/spotter/app.html");
   const aw = app.dom.window;
   await new Promise(res => { if (aw.document.readyState === "complete") res(); else aw.addEventListener("load", res); setTimeout(res, 4000); });
   const store = () => { try { return JSON.parse(aw.localStorage.getItem("spotter.profiles.v1") || "{}"); } catch (e) { return {}; } };
@@ -223,7 +223,7 @@ console.log("\nImport into Power Logs (real parser)");
     const c = store()["Gen Pop Clean"];
     check("clean variant imports too", !!c && c.weeks.length === 16);
   }
-  const src = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
+  const src = fs.readFileSync(path.join(__dirname, "app.html"), "utf8");
   check("analytics treat paused deadlifts like pause squats (variations excluded)",
     /AN_EXCLUDED = \[[^\]]*"pause squat"[^\]]*"paused deadlift"/.test(src));
 

@@ -135,7 +135,7 @@ const EXPECT = {
   check("Clear empties the builder", $("tp-squat").value === "" && $("tp-type").value === "regular" && $("results").style.display === "none");
 
   console.log("\nInto Power Logs");
-  const app = boot("power-logs.html", "https://example.github.io/power-logs/power-logs.html");
+  const app = boot("app.html", "https://example.github.io/power-logs/app.html");
   const aw = app.w, a$ = id => aw.document.getElementById(id);
   await new Promise(res => { if (aw.document.readyState === "complete") res(); else aw.addEventListener("load", res); setTimeout(res, 4000); });
   const csv = built.regular.cleanCSV.replace('"Smith, J"', "Taper Test");

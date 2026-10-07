@@ -91,7 +91,7 @@ function boot(file, url) {
   check("clearing the builder leaves no stale charts behind", w.document.getElementById("results").style.display === "none");
 
   console.log("\nSame numbers as Power Logs");
-  const app = boot("power-logs.html", "https://example.github.io/spotter/power-logs.html");
+  const app = boot("app.html", "https://example.github.io/spotter/app.html");
   const aw = app.w, a$ = id => aw.document.getElementById(id);
   await new Promise(res => { if (aw.document.readyState === "complete") res(); else aw.addEventListener("load", res); setTimeout(res, 4000); });
   for (const r of results) {

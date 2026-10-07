@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const { JSDOM, VirtualConsole } = require("jsdom");
 
-const html = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
+const html = fs.readFileSync(path.join(__dirname, "app.html"), "utf8");
 let failures = 0;
 const check = (name, cond, extra = "") => {
   console.log(`${cond ? "  ok  " : " FAIL "} ${name}${extra && !cond ? " — " + extra : ""}`);
@@ -49,10 +49,21 @@ check("exact Chart.js URL is precached by sw.js", !!chartUrl && sw.includes(char
 ["fonts.googleapis.com", "fonts.gstatic.com", "cdnjs.cloudflare.com"]
   .forEach(o => check(`vendor origin ${o} handled`, sw.includes(o)));
 
+/* ---- the public pages: the sign-in shell, and the redirect kept for old links ---- */
+console.log("\nPublic pages");
+const shell = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+const legacy = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
+const shellAssets = (sw.match(/SHELL_ASSETS = \[([\s\S]*?)\];/) || [])[1] || "";
+check("index.html is the small sign-in page, not the app", shell.length < 40000 && !/id="viewOverview"/.test(shell), shell.length + " bytes");
+check("the sw precaches index.html but no copy of the app", shellAssets.includes("./index.html") && !shellAssets.includes("power-logs.html") && !shellAssets.includes("app.html"), shellAssets);
+check("power-logs.html only forwards, with ?open=... intact", legacy.length < 2000 && /location\.replace\("\.\/index\.html" \+ location\.search/.test(legacy));
+check("app.html is gitignored (it lives in the database)", fs.readFileSync(path.join(__dirname, ".gitignore"), "utf8").split(/\r?\n/).includes("app.html"));
+
 /* ---- manifest ----------------------------------------------------------- */
 console.log("\nManifest");
 const mf = JSON.parse(fs.readFileSync(path.join(__dirname, "manifest.webmanifest"), "utf8"));
-check("start_url points at the app file",
+check("start_url is the sign-in page (the app is downloaded after signing in)", mf.start_url === "./index.html", mf.start_url);
+check("start_url points at a file that exists",
   fs.existsSync(path.join(__dirname, mf.start_url.replace("./", ""))), mf.start_url);
 check("display is standalone", mf.display === "standalone");
 mf.icons.forEach(i =>
@@ -69,7 +80,7 @@ const vc = new VirtualConsole()
 const dom = new JSDOM(html, {
   runScripts: "dangerously",
   pretendToBeVisual: true,
-  url: "https://example.github.io/spotter/power-logs.html",
+  url: "https://example.github.io/spotter/app.html",
   virtualConsole: vc,
 });
 const { window } = dom;
@@ -120,7 +131,7 @@ if (btn && btn.onclick) {
    queries, so this checks the menu's wiring, not which buttons show). */
 console.log("\nHeader ⋯ menu and About");
 const $ = id => doc.getElementById(id);
-const src = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
+const src = fs.readFileSync(path.join(__dirname, "app.html"), "utf8");
 check("at 820px and under, load/save/tools/theme/About fold away and ⋯ shows",
   /@media \(max-width: 820px\)[\s\S]*?#loadBtn, #saveBtn, #toolsBtn, #themeBtn, #aboutBtn \{ display: none; \}\s*\.more-btn \{ display: grid; \}/.test(src));
 check("the account button stays out of the menu", !$("moreMenu").querySelector('[data-for="acctBtn"]'));

@@ -13,7 +13,7 @@ const path = require("path");
 const { JSDOM, VirtualConsole } = require("jsdom");
 const { pgServer, OWNER_EMAIL, GOOD_CODE } = require("./test-cloudfake");
 
-const html = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
+const html = fs.readFileSync(path.join(__dirname, "app.html"), "utf8");
 let failures = 0, checks = 0;
 const check = (name, cond, extra = "") => {
   checks++;
@@ -40,7 +40,7 @@ const MB = 1048576;
     const dev = reuse ? reuse.dev : server.device(label), errors = [], priv = reuse ? reuse.priv : new Map();
     const dom = new JSDOM(html, {
       runScripts: "dangerously", pretendToBeVisual: true,
-      url: "https://example.github.io/power-logs/power-logs.html",
+      url: "https://example.github.io/power-logs/app.html",
       virtualConsole: new VirtualConsole().on("jsdomError", e => errors.push(e.message)).on("error", m => errors.push(String(m))),
       beforeParse(w) {
         w.__spotterCloud = dev;

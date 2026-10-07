@@ -2,7 +2,7 @@
  * confirmation and awards reach the lifter, and the notifications that go with them.
  * Run: node test-trophysync.js
  *
- * Like test-messaging.js: each device is its own jsdom copy of power-logs.html on
+ * Like test-messaging.js: each device is its own jsdom copy of app.html on
  * one in-memory Postgres running supabase/schema.sql (real row-level security),
  * with the notify Edge Function in-process.
  */
@@ -11,7 +11,7 @@ const path = require("path");
 const { JSDOM, VirtualConsole } = require("jsdom");
 const { pgServer, OWNER_EMAIL, GOOD_CODE } = require("./test-cloudfake");
 
-const html = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
+const html = fs.readFileSync(path.join(__dirname, "app.html"), "utf8");
 let failures = 0, checks = 0;
 const check = (name, cond, extra = "") => {
   checks++;
@@ -34,7 +34,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
     const dev = reuse ? reuse.dev : server.device(label), errors = [], push = { sub: null };
     const dom = new JSDOM(html, {
       runScripts: "dangerously", pretendToBeVisual: true,
-      url: "https://example.github.io/power-logs/power-logs.html",
+      url: "https://example.github.io/power-logs/app.html",
       virtualConsole: new VirtualConsole().on("jsdomError", e => errors.push(e.message)).on("error", m => errors.push(String(m))),
       beforeParse(w) {
         w.__spotterCloud = dev;

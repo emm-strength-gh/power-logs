@@ -1,6 +1,6 @@
 /* Writes the SQL that puts rpe-calculator.html into the database, where any signed-in account can read it
  * (and nobody signed out). Run it after changing rpe-calculator.html (and bump its "rpe-N" and RPE_BUILD in
- * power-logs.html first), then paste the output file into Supabase's SQL editor and Run.
+ * app.html first), then paste the output file into Supabase's SQL editor and Run.
  *
  *   node publish-rpe.js [out.sql]
  *
@@ -11,9 +11,9 @@ const path = require("path");
 const src = fs.readFileSync(path.join(__dirname, "rpe-calculator.html"), "utf8");
 const version = (src.match(/build: "(rpe-\d+)"/) || [])[1];
 if (!version) throw new Error('rpe-calculator.html has no build: "rpe-N" in its ready message');
-const app = fs.readFileSync(path.join(__dirname, "power-logs.html"), "utf8");
+const app = fs.readFileSync(path.join(__dirname, "app.html"), "utf8");
 const expect = (app.match(/var RPE_BUILD = "(\d+)";/) || [])[1];
-if ("rpe-" + expect !== version) throw new Error(`power-logs.html expects rpe-${expect} but rpe-calculator.html says ${version}. Bump them together.`);
+if ("rpe-" + expect !== version) throw new Error(`app.html expects rpe-${expect} but rpe-calculator.html says ${version}. Bump them together.`);
 if (src.includes("$rpe$")) throw new Error("rpe-calculator.html contains the $rpe$ quote tag");
 const out = process.argv[2] || path.join(__dirname, "..", "Power Logs Cloud Setup", "rpe-upload.sql");
 fs.writeFileSync(out,

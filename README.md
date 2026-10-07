@@ -244,7 +244,7 @@ block title, weight class and optional 1-rep maxes (there's no bodyweight questi
 Day 1), opens it in Manage Program to build as usual, and, signed in, uploads it to your account
 straight away. Add their sign-in email under Sharing.
 
-**Left menu:** swipe left on the open menu (or on the dimmed page beside it) to close it.
+**Left menu:** swipe right on Home, the Overview or Analytics to open it; swipe left on the open menu (or on the dimmed page beside it) to close it.
 
 **Deleting:** each lifter on the Lifters page has a **⋯** (coaches who can edit them). **Delete program** clears every
 week, day, tick and note (on every device) and leaves an empty Week 1; the lifter stays, with their maxes, class,

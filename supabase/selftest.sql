@@ -485,6 +485,41 @@ begin
   perform pg_temp.ok('...nobody else', v = 'null', v);
   end;
 
+  -- Announcements: the owner to everyone, a coach to their lifters, closed one person at a time
+  r := pg_temp.act(o, $q$insert into public.announcements (scope, body) values ('all', 'Gym closed Friday')$q$);
+  perform pg_temp.ok('the owner announces to everyone', r = 'ok 1', r);
+  r := pg_temp.act(c1, $q$insert into public.announcements (scope, body) values ('all', 'Hello everyone')$q$);
+  perform pg_temp.ok('a coach cannot announce to everyone', r like 'refused%', r);
+  r := pg_temp.act(l, $q$insert into public.announcements (scope, body) values ('lifters', 'Hi')$q$);
+  perform pg_temp.ok('a lifter cannot announce at all', r like 'refused%', r);
+  r := pg_temp.act(c1, $q$insert into public.announcements (scope, body) values ('lifters', 'Squat day moved')$q$);
+  perform pg_temp.ok('a coach announces to their lifters', r = 'ok 1', r);
+  r := pg_temp.act(c1, $q$insert into public.announcements (scope, body) values ('lifters', '   ')$q$);
+  perform pg_temp.ok('...and an empty one is refused', r like 'refused%', r);
+  perform pg_temp.ok('the coach''s lifter sees both', pg_temp.cnt(l, 'select * from public.announcements') = 2);
+  perform pg_temp.ok('a stranger sees only the one to everyone', pg_temp.cnt(x, 'select * from public.announcements') = 1
+    and pg_temp.cnt(x, $q$select * from public.announcements where scope = 'all'$q$) = 1);
+  perform pg_temp.ok('another coach on that lifter sees only the one to everyone, not the coach''s lifters-only one', pg_temp.cnt(c2, 'select * from public.announcements') = 1);
+  perform pg_temp.ok('the coach sees what they sent and the one to everyone', pg_temp.cnt(c1, 'select * from public.announcements') = 2);
+  perform pg_temp.ok('the author says who wrote it, whatever the app claims', (select author_id from public.announcements where scope = 'lifters' limit 1) = c1);
+  perform pg_temp.act(o, $q$insert into public.announcements (scope, body) values ('all', 'From before')$q$);
+  update public.announcements set created_at = now() - interval '400 days' where body = 'From before';
+  perform pg_temp.ok('nobody sees what was announced before they joined', pg_temp.cnt(x, $q$select * from public.announcements where body = 'From before'$q$) = 0);
+  r := pg_temp.act(l, format($q$insert into public.announcement_closed (announcement_id) select id from public.announcements where body = 'Squat day moved'$q$));
+  perform pg_temp.ok('a person closes one for themselves', r = 'ok 1', r);
+  r := pg_temp.act(x, $q$insert into public.announcement_closed (announcement_id) select id from public.announcements where body = 'Squat day moved'$q$);
+  perform pg_temp.ok('...but not one they cannot see', r = 'ok 0' or r like 'refused%', r);
+  perform pg_temp.ok('what one person closed is theirs alone', pg_temp.cnt(c1, 'select * from public.announcement_closed') = 0 and pg_temp.cnt(l, 'select * from public.announcement_closed') = 1);
+  r := pg_temp.act(l, $q$delete from public.announcements where body = 'Squat day moved'$q$);
+  perform pg_temp.ok('a lifter cannot delete an announcement', r = 'ok 0' or r like 'refused%', r);
+  r := pg_temp.act(c1, $q$delete from public.announcements where body = 'Gym closed Friday'$q$);
+  perform pg_temp.ok('a coach cannot delete the owner''s', r = 'ok 0' or r like 'refused%', r);
+  r := pg_temp.act(c1, $q$delete from public.announcements where body = 'Squat day moved'$q$);
+  perform pg_temp.ok('the author can delete their own (and the closed marks go with it)', r = 'ok 1' and (select count(*) from public.announcement_closed) = 0, r);
+  r := pg_temp.act(o, $q$delete from public.announcements where body = 'Gym closed Friday'$q$);
+  perform pg_temp.ok('the owner can delete any', r = 'ok 1', r);
+  delete from public.announcements;
+
   -- Reactions
   r := pg_temp.act(l, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) select %L, 'message', id::text, 'heart' from public.messages where lifter_id = %L and body = 'hi Sam'$q$, m, m));
   perform pg_temp.ok('the lifter reacts to a message in their thread', r = 'ok 1', r);

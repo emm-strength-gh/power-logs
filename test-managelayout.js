@@ -117,6 +117,18 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
     !!progCard && !!btn("Export CSV", progCard) && !!btn("Compare two programs", progCard) &&
     !!progCard.querySelector('input[aria-label="Lifter name"]') && !!progCard.querySelector('input[aria-label="Block or program title"]'));
 
+  console.log("\nBodyweight");
+  const bwIn = progCard.querySelector("#dmBodyweight");
+  check("the card has a Bodyweight field, after the weight class", !!bwIn && bwIn.getAttribute("aria-label") === "Bodyweight in kg" && !!progCard.querySelector("#dmClass") && (progCard.querySelector("#dmClass").compareDocumentPosition(bwIn) & w.Node.DOCUMENT_POSITION_FOLLOWING) !== 0);
+  const storedBw = () => JSON.parse(w.localStorage.getItem("spotter.profiles.v1"))[NAME].bodyweight;
+  bwIn.value = "83.5 kg"; bwIn.dispatchEvent(new w.Event("blur")); await tick(50);
+  check("typing one saves it (a trailing kg is fine)", storedBw() === "83.5" && bwIn.value === "83.5", storedBw());
+  bwIn.value = "5"; bwIn.dispatchEvent(new w.Event("blur")); await tick(50);
+  check("an impossible one is refused and put back", storedBw() === "83.5" && bwIn.value === "83.5");
+  bwIn.value = ""; bwIn.dispatchEvent(new w.Event("blur")); await tick(50);
+  check("clearing it clears it", !storedBw());
+  bwIn.value = "83.5"; bwIn.dispatchEvent(new w.Event("blur")); await tick(50);
+
   console.log("\nEdit program notes");
   const storedPN = () => JSON.parse(w.localStorage.getItem("spotter.profiles.v1"))[NAME].programNotes || "";
   check("the card has an Edit program notes button", !!btn("Edit program notes", progCard));

@@ -256,6 +256,7 @@ async function pgServer() {
       async remove(table, col, val) {
         await online();
         await asUser(me(), tx => tx.query(`delete from public.${ident(table)} where ${ident(col)} = $1`, [val]));
+        changed(api, table);
       },
       async invoke(fn, body) {
         await online();

@@ -230,6 +230,7 @@ private script kept outside it (`private.settings`).
   crop matches and it is ahead of the start of the kept part, else `transcode`. `vidMp4` is the MP4 writer. New videos: `vidSync` makes a notice (`vidNews` → `ntAdd` kind `video`) and counts unseen ones (`VID.seen`, `VID.base` = first look is silent; `vidUnseenFor/All`) for the red circle on the Vid Review item and the menu dot; coaches only. After an upload the app writes a `lifter_events` row (kind `video`, week = video id) and calls `notify`, which pushes to the lifter's other coaches (`videos` pref). Videos watched are kept in IndexedDB
   (`vid:<id>`, index `vid:index`, flag `spotter.vidHeld`) and removed by `vidLocalClear()` wherever `vbtLocalClear()` runs. The owner's
   Home **Storage** card (`renderStorageCard`, RPC `owner_storage_usage`) is below Payments.
+- Announcements ("Announcements" section; Home's **Announce** button, `#annScrim` pop-up, `#annComposeScrim` dialog): `ANN` (`spotter.announce.v1`) synced by `annSync(api)` after `vidSync` in `syncNow` (throttled like it; `announcements` in the realtime list sets `annUI.dirty`). Tables `announcements` (scope `all` = owner only, `lifters` = any coach; readable by the author, by everyone who joined before it, or by the lifters of that coach from when they were linked: `private.can_read_announcement`) and `announcement_closed` (own rows). `annOpen()` hides your own to-lifters ones; `annShow()` (from `showView`/`renderHome`/sync) shows the stack only on Home, never closable by scrim or Escape. Cleared by `annLocalClear()` where `vidLocalClear()` runs.
 - In-app notices (the "In-app notices" section, `#noticeBar` at the top of `.content`):
   `NT` (`spotter.notices.v1`) holds `{id, kind, lifter, thread?, week?, who, text, at}`,
   made by `ntFromMessage`/`ntFromEvent` (in `pullMessages`), `ntFromWeekNote` (in
@@ -309,6 +310,7 @@ node test-trophysync.js # Trophies across devices on the real rules, plus their 
 node test-notices.js    # In-app notice banner: kinds, who wrote it, x, stacking
 node test-hubprivate.js # The Program Hub's private copy: owner download, offline, sign-out delete
 node test-vbtprivate.js # The Velocity Tracker's private copy: any signed-in account, offline, sign-out delete
+node test-announce.js   # Announcements: owner to everyone, coach to their lifters, the Home pop-up, closing, deleting
 node test-vidreview.js  # Vid Review: crop/cut, upload, 30 MB rule, watch, zoom, coach-only delete, sign-out, the MP4 writer, the owner's storage meter
 node test-home.js       # Home: coach and lifter landing pages, cards, lifters list, Home buttons
 node test-payments.js   # Payments: coach marks months paid, lifter read-only, real rules
@@ -318,7 +320,7 @@ node test-reactions.js  # Reactions on messages, coach-only on notes and days
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all twenty-six. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all twenty-seven. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of power-logs.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

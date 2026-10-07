@@ -16,12 +16,13 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-hubprivate.js` | The Program Hub's copy: downloaded for the owner, opens offline, newer versions, deleted on sign-out, never fetched by other coaches — `node test-hubprivate.js`. |
 | `VBT.html` | Velocity Tracker — barbell velocity and RPE from a video clip. **Not in the repo (gitignored) and not on the public site**: it lives in the database (`owner_assets`, readable by any signed-in account), is downloaded to the device once signed in and deleted on sign-out. Opens inside the app from the **Velocity Tracker** nav button. |
 | `publish-vbt.js` | Writes the SQL that uploads `VBT.html` to the database (`node publish-vbt.js`), after you change it. |
+| `test-announce.js` | Announcements: the Announce button, an owner's to everyone (themself included) and a coach's to their lifters only, the Home pop-up that stacks, scrolls and stays until closed, closed on every device, deleting, signing out — `node test-announce.js`. |
 | `test-vidreview.js` | Vid Review end to end on the real rules (stand-ins for the video engine and storage): crop and cut, details, the 30 MB limit, upload, watching, pinch zoom, only coaches delete, sign-out clears the device, the MP4 writer, the owner's storage meter — `node test-vidreview.js`. |
 | `test-vbtprivate.js` | The Velocity Tracker's copy: downloaded for any signed-in account, opens offline, newer versions, a message when signed out, deleted on sign-out — `node test-vbtprivate.js`. |
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
 | `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
-| `supabase/selftest.sql` | Checks on those rules (197 at present). Paste and run after the schema; every row should say PASS. |
+| `supabase/selftest.sql` | Checks on those rules (215 at present). Paste and run after the schema; every row should say PASS. |
 | `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
 | `index.html` | Redirects the bare repo URL to the app. Delete if you don't want it. |
 | `icons/` | 192, 512, 512-maskable, 180px `apple-touch-icon`, 32px favicon, and `_source.png` (the logo: a red 25 kg plate and a spiral notepad on a pastel sage tile). The header and About sheet use `icon-192.png` too. |
@@ -239,9 +240,11 @@ then **Notifications**, **Programs** (every program assigned to them; tap one to
 **Messages** and **Payments** (this month's status, and *View payments*).
 
 **Adding a lifter:** the Lifters page has **+ Add new lifter / program**: name (required), program /
-block title, weight class, bodyweight and optional 1-rep maxes. It creates an empty program (Week 1,
+block title, weight class and optional 1-rep maxes (there's no bodyweight question: it starts as the weight class, 120 for 120+, and a coach changes it later in the lifter's Trophies). It creates an empty program (Week 1,
 Day 1), opens it in Manage Program to build as usual, and, signed in, uploads it to your account
 straight away. Add their sign-in email under Sharing.
+
+**Left menu:** swipe left on the open menu (or on the dimmed page beside it) to close it.
 
 **Deleting:** each lifter on the Lifters page has a **⋯** (coaches who can edit them). **Delete program** clears every
 week, day, tick and note (on every device) and leaves an empty Week 1; the lifter stays, with their maxes, class,
@@ -322,6 +325,15 @@ A page for videos a lifter or a coach wants reviewed ("Vid Review" in the left m
 ### The owner's storage meter
 
 Home has a **Storage** card below Payments for the owner only: video files against 1 GB and the database against 500 MB (the free plan's limits), from the owner-only `owner_storage_usage()` function. *Refresh* re-reads it.
+
+## Announcements
+
+An **Announce** button on the Home page of coaches and the owner opens a window to type in (multi-line, up to 2,000 characters, with an emoji button). The **owner** chooses *Everyone* (every account in the app, the owner included) or *My lifters*; a **coach** can only announce to **their own lifters** (those who have signed in). Below the box is a list of your recent announcements, each with **Delete** (it disappears for everyone).
+
+On the receiving side it is a **pop-up on the Home page**: the announcements stack, newest first, in a scrolling list, each on a light pastel-green card with black text, the author and the **date and time in small print**, and its own **close button**. It stays until that person closes it (not by tapping outside or Escape); closing is saved, so it is closed on their other devices too, and the pop-up goes when none are left. Leaving Home hides it and coming back shows what is still open. Nobody sees what was announced before they joined (everyone) or before their coach began coaching them (to lifters).
+
+- **Where:** tables `announcements` (`scope` `all` or `lifters`) and `announcement_closed`; who may read/write is in `schema.sql` (`private.can_read_announcement`). A coach can't announce to everyone, a lifter can't announce, the author or the owner can delete.
+- **Code:** `ANN` (`spotter.announce.v1`), `annSync()` (in `syncNow`, at most once a minute unless a change is announced), `annShow()` (called by `showView` and `renderHome`), `openAnnounce()`/`annSend()`.
 
 ## The Velocity Tracker is private too
 
@@ -437,7 +449,8 @@ That's why the dropdown opens a sheet instead.
 1. **Lifter & program/block title** (a collapsible card; it remembers whether you left it open, and
    when collapsed its header still reads "Name · Block"): the lifter's name (a coach can
    rename them; a synced lifter is renamed on every device, theirs included),
-   block/title, **Export CSV**, **Compare two programs** and **Edit program notes** (the card on the
+   block/title, weight class and **bodyweight** (kg; it starts as the weight class when a lifter is added,
+   and the lifter's Trophies bodyweight follows an edit here), **Export CSV**, **Compare two programs** and **Edit program notes** (the card on the
    Overview: type to add or change it, clear the text to erase it; a line like `== Heading ==`
    becomes a heading).
 2. **Edit a day:** pick the week and day (Undo on the right).

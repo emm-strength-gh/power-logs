@@ -768,7 +768,7 @@ grant execute on function public.set_team_thread(uuid, boolean), public.notify_n
 
 alter table public.lifter_events drop constraint if exists lifter_events_kind_check;
 alter table public.lifter_events add constraint lifter_events_kind_check
-  check (kind in ('session_done', 'new_week', 'trophy'));
+  check (kind in ('session_done', 'new_week', 'trophy', 'video'));
 
 alter table public.lifter_settings add column if not exists sex text check (sex in ('m', 'f'));
 alter table public.lifter_settings add column if not exists bodyweight numeric(5, 1) check (bodyweight between 20 and 300);
@@ -1172,3 +1172,84 @@ begin
 end $$;
 revoke execute on function public.owner_storage_usage() from public, anon;
 grant execute on function public.owner_storage_usage() to authenticated;
+
+---------------------------------------------------------------- announcements
+-- A pop-up on the Home page. The owner announces to everyone (scope 'all', the owner included);
+-- a coach announces to the lifters they coach (scope 'lifters'). Each person closes it for
+-- themselves (announcement_closed), and a person only ever sees what was announced after they
+-- joined (everyone) or after their coach started coaching them.
+create table if not exists public.announcements (
+  id         uuid primary key default gen_random_uuid(),
+  author_id  uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  scope      text not null check (scope in ('lifters', 'all')),
+  body       text not null check (length(btrim(body)) between 1 and 2000),
+  created_at timestamptz not null default now()
+);
+create index if not exists announcements_created_idx on public.announcements (created_at);
+
+create or replace function private.announcements_guard() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  new.author_id := auth.uid();
+  new.created_at := now();
+  new.body := btrim(new.body);
+  return new;
+end $$;
+drop trigger if exists announcements_guard on public.announcements;
+create trigger announcements_guard before insert on public.announcements
+  for each row execute function private.announcements_guard();
+
+-- May this person read it? Its author; everyone, for one to all (if it came after they joined);
+-- the lifters of a coach, for one to lifters (if it came after that coach started coaching them).
+create or replace function private.can_read_announcement(a_author uuid, a_scope text, a_at timestamptz) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select a_author = auth.uid()
+      or (a_scope = 'all' and exists (select 1 from public.accounts x where x.user_id = auth.uid() and x.created_at <= a_at))
+      or (a_scope = 'lifters' and exists (
+            select 1 from public.lifters l join public.lifter_coaches c on c.lifter_id = l.id
+            where l.lifter_user_id = auth.uid() and l.deleted_at is null
+              and c.coach_id = a_author and c.created_at <= a_at));
+$$;
+
+alter table public.announcements enable row level security;
+revoke all on public.announcements from public, anon, authenticated;
+grant select, insert, delete on public.announcements to authenticated;
+drop policy if exists read on public.announcements;
+create policy read on public.announcements for select to authenticated
+  using (private.can_read_announcement(author_id, scope, created_at));
+drop policy if exists add on public.announcements;
+create policy add on public.announcements for insert to authenticated
+  with check ((scope = 'all' and private.is_owner()) or (scope = 'lifters' and private.is_coach()));
+drop policy if exists remove on public.announcements;
+create policy remove on public.announcements for delete to authenticated
+  using (author_id = (select auth.uid()) or private.is_owner());
+
+create table if not exists public.announcement_closed (
+  announcement_id uuid not null references public.announcements(id) on delete cascade,
+  user_id         uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  closed_at       timestamptz not null default now(),
+  primary key (announcement_id, user_id)
+);
+alter table public.announcement_closed enable row level security;
+revoke all on public.announcement_closed from public, anon, authenticated;
+grant select, insert, delete on public.announcement_closed to authenticated;
+drop policy if exists own on public.announcement_closed;
+create policy own on public.announcement_closed for all to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid())
+    and exists (select 1 from public.announcements a where a.id = announcement_id));
+
+revoke execute on function private.announcements_guard(), private.can_read_announcement(uuid, text, timestamptz) from public, anon;
+grant execute on function private.can_read_announcement(uuid, text, timestamptz) to authenticated;
+
+do $$
+declare t text;
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    foreach t in array array['announcements'] loop
+      if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
+        execute format('alter publication supabase_realtime add table public.%I', t);
+      end if;
+    end loop;
+  end if;
+end $$;

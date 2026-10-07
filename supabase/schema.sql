@@ -1308,3 +1308,45 @@ begin
     grant execute on function public.hook_before_user_created(jsonb) to supabase_auth_admin;
   end if;
 end $$;
+
+---------------------------------------------------------------- lifter limits
+-- The owner can cap how many lifters a coach has (Account > Coaches, a number per coach). null = no limit.
+-- Counted as the live lifters linked to the coach in lifter_coaches, so it covers every way of getting one:
+-- creating or importing (the creator's link is added by lifters_add_creator) and being shared one. Refused
+-- once the coach is at the limit; a lower limit leaves the lifters they already have alone. The owner has none.
+alter table public.accounts add column if not exists lifter_limit integer;
+alter table public.accounts drop constraint if exists accounts_lifter_limit_check;
+alter table public.accounts add constraint accounts_lifter_limit_check check (lifter_limit is null or lifter_limit >= 0);
+
+create or replace function private.coach_lifter_count(p_coach uuid) returns integer
+language sql stable security definer set search_path = '' as $$
+  select count(*)::int from public.lifter_coaches lc join public.lifters l on l.id = lc.lifter_id
+   where lc.coach_id = p_coach and l.deleted_at is null
+$$;
+
+create or replace function private.lifter_coaches_limit() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare lim integer;
+begin
+  -- Already linked (sharing again): nothing is added.
+  if exists (select 1 from public.lifter_coaches where lifter_id = new.lifter_id and coach_id = new.coach_id) then return new; end if;
+  select a.lifter_limit into lim from public.accounts a where a.user_id = new.coach_id and a.role <> 'owner';
+  if lim is not null and private.coach_lifter_count(new.coach_id) >= lim then
+    raise exception 'lifter limit reached: % lifter% at most for this coach', lim, case when lim = 1 then '' else 's' end;
+  end if;
+  return new;
+end $$;
+drop trigger if exists lifter_limit on public.lifter_coaches;
+create trigger lifter_limit before insert on public.lifter_coaches
+  for each row execute function private.lifter_coaches_limit();
+
+create or replace function public.set_lifter_limit(p_user uuid, p_limit integer) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not private.is_owner() then raise exception 'only the owner sets lifter limits'; end if;
+  if p_limit is not null and p_limit < 0 then raise exception 'a lifter limit can''t be negative'; end if;
+  update public.accounts set lifter_limit = p_limit where user_id = p_user;
+end $$;
+revoke execute on function private.coach_lifter_count(uuid), private.lifter_coaches_limit() from public, anon, authenticated;
+revoke execute on function public.set_lifter_limit(uuid, integer) from public, anon;
+grant execute on function public.set_lifter_limit(uuid, integer) to authenticated;

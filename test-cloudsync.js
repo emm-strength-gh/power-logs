@@ -265,6 +265,37 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   await C.settle();
   const tomId = await lifterId("Tom");
 
+  console.log("\nThe owner caps how many lifters the coach has");
+  const limitOf = async () => (await server.sql("select lifter_limit from public.accounts where email = 'coach@test.invalid'"))[0].lifter_limit;
+  A.sync(); await A.settle();
+  A.$("acctBtn").click(); await tick();
+  const caseyRow = () => [...A.$("acctBody").querySelectorAll(".acct-person")].find(r => /Coach Casey/.test(r.textContent));
+  check("each approved coach shows their lifter count and a Max lifters box, empty = no limit",
+    !!caseyRow() && /1 lifter(?!s)/.test(caseyRow().textContent) && !!caseyRow().querySelector(".acct-limit-input") && caseyRow().querySelector(".acct-limit-input").value === "",
+    caseyRow() && caseyRow().textContent);
+  let box = caseyRow().querySelector(".acct-limit-input");
+  box.value = "two"; box.dispatchEvent(new A.w.Event("blur")); await tick(50);
+  check("it takes whole numbers only", (await limitOf()) === null && box.value === "");
+  box.value = "1"; box.dispatchEvent(new A.w.Event("blur"));
+  check("typing 1 sets a limit of one lifter", await until(async () => (await limitOf()) === 1));
+  await A.settle(); A.close(); await tick(100);
+  C.sync(); await C.settle();
+  C.$("acctBtn").click(); await tick();
+  check("the coach sees it in their account", /Lifters: 1 of 1 \(set by the owner\)/.test(C.$("acctBody").textContent));
+  C.close(); await tick(100);
+  await C.load(csv("Zed", "B", [[1, 1, "Squat", 100, 3, 5, 7, ""]]), "zed.csv");
+  check("at the limit, a file for a new lifter isn't added", !C.names().includes("Zed") && /Ask the owner for more/.test(C.$("toastMsg").textContent), C.$("toastMsg").textContent);
+  C.nav("Lifters"); await tick(50);
+  C.$("addLifterBtn").click(); await tick(50);
+  check("...nor can a new lifter be created", !C.$("troFormScrim").classList.contains("show") && /up to 1 lifter\b/.test(C.$("toastMsg").textContent), C.$("toastMsg").textContent);
+  A.$("acctBtn").click(); await tick();
+  box = caseyRow().querySelector(".acct-limit-input");
+  check("the owner's box shows the limit", box.value === "1");
+  box.value = ""; box.dispatchEvent(new A.w.Event("blur"));
+  check("emptying it removes the limit", await until(async () => (await limitOf()) === null));
+  await A.settle(); A.close(); await tick(100);
+  C.sync(); await C.settle();
+
   console.log("\nThe coach gives Tom his own login");
   C.nav("Manage program"); await tick(100);
   check("Manage program has a Sharing button, saying Tom has no login yet", !!C.$("dmShareBtn") && /No login for Tom/.test(C.$("dmShareBtn").textContent), C.$("dmShareBtn") && C.$("dmShareBtn").textContent);

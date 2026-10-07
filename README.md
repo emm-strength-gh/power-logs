@@ -26,7 +26,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
 | `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
-| `supabase/selftest.sql` | Checks on those rules (225 at present). Paste and run after the schema; every row should say PASS. |
+| `supabase/selftest.sql` | Checks on those rules (234 at present). Paste and run after the schema; every row should say PASS. |
 | `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
 | `index.html` | **The only public page**: the sign-in screen (email code), which then downloads the app from the database, keeps it on the device and starts it in the same window. It is also the home-screen `start_url`. |
 | `power-logs.html` | Just forwards to `index.html` (keeping `?open=...`), so home-screen icons, bookmarks and notification links made before the move still work. |
@@ -181,6 +181,14 @@ Nobody can make an account unless their email is invited. Supabase asks the data
 - the owner's own email.
 
 Anyone else gets "This email hasn't been invited to Power Logs yet. Ask your coach to add it, then try again." on the sign-in page, and no email is sent. Accounts that already exist are not affected (the check only runs when an account would be created), and taking an invite back doesn't remove an account. The list is the `invites` table: only the owner reads or changes it. To turn this off, disable the hook in the dashboard.
+
+## Lifter limits for coaches
+
+In **Account > Coaches** (the person icon), each approved coach shows how many lifters they have and a **Max lifters** box. Type a whole number (say 4) and press Enter or tap away: that coach can then have at most 4 lifters. Leave it empty for no limit. The owner is never limited.
+
+- It counts every way of getting a lifter: creating one, importing a CSV or JSON, uploading lifters that were only on their device, and being shared one by another coach.
+- The database enforces it (`accounts.lifter_limit`, a trigger on `lifter_coaches`, RPC `set_lifter_limit` for the owner only); the app also stops at the same number before anything is made, counting lifters only on the device too, and says "Ask the owner for more".
+- Lowering a limit below what a coach already has doesn't remove any lifters; they just can't add more. The coach sees "Lifters: 3 of 4 (set by the owner)" in their account sheet.
 
 ## Messages and notifications
 

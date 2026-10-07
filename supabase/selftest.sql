@@ -597,6 +597,32 @@ begin
     and pg_temp.cnt(l, format('select * from public.lifters where id = %L', m)) = 1
     and pg_temp.cnt(c1, format('select * from public.lifters where id = %L', m)) = 1);
 
+  -- Lifter limits: the owner caps how many lifters a coach has
+  r := pg_temp.act(c1, format($q$select public.set_lifter_limit(%L, 99)$q$, c1));
+  perform pg_temp.ok('a coach cannot set their own lifter limit', r like 'refused%', r);
+  v := (select private.coach_lifter_count(c1))::text;
+  r := pg_temp.act(o, format($q$select public.set_lifter_limit(%L, %s)$q$, c1, v));
+  perform pg_temp.ok('the owner sets a coach''s lifter limit', r like 'ok%' and (select lifter_limit from public.accounts where user_id = c1) = v::int, r);
+  r := pg_temp.act(c1, format($q$insert into public.lifters (id, name) values (%L, 'SELFTEST over')$q$, gen_random_uuid()));
+  perform pg_temp.ok('...at the limit, a coach cannot add another lifter', r like 'refused%lifter limit%', r);
+  r := pg_temp.act(o, format($q$select public.set_lifter_limit(%L, %s)$q$, c1, v::int + 1));
+  r := pg_temp.act(c1, format($q$insert into public.lifters (id, name) values (%L, 'SELFTEST over')$q$, gen_random_uuid()));
+  perform pg_temp.ok('...raise it by one and one more fits', r = 'ok 1', r);
+  r := pg_temp.act(c1, format($q$insert into public.lifters (id, name) values (%L, 'SELFTEST over 2')$q$, gen_random_uuid()));
+  perform pg_temp.ok('...and then no more', r like 'refused%lifter limit%', r);
+  r := pg_temp.act(o, format($q$insert into public.lifters (id, name) values (%L, 'SELFTEST share')$q$, gen_random_uuid()));
+  v := pg_temp.val(o, $q$select public.share_lifter((select id from public.lifters where name = 'SELFTEST share'), 'c1@selftest.invalid')$q$);
+  perform pg_temp.ok('...sharing a lifter with a coach at the limit is refused too', v like 'refused%lifter limit%', v);
+  r := pg_temp.act(o, format($q$select public.set_lifter_limit(%L, 0)$q$, o));
+  r := pg_temp.act(o, format($q$insert into public.lifters (id, name) values (%L, 'SELFTEST owner')$q$, gen_random_uuid()));
+  perform pg_temp.ok('the owner is never limited', r = 'ok 1', r);
+  r := pg_temp.act(o, format($q$select public.set_lifter_limit(%L, -1)$q$, c1));
+  perform pg_temp.ok('a limit can''t be negative', r like 'refused%', r);
+  perform pg_temp.act(o, format($q$select public.set_lifter_limit(%L, null)$q$, c1));
+  perform pg_temp.act(o, format($q$select public.set_lifter_limit(%L, null)$q$, c2));
+  perform pg_temp.act(o, format($q$select public.set_lifter_limit(%L, null)$q$, o));
+  perform pg_temp.ok('...and clearing it means no limit', (select count(*) from public.accounts where user_id in (o, c1, c2) and lifter_limit is not null) = 0);
+
   -- Invite-only sign-up: what Supabase Auth asks before it creates an account
   perform pg_temp.ok('sign-up: an email nobody invited is refused',
     public.hook_before_user_created('{"user":{"email":"nobody@selftest.invalid"}}') ? 'error');

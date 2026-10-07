@@ -137,6 +137,11 @@ private script kept outside it (`private.settings`).
   on sign-up by `private.on_auth_user`, only from 'none'), a live `lifters.lifter_email`, or the owner's email. The app's
   owner UI is `buildInvitesSection()` (`loadInvites`/`addInvite`/`removeInvite`) in the account sheet. test-cloudfake's
   `pgServer({ inviteOnly: true })` runs the hook on sign-up; the other tests leave it off.
+- Lifter limits: `accounts.lifter_limit` (null = none; owner exempt), set by the owner's RPC `set_lifter_limit` from the
+  Max lifters box in Account > Coaches (`buildLimitBox`). The `lifter_limit` trigger on `lifter_coaches` refuses a new link once
+  `private.coach_lifter_count` (live linked lifters) reaches it, which covers creating, uploading and sharing. The app checks first
+  with `roomForLifters()` (managed lifters incl. device-only) in `openNewLifter`, `ingestText`/`ingestJSON` (reason "limit"), and
+  `pushAll` skips auto-uploads past `syncedLifterCount()`.
 - Roles: owner (sees all, approves coaches via the `decide_coach` RPC, which on
   revoke/decline also clears the `lifter_email`s that coach entered,
   `lifters.lifter_email_by`), coach

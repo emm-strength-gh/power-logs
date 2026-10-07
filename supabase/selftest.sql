@@ -502,7 +502,7 @@ begin
     and pg_temp.cnt(x, $q$select * from public.announcements where scope = 'all'$q$) = 1);
   perform pg_temp.ok('another coach on that lifter sees only the one to everyone, not the coach''s lifters-only one', pg_temp.cnt(c2, 'select * from public.announcements') = 1);
   perform pg_temp.ok('the coach sees what they sent and the one to everyone', pg_temp.cnt(c1, 'select * from public.announcements') = 2);
-  perform pg_temp.ok('the author says who wrote it, whatever the app claims', (select author_id from public.announcements where scope = 'lifters' limit 1) = c1);
+  perform pg_temp.ok('the author says who wrote it, whatever the app claims', (select author_id from public.announcements where scope = 'lifters' and body = 'Squat day moved' limit 1) = c1);
   perform pg_temp.act(o, $q$insert into public.announcements (scope, body) values ('all', 'From before')$q$);
   update public.announcements set created_at = now() - interval '400 days' where body = 'From before';
   perform pg_temp.ok('nobody sees what was announced before they joined', pg_temp.cnt(x, $q$select * from public.announcements where body = 'From before'$q$) = 0);
@@ -596,6 +596,21 @@ begin
     (select lifter_email from public.lifters where id = m) = 'lifter@selftest.invalid'
     and pg_temp.cnt(l, format('select * from public.lifters where id = %L', m)) = 1
     and pg_temp.cnt(c1, format('select * from public.lifters where id = %L', m)) = 1);
+
+  -- What a lifter sees in Analytics: a coach switches parts off
+  v := pg_temp.val(c1, format($q$select public.set_analytics_off(%L, '{tonnage,nl,tonnage}')$q$, m));
+  perform pg_temp.ok('a coach switches parts of Analytics off for their lifter (duplicates folded)', v = '{nl,tonnage}', v);
+  perform pg_temp.ok('...and the lifter can read it', pg_temp.val(l, format($q$select analytics_off::text from public.lifter_settings where lifter_id = %L$q$, m)) = '{nl,tonnage}');
+  v := pg_temp.val(l, format($q$select public.set_analytics_off(%L, '{}')$q$, m));
+  perform pg_temp.ok('the lifter cannot change it', v like 'refused%', v);
+  r := pg_temp.act(l, format($q$update public.lifter_settings set analytics_off = '{}' where lifter_id = %L$q$, m));
+  perform pg_temp.ok('...nor write it directly', r like 'refused%' or r = 'ok 0', r);
+  v := pg_temp.val(x, format($q$select public.set_analytics_off(%L, '{all}')$q$, m));
+  perform pg_temp.ok('a stranger cannot', v like 'refused%', v);
+  v := pg_temp.val(c1, format($q$select public.set_analytics_off(%L, '{charts}')$q$, m));
+  perform pg_temp.ok('an unknown part is refused', v like 'refused%', v);
+  v := pg_temp.val(c1, format($q$select public.set_analytics_off(%L, '{}')$q$, m));
+  perform pg_temp.ok('switching everything back on clears it', v = '{}' and pg_temp.val(l, format($q$select analytics_off::text from public.lifter_settings where lifter_id = %L$q$, m)) = '{}', v);
 
   -- Lifter limits: the owner caps how many lifters a coach has
   r := pg_temp.act(c1, format($q$select public.set_lifter_limit(%L, 99)$q$, c1));

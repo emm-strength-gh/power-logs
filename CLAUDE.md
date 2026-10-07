@@ -137,6 +137,11 @@ private script kept outside it (`private.settings`).
   on sign-up by `private.on_auth_user`, only from 'none'), a live `lifters.lifter_email`, or the owner's email. The app's
   owner UI is `buildInvitesSection()` (`loadInvites`/`addInvite`/`removeInvite`) in the account sheet. test-cloudfake's
   `pgServer({ inviteOnly: true })` runs the hook on sign-up; the other tests leave it off.
+- Analytics access: `lifter_settings.analytics_off text[]` ('all' = the page; 'maxes', 'tonnage', 'nl', 'top' = parts), set only by the
+  lifter's coaches through RPC `set_analytics_off`, read by the lifter (it rides `pullMessages` into `MSG.settings[id].analytics_off`).
+  `anOffFor(name)` is empty for anyone who `canManage(name)`; for the lifter, `renderAnalytics()` skips and clears hidden parts (class `an-off`),
+  `openAnalytics()`/`renderSidebar()` drop the page, and `msgRefreshUI(true)` redraws on a change. The coach's switches are
+  `buildAnalyticsAccess()` (`#anAccess`). It hides derived numbers, not the logged sets.
 - Lifter limits: `accounts.lifter_limit` (null = none; owner exempt), set by the owner's RPC `set_lifter_limit` from the
   Max lifters box in Account > Coaches (`buildLimitBox`). The `lifter_limit` trigger on `lifter_coaches` refuses a new link once
   `private.coach_lifter_count` (live linked lifters) reaches it, which covers creating, uploading and sharing. The app checks first
@@ -328,6 +333,7 @@ node test-trophysync.js # Trophies across devices on the real rules, plus their 
 node test-notices.js    # In-app notice banner: kinds, who wrote it, x, stacking
 node test-hubprivate.js # The Program Hub's private copy: owner download, offline, sign-out delete
 node test-vbtprivate.js # The Velocity Tracker's private copy: any signed-in account, offline, sign-out delete
+node test-analyticsaccess.js # A coach hides parts of Analytics (or the page) from a lifter: the card, the rule, the lifter's device
 node test-shell.js      # index.html: sign-in, first download, offline, new versions, ended sign-in, the real app started and signed out
 node test-rpeprivate.js # The RPE Calculator's private copy: same rules
 node test-announce.js   # Announcements: owner to everyone, coach to their lifters, the Home pop-up, closing, deleting
@@ -340,7 +346,7 @@ node test-reactions.js  # Reactions on messages, coach-only on notes and days
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all twenty-nine. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all thirty. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of app.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

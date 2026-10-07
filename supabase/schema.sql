@@ -1350,3 +1350,25 @@ end $$;
 revoke execute on function private.coach_lifter_count(uuid), private.lifter_coaches_limit() from public, anon, authenticated;
 revoke execute on function public.set_lifter_limit(uuid, integer) from public, anon;
 grant execute on function public.set_lifter_limit(uuid, integer) to authenticated;
+
+---------------------------------------------------------------- what a lifter sees in Analytics
+-- A coach can switch parts of Analytics off for a lifter, or the whole page. lifter_settings.analytics_off holds
+-- the parts switched off: 'all' (the page), 'maxes', 'tonnage', 'nl', 'top'. Only the lifter's coaches change it
+-- (the lifter can read it, not write it); the app hides those parts on the lifter's devices, never from a coach.
+alter table public.lifter_settings add column if not exists analytics_off text[] not null default '{}';
+
+create or replace function public.set_analytics_off(p_lifter uuid, p_off text[]) returns text[]
+language plpgsql security definer set search_path = '' as $$
+declare clean text[];
+begin
+  if not private.can_coach_live(p_lifter) then raise exception 'only a coach of this lifter sets what they see'; end if;
+  if exists (select 1 from unnest(coalesce(p_off, '{}'::text[])) k where k not in ('all', 'maxes', 'tonnage', 'nl', 'top')) then
+    raise exception 'unknown part of Analytics';
+  end if;
+  select coalesce(array_agg(distinct k order by k), '{}'::text[]) into clean from unnest(coalesce(p_off, '{}'::text[])) k;
+  insert into public.lifter_settings (lifter_id, analytics_off) values (p_lifter, clean)
+  on conflict (lifter_id) do update set analytics_off = excluded.analytics_off, updated_at = now();
+  return clean;
+end $$;
+revoke execute on function public.set_analytics_off(uuid, text[]) from public, anon;
+grant execute on function public.set_analytics_off(uuid, text[]) to authenticated;

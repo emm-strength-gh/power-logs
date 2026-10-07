@@ -132,6 +132,11 @@ checks (`isOwner`/`isCoach`/`canManage`/`isCoachManaged`) just decide what to sh
 Never put the secret key or the owner's email in this repo: the owner is set by a
 private script kept outside it (`private.settings`).
 
+- Invite-only sign-up: Supabase's "Before User Created" hook (enabled in the dashboard) calls
+  `public.hook_before_user_created` -> `private.invited(email)`: an `invites` row (owner-only table; `coach` = approved
+  on sign-up by `private.on_auth_user`, only from 'none'), a live `lifters.lifter_email`, or the owner's email. The app's
+  owner UI is `buildInvitesSection()` (`loadInvites`/`addInvite`/`removeInvite`) in the account sheet. test-cloudfake's
+  `pgServer({ inviteOnly: true })` runs the hook on sign-up; the other tests leave it off.
 - Roles: owner (sees all, approves coaches via the `decide_coach` RPC, which on
   revoke/decline also clears the `lifter_email`s that coach entered,
   `lifters.lifter_email_by`), coach

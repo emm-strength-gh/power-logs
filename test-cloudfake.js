@@ -79,7 +79,9 @@ const AUTH_STUB = `
   alter default privileges in schema public grant all on tables to anon, authenticated;
 `;
 
-async function pgServer() {
+// inviteOnly: run the sign-up check (public.hook_before_user_created) before making an account, as
+// Supabase Auth does once the hook is turned on. Off by default, so the other tests can sign up anyone.
+async function pgServer(opts = {}) {
   const { PGlite } = await import("@electric-sql/pglite");
   const db = new PGlite();
   await db.exec(AUTH_STUB);
@@ -174,9 +176,16 @@ async function pgServer() {
   }
 
   // Make sure an account exists for this email (signing up), as the auth service would.
+  async function signUpAllowed(email) {
+    const found = await db.query("select id from auth.users where email = $1", [email.toLowerCase()]);
+    if (found.rows.length || !opts.inviteOnly) return;
+    const r = (await db.query("select public.hook_before_user_created($1::jsonb) as r", [JSON.stringify({ user: { email } })])).rows[0].r;
+    if (r && r.error) { const e = new Error(r.error.message); e.status = r.error.http_code; throw e; }
+  }
   async function userFor(email) {
     const found = await db.query("select id from auth.users where email = $1", [email]);
     if (found.rows.length) return found.rows[0].id;
+    await signUpAllowed(email);
     const id = crypto.randomUUID();
     await db.query("insert into auth.users (id, email, aud, role) values ($1, $2, 'authenticated', 'authenticated')", [id, email]);
     await db.query("update auth.users set email_confirmed_at = now() where id = $1", [id]);
@@ -198,7 +207,7 @@ async function pgServer() {
       get user() { return user; },
       session: async () => user,
       onSessionChange(fn) { sessionFns.push(fn); },
-      sendCode: async (email) => { await online(); if (!/@/.test(email)) throw new Error("invalid email"); },
+      sendCode: async (email) => { await online(); if (!/@/.test(email)) throw new Error("invalid email"); await signUpAllowed(email); },
       verifyCode: async (email, code) => {
         await online();
         if (code !== GOOD_CODE) throw new Error("Token has expired or is invalid");

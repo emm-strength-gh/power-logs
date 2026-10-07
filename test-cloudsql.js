@@ -48,6 +48,36 @@ const check = (name, cond, extra = "") => {
   } catch (e) { anon = e.message; }
   check("signed out: permission denied", /permission denied/.test(anon || ""), anon);
 
+  console.log("\nInvite-only sign-up, through the auth service stand-in");
+  const inv = await pgServer({ inviteOnly: true });
+  const stranger = inv.device("s");
+  let refused = null;
+  try { await stranger.sendCode("stranger@test.invalid"); } catch (e) { refused = e; }
+  check("a stranger's email gets no code, and is told why", !!refused && /hasn.t been invited/.test(refused.message) && refused.status === 403, refused && refused.message);
+  check("...and no account is made", (await inv.sql("select count(*)::int n from auth.users where email = 'stranger@test.invalid'"))[0].n === 0);
+  const own = inv.device("o");
+  await own.sendCode(OWNER_EMAIL);
+  await own.verifyCode(OWNER_EMAIL, inv.GOOD_CODE);
+  check("the owner's own email is always let in", !!own.user);
+  await own.upsert("invites", [{ email: "newcoach@test.invalid", coach: true }], "email");
+  const nc = inv.device("n");
+  await nc.sendCode("NewCoach@test.invalid");
+  await nc.verifyCode("NewCoach@test.invalid", inv.GOOD_CODE);
+  const ncAcc = await nc.fetch("accounts", { orderBy: "created_at" });
+  check("someone the owner invites as a coach signs up, already a coach", ncAcc.length === 1 && ncAcc[0].coach_status === "approved", JSON.stringify(ncAcc));
+  const listed = await own.fetch("invites", { orderBy: "created_at" });
+  check("the owner sees the invite list", listed.length === 1 && listed[0].email === "newcoach@test.invalid");
+  check("...the new coach does not", (await nc.fetch("invites", { orderBy: "created_at" })).length === 0);
+  await own.remove("invites", "email", "newcoach@test.invalid");
+  check("taking an invite back leaves the account alone", (await own.fetch("invites", { orderBy: "created_at" })).length === 0
+    && (await inv.sql("select coach_status from public.accounts where email = 'newcoach@test.invalid'"))[0].coach_status === "approved");
+  const back = inv.device("b");
+  await back.sendCode("stranger@test.invalid").catch(() => {});
+  await inv.sql("insert into public.invites (email) values ('stranger@test.invalid')");
+  let later = null;
+  try { await back.sendCode("stranger@test.invalid"); await back.verifyCode("stranger@test.invalid", inv.GOOD_CODE); } catch (e) { later = e.message; }
+  check("once invited, the same email gets in", later === null && !!back.user, later);
+
   console.log(`\n${checks} checks · ${failures === 0 ? "ALL PASSED" : failures + " FAILED"}\n`);
   process.exit(failures === 0 ? 0 : 1);
 })().catch(e => { console.error(e); process.exit(1); });

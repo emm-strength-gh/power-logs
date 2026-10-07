@@ -303,7 +303,7 @@
     form.appendChild(row);
     form.onsubmit = function (e) { e.preventDefault(); if (code) verify(); else sendCode(); };
     c.appendChild(form);
-    setHint(code ? "We emailed a code to " + ui.email + ". It can take a minute." : "Sign in with your email. We’ll email you a code, so there’s no password.");
+    setHint(code ? "We emailed a code to " + ui.email + ". It can take a minute." : "Power Logs is invite-only: use the email your coach added for you. We’ll email you a code, so there’s no password.");
     if (!ui.busy) { try { inp.focus(); } catch (e) {} }
   }
   function sendCode() {

@@ -26,7 +26,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
 | `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
-| `supabase/selftest.sql` | Checks on those rules (215 at present). Paste and run after the schema; every row should say PASS. |
+| `supabase/selftest.sql` | Checks on those rules (225 at present). Paste and run after the schema; every row should say PASS. |
 | `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
 | `index.html` | **The only public page**: the sign-in screen (email code), which then downloads the app from the database, keeps it on the device and starts it in the same window. It is also the home-screen `start_url`. |
 | `power-logs.html` | Just forwards to `index.html` (keeping `?open=...`), so home-screen icons, bookmarks and notification links made before the move still work. |
@@ -171,6 +171,16 @@ Six edits, all additive except the icon swap:
 5. **`applyTheme()`** also sets the status bar tint, so it follows your toggle
    rather than the OS setting.
 6. **Service worker registration** with auto-activation of new builds.
+
+## Invite-only sign-up
+
+Nobody can make an account unless their email is invited. Supabase asks the database before it creates any user (Authentication > Auth Hooks > **Before User Created**, Postgres function `public.hook_before_user_created`, turned on in the dashboard). It lets in:
+
+- an email a coach put on a lifter (Manage Program > Sharing > the lifter's email): that is how a coach invites a lifter;
+- an email the owner added under **Account > Invites** (tick *As a coach* and they are a coach the moment they sign in, no approval step);
+- the owner's own email.
+
+Anyone else gets "This email hasn't been invited to Power Logs yet. Ask your coach to add it, then try again." on the sign-in page, and no email is sent. Accounts that already exist are not affected (the check only runs when an account would be created), and taking an invite back doesn't remove an account. The list is the `invites` table: only the owner reads or changes it. To turn this off, disable the hook in the dashboard.
 
 ## Messages and notifications
 

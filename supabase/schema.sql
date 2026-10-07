@@ -266,6 +266,12 @@ begin
     update public.accounts set role = 'owner' where user_id = new.id;
   end if;
 
+  -- Invited as a coach by the owner (public.invites, below): approved straight away. Only from 'none',
+  -- so a coach the owner later removes stays removed.
+  update public.accounts a set coach_status = 'approved', requested_at = coalesce(a.requested_at, now()), decided_at = now()
+   where a.user_id = new.id and a.coach_status = 'none'
+     and exists (select 1 from public.invites i where i.email = lower(new.email) and i.coach);
+
   update public.lifters set updated_at = now()
   where lifter_email = lower(new.email) or lifter_user_id = new.id;
   return new;
@@ -1251,5 +1257,54 @@ begin
         execute format('alter publication supabase_realtime add table public.%I', t);
       end if;
     end loop;
+  end if;
+end $$;
+
+---------------------------------------------------------------- invite-only sign-up
+-- New accounts are by invitation. Supabase Auth asks public.hook_before_user_created before it creates
+-- any user (Authentication > Hooks > "Before User Created", Postgres function public.hook_before_user_created;
+-- turned on once, in the dashboard). Let in: an email a coach put on a lifter (lifters.lifter_email), one the
+-- owner invited here, and the owner's own. Accounts that already exist sign in as before: the hook only runs
+-- when an account would be created.
+create table if not exists public.invites (
+  email      text primary key check (email = lower(btrim(email)) and email like '%_@_%'),
+  coach      boolean not null default false,   -- approved as a coach the moment they sign up (private.on_auth_user)
+  invited_by uuid default auth.uid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+drop trigger if exists touch on public.invites;
+create trigger touch before update on public.invites
+  for each row execute function private.touch_at();
+alter table public.invites enable row level security;
+revoke all on public.invites from public, anon, authenticated;
+grant select, insert, update, delete on public.invites to authenticated;
+drop policy if exists owner_only on public.invites;
+create policy owner_only on public.invites for all to authenticated
+  using ((select private.is_owner())) with check ((select private.is_owner()));
+
+create or replace function private.invited(p_email text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce(p_email, '') <> '' and (
+    exists (select 1 from public.invites i where i.email = p_email)
+    or exists (select 1 from public.lifters l where l.lifter_email = p_email and l.deleted_at is null)
+    or exists (select 1 from private.settings s where lower(s.owner_email) = p_email))
+$$;
+
+create or replace function public.hook_before_user_created(event jsonb) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare em text := lower(btrim(coalesce(event -> 'user' ->> 'email', '')));
+begin
+  if private.invited(em) then return '{}'::jsonb; end if;
+  return jsonb_build_object('error', jsonb_build_object('http_code', 403,
+    'message', 'This email hasn''t been invited to Power Logs yet. Ask your coach to add it, then try again.'));
+end $$;
+-- Only the auth service runs it (a client can't use it to test which emails are invited).
+revoke execute on function public.hook_before_user_created(jsonb) from public, anon, authenticated;
+revoke execute on function private.invited(text) from public, anon, authenticated;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'supabase_auth_admin') then
+    grant execute on function public.hook_before_user_created(jsonb) to supabase_auth_admin;
   end if;
 end $$;

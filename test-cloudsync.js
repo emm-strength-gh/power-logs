@@ -235,6 +235,27 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   await A.settle(); A.close(); await tick(100);
   check("badge cleared", A.$("acctBadge").hidden);
 
+  console.log("\nThe owner's invite list (sign-up is invite-only)");
+  A.$("acctBtn").click(); await tick();
+  check("the owner's account sheet has Invites", /Invites[\s\S]*Only invited emails/.test(A.$("acctBody").textContent) && !!A.$("acctInvite"));
+  check("...with the list loaded", await until(() => !/Loading the invite list/.test(A.$("acctBody").textContent)));
+  A.$("acctInvite").value = "Newbie@Test.invalid"; A.$("acctInviteCoach").checked = true;
+  A.btn("Invite", A.$("acctBody")).click();
+  check("inviting adds it, lower-cased, as a coach", await until(async () => {
+    const r = await server.sql("select email, coach from public.invites");
+    return r.length === 1 && r[0].email === "newbie@test.invalid" && r[0].coach === true;
+  }));
+  check("...and lists it as not signed up yet", await until(() => /newbie@test\.invalid\s*Coach · Not signed up yet/.test(A.$("acctBody").textContent)), A.$("acctBody").textContent.slice(-300));
+  A.$("acctInvite").value = "coach@test.invalid";
+  A.btn("Invite", A.$("acctBody")).click(); await tick(100);
+  check("an email that already has an account isn't invited", (await server.sql("select count(*)::int n from public.invites"))[0].n === 1);
+  A.btn("Remove", [...A.$("acctBody").querySelectorAll(".acct-person")].find(r => /newbie@/.test(r.textContent))).click();
+  check("Remove takes the invite back", await until(async () => (await server.sql("select count(*)::int n from public.invites"))[0].n === 0));
+  A.close(); await tick(100);
+  C.$("acctBtn").click(); await tick();
+  check("a coach's sheet has no invite list (they invite lifters through Sharing)", !A.real().length && !C.$("acctInvite") && !/Only invited emails/.test(C.$("acctBody").textContent));
+  C.close(); await tick(100);
+
   C.sync(); await C.settle(); await tick(100);
   check("the coach gets Manage program", C.navs().includes("Manage program"));
   check("...and loading and saving files", C.files());

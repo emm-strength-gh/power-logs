@@ -66,6 +66,7 @@ $$;
 
 -- Leftovers from a run that stopped halfway.
 delete from public.lifters where name like 'SELFTEST %';
+delete from public.invites where email like '%@selftest.invalid';
 delete from auth.users where email like '%@selftest.invalid';
 
 do $$
@@ -514,8 +515,10 @@ begin
   perform pg_temp.ok('a lifter cannot delete an announcement', r = 'ok 0' or r like 'refused%', r);
   r := pg_temp.act(c1, $q$delete from public.announcements where body = 'Gym closed Friday'$q$);
   perform pg_temp.ok('a coach cannot delete the owner''s', r = 'ok 0' or r like 'refused%', r);
+  v := (select id::text from public.announcements where body = 'Squat day moved' limit 1);
   r := pg_temp.act(c1, $q$delete from public.announcements where body = 'Squat day moved'$q$);
-  perform pg_temp.ok('the author can delete their own (and the closed marks go with it)', r = 'ok 1' and (select count(*) from public.announcement_closed) = 0, r);
+  -- (only this announcement's marks: on a live database real people have closed real ones)
+  perform pg_temp.ok('the author can delete their own (and the closed marks go with it)', r = 'ok 1' and (select count(*) from public.announcement_closed where announcement_id::text = v) = 0, r);
   r := pg_temp.act(o, $q$delete from public.announcements where body = 'Gym closed Friday'$q$);
   perform pg_temp.ok('the owner can delete any', r = 'ok 1', r);
   delete from public.announcements;
@@ -594,6 +597,32 @@ begin
     and pg_temp.cnt(l, format('select * from public.lifters where id = %L', m)) = 1
     and pg_temp.cnt(c1, format('select * from public.lifters where id = %L', m)) = 1);
 
+  -- Invite-only sign-up: what Supabase Auth asks before it creates an account
+  perform pg_temp.ok('sign-up: an email nobody invited is refused',
+    public.hook_before_user_created('{"user":{"email":"nobody@selftest.invalid"}}') ? 'error');
+  perform pg_temp.ok('...an email a coach put on a lifter is let in (in any case)',
+    public.hook_before_user_created('{"user":{"email":"Lifter@SelfTest.invalid"}}') = '{}'::jsonb);
+  r := pg_temp.act(o, $q$insert into public.invites (email) values ('new@selftest.invalid')$q$);
+  perform pg_temp.ok('the owner invites someone', r = 'ok 1', r);
+  perform pg_temp.ok('...who is then let in', public.hook_before_user_created('{"user":{"email":"new@selftest.invalid"}}') = '{}'::jsonb);
+  r := pg_temp.act(c1, $q$insert into public.invites (email) values ('mate@selftest.invalid')$q$);
+  perform pg_temp.ok('a coach cannot add to the invite list (they add their lifters'' emails)', r like 'refused%', r);
+  perform pg_temp.ok('...nor read it, nor a lifter', pg_temp.cnt(c1, 'select * from public.invites') = 0 and pg_temp.cnt(l, 'select * from public.invites') = 0);
+  r := pg_temp.act(null, 'select * from public.invites');
+  perform pg_temp.ok('...nor anyone signed out', r like 'refused%', r);
+  r := pg_temp.act(x, $q$select public.hook_before_user_created('{"user":{"email":"new@selftest.invalid"}}'::jsonb)$q$);
+  perform pg_temp.ok('nobody can run the sign-up check themselves', r like 'refused%', r);
+  insert into public.invites (email, coach) values ('newcoach@selftest.invalid', true);
+  insert into auth.users (instance_id, id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+  values ('00000000-0000-0000-0000-000000000000', '5e1f7e57-0000-4000-8000-000000000008', 'authenticated', 'authenticated',
+          'newcoach@selftest.invalid', now(), '{}', '{}', now(), now());
+  perform pg_temp.ok('someone invited as a coach is a coach as soon as they sign up',
+    (select coach_status from public.accounts where email = 'newcoach@selftest.invalid') = 'approved');
+  perform pg_temp.act(o, $q$select public.decide_coach('5e1f7e57-0000-4000-8000-000000000008', 'revoked')$q$);
+  update auth.users set email_confirmed_at = now() where id = '5e1f7e57-0000-4000-8000-000000000008';
+  perform pg_temp.ok('...and once removed, stays removed', (select coach_status from public.accounts where email = 'newcoach@selftest.invalid') = 'revoked');
+  delete from public.invites where email like '%@selftest.invalid';
+
   -- Signed out, and personal settings
   r := pg_temp.act(null, 'select * from public.lifters');
   perform pg_temp.ok('signed out: no data at all', r like 'refused%', r);
@@ -606,6 +635,7 @@ begin
 end $$;
 
 delete from public.lifters where name like 'SELFTEST %';
+delete from public.invites where email like '%@selftest.invalid';
 delete from auth.users where email like '%@selftest.invalid';
 
 -- Summary first, then any failures, then the passes.

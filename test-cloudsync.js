@@ -275,7 +275,7 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
     ["loadBtn", "saveBtn", "loadBtn2", "saveBtn2", "scanBtn"].every(id => D.$(id).classList.contains("files-only")) &&
     [...D.$("moreMenu").querySelectorAll('[data-for="loadBtn"], [data-for="saveBtn"]')].every(b => b.classList.contains("files-only")) &&
     !!D.$("loadBtnEmpty").closest(".files-only"));
-  check("but Overview, Analytics, RPE Estimator, Velocity Tracker and weeks", ["Overview", "Analytics", "RPE Estimator", "Velocity Tracker", "Week 1"].every(n => D.navs().includes(n)), D.navs().join());
+  check("but Overview, Analytics, RPE Calculator, Velocity Tracker and weeks", ["Overview", "Analytics", "RPE Calculator", "Velocity Tracker", "Week 1"].every(n => D.navs().includes(n)), D.navs().join());
   check("no upload prompt for a lifter", !D.$("confirmScrim").classList.contains("show"));
   C.sync(); await C.settle();
   check("the coach sees he has signed in", await until(() => /Tom signed in · 1 coach/.test(C.$("dmShareBtn").textContent)), C.$("dmShareBtn").textContent);

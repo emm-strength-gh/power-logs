@@ -24,7 +24,7 @@
  * ordinary edits to power-logs.html are picked up by the network-first rule.
  */
 
-const CACHE_VERSION = "v15";
+const CACHE_VERSION = "v16";
 const CACHE_SHELL = `spotter-shell-${CACHE_VERSION}`;
 const CACHE_VENDOR = `spotter-vendor-${CACHE_VERSION}`;
 
@@ -32,7 +32,6 @@ const SHELL_ASSETS = [
   "./",
   "./index.html",
   "./power-logs.html",
-  "./rpe-estimator.html",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",

@@ -4,7 +4,7 @@
   "private": true,
   "description": "EmmStrength Power Logs â€” training-log PWA. This file exists only for the Node smoke tests; the app itself ships as plain static HTML with no build step.",
   "scripts": {
-    "test": "node test-boot.js && node test-lifterorder.js && node test-dmnotes.js && node test-reimport.js && node test-trainingmax.js && node test-managelayout.js && node test-hubprefill.js && node test-hubanalytics.js && node test-cloudsql.js && node test-cloudsync.js && node test-messaging.js && node test-trophies.js && node test-trophysync.js && node test-notices.js && node test-replies.js && node test-hubprivate.js && node test-vbtprivate.js && node test-vidreview.js && node test-announce.js && node test-home.js && node test-payments.js && node test-reactions.js && node test-chatdock.js && node test-weekrange.js && node test-genpop.js && node test-taper.js && node test-vbt.js",
+    "test": "node test-boot.js && node test-lifterorder.js && node test-dmnotes.js && node test-reimport.js && node test-trainingmax.js && node test-managelayout.js && node test-hubprefill.js && node test-hubanalytics.js && node test-cloudsql.js && node test-cloudsync.js && node test-messaging.js && node test-trophies.js && node test-trophysync.js && node test-notices.js && node test-replies.js && node test-hubprivate.js && node test-vbtprivate.js && node test-rpeprivate.js && node test-vidreview.js && node test-announce.js && node test-home.js && node test-payments.js && node test-reactions.js && node test-chatdock.js && node test-weekrange.js && node test-genpop.js && node test-taper.js && node test-vbt.js",
     "test:boot": "node test-boot.js",
     "test:lifterorder": "node test-lifterorder.js",
     "test:dmnotes": "node test-dmnotes.js",
@@ -22,6 +22,7 @@
     "test:replies": "node test-replies.js",
     "test:hubprivate": "node test-hubprivate.js",
     "test:vbtprivate": "node test-vbtprivate.js",
+    "test:rpeprivate": "node test-rpeprivate.js",
     "test:vidreview": "node test-vidreview.js",
     "test:announce": "node test-announce.js",
     "test:home": "node test-home.js",

@@ -10,7 +10,8 @@ Separate repo from the Program Hub. Same deploy pattern.
 | File | Purpose |
 |---|---|
 | `power-logs.html` | The app. Same code plus a PWA `<head>`, touch field sizing, share-sheet exports, persistent-storage request, and service worker registration. |
-| `rpe-estimator.html` | The RPE → %1RM load-chart tool. Opens inside the app (RPE Estimator in the sidebar) via an iframe, and also works standalone. Precached for offline use. |
+| `rpe-calculator.html` | The RPE Calculator — RPE → %1RM load chart. **Not in the repo (gitignored) and not on the public site**, like the Velocity Tracker: it lives in the database (`owner_assets`, readable by any signed-in account), is downloaded to the device once signed in and deleted on sign-out. Opens inside the app from the **RPE Calculator** nav button. |
+| `publish-rpe.js` | Writes the SQL that uploads `rpe-calculator.html` to the database (`node publish-rpe.js`), after you change it. |
 | `program-hub.html` | The program builders (Gustav, Wendler, and the rest). **Not in the repo (gitignored) and not on the public site**: it lives in the database, owner-only, and the app copies it to the owner's device. Shown inside the app as the **Program Hub** tab in Manage Program. See *Who sees the Program Hub*. |
 | `publish-hub.js` | Writes the SQL that uploads `program-hub.html` to the database (`node publish-hub.js`), after you change it. |
 | `test-hubprivate.js` | The Program Hub's copy: downloaded for the owner, opens offline, newer versions, deleted on sign-out, never fetched by other coaches — `node test-hubprivate.js`. |
@@ -18,6 +19,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `publish-vbt.js` | Writes the SQL that uploads `VBT.html` to the database (`node publish-vbt.js`), after you change it. |
 | `test-announce.js` | Announcements: the Announce button, an owner's to everyone (themself included) and a coach's to their lifters only, the Home pop-up that stacks, scrolls and stays until closed, closed on every device, deleting, signing out — `node test-announce.js`. |
 | `test-vidreview.js` | Vid Review end to end on the real rules (stand-ins for the video engine and storage): crop and cut, details, the 30 MB limit, upload, watching, pinch zoom, only coaches delete, sign-out clears the device, the MP4 writer, the owner's storage meter — `node test-vidreview.js`. |
+| `test-rpeprivate.js` | The RPE Calculator's copy: same checks as the Velocity Tracker's — `node test-rpeprivate.js`. |
 | `test-vbtprivate.js` | The Velocity Tracker's copy: downloaded for any signed-in account, opens offline, newer versions, a message when signed out, deleted on sign-out — `node test-vbtprivate.js`. |
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
@@ -111,7 +113,7 @@ by the app, so a modified copy of the page can't get around them.
   Manage Program → the **Sharing** button opens a dialog with the lifter's own sign-in
   email, the list of coaches (share by email, remove), and **Delete lifter for everyone**.
 - **Lifter**: signs in with the email their coach entered. Sees only their own program
-  (Overview, weeks, Analytics, 1-rep maxes, RPE Estimator, Velocity Tracker) and logs
+  (Overview, weeks, Analytics, 1-rep maxes, RPE Calculator, Velocity Tracker) and logs
   it; no Manage Program, and no loading or saving files (Load CSV/JSON, Save
   progress): their program comes through their account.
 - **Signed out**: whatever is already on the device keeps working, but Manage
@@ -341,6 +343,13 @@ On the receiving side it is a **pop-up on the Home page**: the announcements sta
 
 - **Updating it:** change `VBT.html`, bump its `vbt-N` string and `VBT_BUILD` in `power-logs.html` together, run `node publish-vbt.js`, paste the file it writes (in "Power Logs Cloud Setup") into Supabase's SQL editor and Run.
 - **History:** earlier commits in this public repo still contain the old public `VBT.html`; removing it from `main` doesn't remove that.
+
+## The RPE Calculator is private too
+
+`rpe-calculator.html` (the old `rpe-estimator.html`, renamed) works exactly like the Velocity Tracker: gitignored, stored in `owner_assets` as id `rpe` with `members = true`, downloaded once signed in into IndexedDB (opens offline), refreshed in the background when a newer version is up, and **deleted on sign-out** (retried on the next launch via `spotter.rpeHeld`). Signed out, its page says to sign in. Both tools share one mechanism, `makePrivateTool()` in `power-logs.html`.
+
+- **Updating it:** change `rpe-calculator.html`, bump its `rpe-N` string and `RPE_BUILD` in `power-logs.html` together, run `node publish-rpe.js`, paste the file it writes (in "Power Logs Cloud Setup") into Supabase's SQL editor and Run.
+- **History:** earlier commits in this public repo still contain the old public `rpe-estimator.html`.
 
 ## The notice banner
 

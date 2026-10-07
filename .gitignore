@@ -11,6 +11,9 @@ program-hub.html
 # The Velocity Tracker is kept in the database too (see publish-vbt.js): not on the public site.
 VBT.html
 
+# The RPE Calculator too (publish-rpe.js).
+rpe-calculator.html
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db

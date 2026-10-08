@@ -72,7 +72,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Max,Squat,172.5\r\nWeek,Day,Exercise,W
   const css = html.slice(html.indexOf("The floating tab bar"), html.indexOf("The floating tab bar") + 2600);
   check("it is shown on phones and tablets only: a narrow window, or a touch screen without a mouse", /@media \(max-width: 1024px\), \(pointer: coarse\) and \(hover: none\) and \(max-width: 1400px\)/.test(css));
   check("...and not otherwise (hidden by default, so computers keep only the side menu)", /\.tabbar \{ display: none; \}/.test(html));
-  check("it is a see-through, blurred pill, with a darker one in dark mode", /backdrop-filter: blur\(20px\)/.test(css) && /rgba\(255,255,255,\.55\)/.test(css) && /html\[data-theme="dark"\] \.tabbar/.test(css));
+  check("it is a see-through, blurred pill, with a darker one in dark mode", /backdrop-filter: blur\(20px\)/.test(css) && /rgba\(196,202,198,\.68\)/.test(css) && /rgba\(66,74,70,\.58\)/.test(css) && /html\[data-theme="dark"\] \.tabbar/.test(css));
   check("the floating chat button, the message pop-up and the Payments + sit above it", /body\.has-tabbar \.chat-dock/.test(css) && /body\.has-tabbar #toast/.test(css) && /body\.has-tabbar \.pay-add/.test(css));
   check("the left menu button and menu are not touched by it", /\.menu-btn \{ display: grid; \}/.test(html));
 

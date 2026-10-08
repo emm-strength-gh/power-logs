@@ -152,7 +152,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
 
   /* ----------------------------------------------------------- PRs */
   console.log("\nA PR waits for the coach");
-  L.nav("Overview"); L.nav("Trophies"); await tick(150);
+  L.nav("Current Program"); L.nav("Trophies"); await tick(150);
   L.btn("Log a PR", L.$("troBody")).click(); await tick(50);
   check("Tom is told his coach confirms it", /Your coach confirms it/.test(L.$("troFormBody").textContent));
   L.doc.querySelector('.tro-form [data-lift="squat"]').click();
@@ -163,14 +163,14 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("on his page it says waiting", /Waiting for coach/.test(L.$("troBody").textContent));
   check("...and doesn't count yet", !L.tro("Tom").earned["pr:1"]);
   C.sync(); await C.settle();
-  C.nav("Overview"); C.nav("Trophies"); await tick(200);
+  C.nav("Current Program"); C.nav("Trophies"); await tick(200);
   check("the coach sees it with Confirm and Remove", /Waiting for coach/.test(C.$("troBody").textContent) && !!C.btn("Confirm", C.$("troBody")) && !!C.btn("Remove", C.$("troBody")));
   C.btn("Confirm", C.$("troBody")).click(); await tick(200);
   C.sync(); await C.settle();
   const pr2 = (await rows("select confirmed_by, confirmed_at from public.lifter_prs where lifter_id = $1", [tomId]))[0];
   check("confirming is saved, by the coach", !!pr2.confirmed_by && !!pr2.confirmed_at);
   L.sync(); await L.settle();
-  L.nav("Overview"); L.nav("Trophies"); await tick(300);
+  L.nav("Current Program"); L.nav("Trophies"); await tick(300);
   check("Tom now sees it confirmed", /Squat · 180 kg/.test(L.$("troBody").textContent) && /Confirmed/.test(L.$("troBody").textContent), L.$("troBody").textContent.slice(0, 500));
   check("his first-PR trophy unlocks", !!L.tro("Tom").earned["pr:1"]);
   await L.dismiss();
@@ -180,7 +180,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   /* ----------------------------------------------------------- awards */
   console.log("\nThe coach gives an award");
   C.sync(); await C.settle();
-  C.nav("Overview"); C.nav("Trophies"); await tick(200);
+  C.nav("Current Program"); C.nav("Trophies"); await tick(200);
   C.btn("Give an award", C.$("troBody")).click(); await tick(50);
   C.$("troAwardKind").value = "podium"; C.$("troAwardNote").value = "Third in the 83s"; C.btn("Give award", C.$("troFormBody")).click(); await tick(200);
   C.sync(); await C.settle();
@@ -188,7 +188,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("it's in the database, from the coach", aw && aw.email === OWNER_EMAIL && aw.note === "Third in the 83s", JSON.stringify(aw));
   check("the coach isn't badged for an award they gave", !(() => { const n = [...C.doc.querySelectorAll("#sideNav .nav-item")].find(x => /Trophies/.test(x.textContent)); return !!(n && n.querySelector(".nav-badge")); })());
   check("Tom's phone gets a banner naming the coach", await until(() => pushesTo("lifter").some(p => /gave you a trophy/.test(p.body))), JSON.stringify(pushesTo("lifter").map(p => p.body)));
-  L.nav("Overview"); await tick(100);
+  L.nav("Current Program"); await tick(100);
   L.sync(); await L.settle(); await tick(300);
   check("a badge shows on Trophies for the new award", (() => { const n = [...L.doc.querySelectorAll("#sideNav .nav-item")].find(x => /Trophies/.test(x.textContent)); return !!(n && n.querySelector(".nav-badge")); })() || L.$("troScrim").classList.contains("show"));
   check("...and it's celebrated: Tom is shown it", await until(() => L.$("troScrim").classList.contains("show") && L.$("troTitle").textContent === "Award"), L.$("troTitle").textContent);
@@ -209,7 +209,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
 
   /* ------------------------------------------------------ standards by coach */
   console.log("\nStandards and bodyweight");
-  C.nav("Overview"); C.nav("Trophies"); await tick(150);
+  C.nav("Current Program"); C.nav("Trophies"); await tick(150);
   C.btn("Edit", C.$("troBody")).click(); await tick(50);
   C.$("troBw").value = "89"; C.btn("Save", C.$("troFormBody")).click(); await tick(300);
   C.sync(); await C.settle();

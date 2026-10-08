@@ -153,7 +153,7 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   const blockIn = progCard.querySelector('input[aria-label="Block or program title"]');
   blockIn.value = "B2"; blockIn.dispatchEvent(new w.Event("blur")); await tick(50);
   check("changing the block updates the header too", progSub() === NAME + " · B2", progSub());
-  [...doc.querySelectorAll("#sideNav .nav-item")].find(n => /Overview/.test(n.textContent)).click(); await tick(50);
+  [...doc.querySelectorAll("#sideNav .nav-item")].find(n => /Current Program/.test(n.textContent)).click(); await tick(50);
   await openManage();
   check("it stays collapsed when you come back", !body().querySelector(".dm-progcard").classList.contains("open"));
   body().querySelector(".dm-progcard .pn-toggle").click();

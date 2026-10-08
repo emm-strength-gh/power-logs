@@ -118,7 +118,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
 
   /* ----------------------------------------------------------- set-up */
   await L.dev.upsert("lifter_week_notes", [{ lifter_id: tomId, week: "1", body: "Felt strong today" }], "lifter_id,week");
-  C.nav("Overview"); await tick(50);
+  C.nav("Current Program"); await tick(50);
   await settle(C); await settle(L);
   C.nav("Week 1"); L.nav("Week 1"); await tick(150);
   check("the coach's week shows the lifter's note", /Felt strong today/.test(C.$("wkNotes").textContent));
@@ -136,7 +136,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   const r1 = await dbRx();
   check("it reaches the database, from that coach", r1.length === 1 && r1[0].target_type === "day" && r1[0].target_id === "1|1" && r1[0].emoji === "fire" && r1[0].email === OWNER_EMAIL, JSON.stringify(r1));
   await settle(L);
-  L.nav("Overview"); L.nav("Week 1"); await tick(150);
+  L.nav("Current Program"); L.nav("Week 1"); await tick(150);
   check("the lifter sees the fire on Day 1", chips(L, "#wkList .day-group:nth-child(1)").join() === "\uD83D\uDD25");
   check("...but can't add or change one", !addBtn(L, "#wkList .day-group:nth-child(1)") && dayBar(L, 1).querySelector("button") === null);
   check("...and nothing on Day 2", !dayBar(L, 2));
@@ -147,7 +147,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   dayBar(C, 1).querySelector(".react-chip.mine").click(); await tick(80);
   check("tapping your own takes it back", !dayBar(C, 1).querySelector(".react-chip"));
   await settle(C); await settle(L);
-  L.nav("Overview"); L.nav("Week 1"); await tick(150);
+  L.nav("Current Program"); L.nav("Week 1"); await tick(150);
   check("...for the lifter too", !dayBar(L, 1));
   check("...saved as an empty reaction, not a deleted row", (await dbRx())[0].emoji === null);
   dayBar(C, 2).querySelector(".react-add").click(); await tick(50);
@@ -163,7 +163,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   L.nav("Home"); await tick(100);
   const lnt = [...L.doc.querySelectorAll("#homeNotices .nt-row")].map(r => r.textContent);
   check("the lifter is told, on Home, that a coach reacted (grouped, with the latest)", lnt.length === 1 && /new reactions|reacted .* to/.test(lnt[0]) && /owner reacted/.test(lnt[0]), lnt.join(" | "));
-  L.nav("Overview"); L.nav("Week 1"); await tick(150);
+  L.nav("Current Program"); L.nav("Week 1"); await tick(150);
   check("opening the week clears them", ![...L.doc.querySelectorAll("#homeNotices .nt-row")].some(r => /reacted/.test(r.textContent)));
   check("the lifter sees it under the note, read-only", chips(L, "#wkNotesReact").join() === "\uD83D\uDC4D" && !L.$("wkNotesReact").querySelector(".react-add"));
   check("...and the 100 on Day 2", chips(L, "#wkList .day-group:nth-child(2)").join() === "\uD83D\uDCAF");
@@ -187,7 +187,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   const send = async (a, text) => { a.$("msgInput").value = text; a.$("msgInput").dispatchEvent(new a.w.Event("input")); a.btn("Send", a.$("msgBody")).click(); await tick(150); };
   await send(L, "Hit a double today");
   await settle(L); await settle(C);
-  C.nav("Overview"); C.nav("Messages"); await tick(150);
+  C.nav("Current Program"); C.nav("Messages"); await tick(150);
   const bub = (a, re) => [...a.doc.querySelectorAll("#msgList .msg-bubble")].find(b => re.test(b.textContent));
   const reactBtn = (a, re) => bub(a, re).parentElement.querySelector('button[aria-label="React to this message"]');
   check("a coach can react to a message with the button beside it", !!reactBtn(C, /double today/));
@@ -196,18 +196,18 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   await pick(C, "fire");
   check("it shows under the message, and the thread stays where it was", chips(C, "#msgList .msg-bubble").join() === "\uD83D\uDD25");
   await settle(C); await settle(L);
-  L.nav("Overview"); L.nav("Messages"); await tick(150);
+  L.nav("Current Program"); L.nav("Messages"); await tick(150);
   check("the lifter sees it", chips(L, "#msgList .msg-bubble").join() === "\uD83D\uDD25");
   check("...and has the button too: lifters react to messages", !!reactBtn(L, /double today/));
   reactBtn(L, /double today/).click(); await tick(50);
   await pick(L, "fire");
   check("two people, one emoji: a count", chips(L, "#msgList .msg-bubble").join() === "\uD83D\uDD25" + "2" && bub(L, /double today/).querySelector(".react-chip").title.split(", ").sort().join() === "You,owner", chips(L, "#msgList .msg-bubble").join() + " / " + bub(L, /double today/).querySelector(".react-chip").title);
   await settle(L); await settle(C);
-  C.nav("Overview"); C.nav("Messages"); await tick(150);
+  C.nav("Current Program"); C.nav("Messages"); await tick(150);
   check("the coach's copy agrees", chips(C, "#msgList .msg-bubble").join() === "\uD83D\uDD25" + "2");
   await send(C, "Nice one, keep it up");
   await settle(C); await settle(L);
-  L.nav("Overview"); L.nav("Messages"); await tick(150);
+  L.nav("Current Program"); L.nav("Messages"); await tick(150);
   const b2 = bub(L, /Nice one/);
   b2.click(); b2.click(); await tick(100);
   check("double-tapping a message gives it a heart", chips(L, "#msgList .msg-bubble").includes("\u2764\uFE0F"));
@@ -217,7 +217,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   C.nav("Home"); await tick(100);
   const cnt = [...C.doc.querySelectorAll("#homeNotices .nt-row b")].map(b => b.textContent);
   check("the coach is told the lifter reacted to their message", cnt.some(x => /Tom reacted .* to your message/.test(x)), cnt.join(" | "));
-  C.nav("Overview"); C.nav("Messages"); await tick(150);
+  C.nav("Current Program"); C.nav("Messages"); await tick(150);
   check("reading the thread clears that", ![...C.doc.querySelectorAll("#homeNotices .nt-row b")].some(b => /reacted/.test(b.textContent)));
   L.dev.state.offline = true;
   await send(L, "Pending one");

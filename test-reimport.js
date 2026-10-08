@@ -77,7 +77,7 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   check("1-rep max edited in the app too", prof().maxes.Squat === "205", prof().maxes.Squat);
 
   console.log("\nRe-importing the program CSV");
-  navTo("Overview");
+  navTo("Current Program");
   await loadFile(CSV, "lifter.csv");
   check("training maxes survive the re-import", tms() === '{"Squat":"175","Bench":"145"}', tms());
   check("1-rep maxes still follow the CSV", prof().maxes.Squat === "195", prof().maxes.Squat);
@@ -94,7 +94,7 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   const backup = blob ? JSON.parse(await blob.text()) : {};
   check("backup carries the training maxes", JSON.stringify(backup.profile && backup.profile.trainingMaxes) === '{"Squat":"175","Bench":"145"}');
   const variant = mutate => { const b = JSON.parse(JSON.stringify(backup)); mutate(b); return JSON.stringify(b); };
-  navTo("Overview");
+  navTo("Current Program");
   await loadFile(variant(b => { delete b.profile.trainingMaxes; }), "older.json");
   check("an older backup without them keeps the device's", tms() === '{"Squat":"175","Bench":"145"}', tms());
   await loadFile(variant(b => { b.profile.trainingMaxes = { Squat: "180" }; }), "newer.json");

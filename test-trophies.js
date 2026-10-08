@@ -132,7 +132,7 @@ const csv = (o = {}) => {
   check("lots at once: no dialog, just the shelf", !A.$("troScrim").classList.contains("show"));
   check("earned trophies show their date, locked ones what is needed", /Need 212\.5 kg/.test(A.item("lvl:squat:elite").textContent) && A.item("lvl:squat:advanced").classList.contains("earned"), A.item("lvl:squat:elite").textContent);
   check("what's new is marked, and counts as seen once drawn", A.item("lvl:squat:advanced").classList.contains("fresh") && Object.values(A.store()["Test Lifter"].earned).every(e => e.seen === true));
-  A.nav("Overview"); A.nav("Trophies"); await tick(100);
+  A.nav("Current Program"); A.nav("Trophies"); await tick(100);
   check("...so the mark is gone next time", !A.item("lvl:squat:advanced").classList.contains("fresh"));
   check("the Earned filter hides what isn't", (() => { A.btn("Earned", A.$("troBody")).click(); const r = !A.item("lvl:squat:elite") && !!A.item("lvl:squat:advanced"); A.btn("All", A.$("troBody")).click(); return r; })());
   check("bench next-level hint", /Elite at 155 kg · 27\.5 kg to go/.test(A.text()), A.text().slice(0, 600));

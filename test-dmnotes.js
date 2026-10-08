@@ -88,7 +88,7 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   $("maxesClose").click();
 
   console.log("\nNever outside Manage Program");
-  check("Overview doesn't show it", navTo("Overview") && !$("viewOverview").textContent.includes("Goal: 200 squat"));
+  check("Overview doesn't show it", navTo("Current Program") && !$("viewOverview").textContent.includes("Goal: 200 squat"));
   check("Overview still shows the CSV's program notes", $("viewOverview").textContent.includes("Program note from the CSV"));
   navTo("Week 1");
   await tick();

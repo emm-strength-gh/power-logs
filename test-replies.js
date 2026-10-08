@@ -177,7 +177,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("it shows the quoted message above, with who wrote it", !!q() && /Tom/.test(q().querySelector("b").textContent) && /Great session/.test(q().textContent), q() && q().textContent);
   check("the reply's own text follows the quote", /Glad it went well/.test(bubbleOf(C, /Glad it went well/).textContent));
   await sync(L);
-  L.nav("Overview"); L.nav("Messages"); await tick(150);
+  L.nav("Current Program"); L.nav("Messages"); await tick(150);
   const lq = bubbleOf(L, /Glad it went well/).querySelector(".msg-quote");
   check("the lifter sees it too, his own message as You", !!lq && /^You/.test(lq.textContent) && /Great session/.test(lq.textContent), lq && lq.textContent);
   check("the reply buttons are there as soon as a thread opens, not only after a refresh", !!replyBtn(L, /Plain message/));
@@ -209,7 +209,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   L.w.scrollTo = (x, y) => calls.push(y);
   Object.defineProperty(L.doc.body, "scrollHeight", { value: 4321, configurable: true });
   Object.defineProperty(L.w, "innerHeight", { value: 800, configurable: true });
-  L.nav("Overview"); await tick(50);
+  L.nav("Current Program"); await tick(50);
   calls.length = 0;
   L.nav("Messages"); await tick(600);
   check("opening Messages scrolls to the bottom, newest message and the box", calls.includes(3521), JSON.stringify(calls.slice(0, 5)));

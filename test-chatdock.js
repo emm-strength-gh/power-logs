@@ -116,8 +116,8 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   const msgs = async () => (await rows("select body, reply_to from public.messages order by created_at"));
   const store = a => a.w.localStorage.getItem("spotter.chatDock.v1");
 
-  C.nav("Overview"); await tick(100);
-  L.nav("Overview"); await tick(100);
+  C.nav("Current Program"); await tick(100);
+  L.nav("Current Program"); await tick(100);
   console.log("The window's first look");
   check("a coach on a lifter's Overview has the floating window, minimised to a round button", !dock(C).hidden && !C.$("chatBubble").hidden && C.$("chatWin").hidden);
   check("the button is a small message bubble", !!C.$("chatBubble").querySelector("svg") && C.$("chatBubble").getAttribute("aria-label") === "Open messages");
@@ -150,7 +150,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   await send(C, "#chatBody", "Thursday is a heavy single, RPE 8");
   await settle(C); await settle(L);
   check("a message sent from the window reaches the database", (await msgs()).some(m => m.body === "Thursday is a heavy single, RPE 8"));
-  L.nav("Overview"); L.nav("Messages"); await tick(150);
+  L.nav("Current Program"); L.nav("Messages"); await tick(150);
   check("...and the lifter", [...L.doc.querySelectorAll("#msgList .msg-bubble")].some(b => /heavy single/.test(b.textContent)));
   const theirs = [...C.doc.querySelectorAll("#chatBody .msg-bubble")].find(b => /quick question/.test(b.textContent));
   check("each message has reply and react buttons, as in Messages", !!theirs.parentElement.querySelector('.msg-reply[aria-label^="Reply to"]') && !!theirs.parentElement.querySelector('button[aria-label="React to this message"]'));
@@ -209,9 +209,9 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("on Analytics it isn't", dock(C).hidden && C.$("chatBody").children.length === 0);
   C.nav("Home"); await tick(100);
   check("...nor on Home", dock(C).hidden);
-  C.nav("Overview"); C.nav("Messages"); await tick(150);
+  C.nav("Current Program"); C.nav("Messages"); await tick(150);
   check("in the Messages view it gives way to the real thing: one message box on the page", dock(C).hidden && C.doc.querySelectorAll("#msgInput").length === 1 && C.$("msgBody").contains(C.$("msgInput")));
-  C.nav("Overview"); await tick(150);
+  C.nav("Current Program"); await tick(150);
   check("back on the Overview it returns, and Messages' own box is empty", !dock(C).hidden && !C.$("chatWin").hidden && C.$("msgBody").children.length === 0 && C.doc.querySelectorAll("#msgInput").length === 1);
 
   console.log("\nScrolling");
@@ -223,7 +223,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("opening it scrolls its own list to the newest message", sets.includes(999), JSON.stringify(sets.slice(0, 4)));
 
   console.log("\nThe lifter's window");
-  L.nav("Overview"); await tick(100);
+  L.nav("Current Program"); await tick(100);
   await send(C, "#chatBody", "Message from the window while you read this");
   await settle(C); await settle(L);
   check("a message from the coach is counted on the lifter's round button", L.$("chatBadge").textContent !== "0" && !L.$("chatBadge").hidden, L.$("chatBadge").textContent);

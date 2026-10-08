@@ -612,6 +612,21 @@ begin
   v := pg_temp.val(c1, format($q$select public.set_analytics_off(%L, '{}')$q$, m));
   perform pg_temp.ok('switching everything back on clears it', v = '{}' and pg_temp.val(l, format($q$select analytics_off::text from public.lifter_settings where lifter_id = %L$q$, m)) = '{}', v);
 
+  -- Tools a lifter sees: a coach switches the Velocity Tracker / RPE Calculator off
+  v := pg_temp.val(c1, format($q$select public.set_tools_off(%L, '{rpe,vbt,rpe}')$q$, m));
+  perform pg_temp.ok('a coach switches tools off for their lifter (duplicates folded)', v = '{rpe,vbt}', v);
+  perform pg_temp.ok('...the lifter reads it, and it left the Analytics list alone',
+    pg_temp.val(l, format($q$select tools_off::text from public.lifter_settings where lifter_id = %L$q$, m)) = '{rpe,vbt}'
+    and pg_temp.val(l, format($q$select analytics_off::text from public.lifter_settings where lifter_id = %L$q$, m)) = '{}');
+  v := pg_temp.val(l, format($q$select public.set_tools_off(%L, '{}')$q$, m));
+  perform pg_temp.ok('the lifter cannot switch them back on', v like 'refused%', v);
+  v := pg_temp.val(x, format($q$select public.set_tools_off(%L, '{vbt}')$q$, m));
+  perform pg_temp.ok('a stranger cannot', v like 'refused%', v);
+  v := pg_temp.val(c1, format($q$select public.set_tools_off(%L, '{plates}')$q$, m));
+  perform pg_temp.ok('an unknown tool is refused', v like 'refused%', v);
+  v := pg_temp.val(c1, format($q$select public.set_tools_off(%L, '{}')$q$, m));
+  perform pg_temp.ok('switching them back on clears it', v = '{}', v);
+
   -- Lifter limits: the owner caps how many lifters a coach has
   r := pg_temp.act(c1, format($q$select public.set_lifter_limit(%L, 99)$q$, c1));
   perform pg_temp.ok('a coach cannot set their own lifter limit', r like 'refused%', r);

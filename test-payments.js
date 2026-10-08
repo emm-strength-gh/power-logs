@@ -274,7 +274,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   C.btn("Approve", C.$("acctBody")).click();
   await until(async () => (await rows("select coach_status from public.accounts where email = 'jordan@test.invalid'"))[0].coach_status === "approved");
   C.closeSheet();
-  C.nav("Overview"); C.nav("Manage program"); await tick(100);
+  C.nav("Current Program"); C.nav("Manage program"); await tick(100);
   C.$("dmShareBtn").click(); await tick(50);
   C.$("dmShare").querySelector('input[placeholder="Another coach’s email"]').value = "jordan@test.invalid";
   C.btn("Share", C.$("dmShare")).click();

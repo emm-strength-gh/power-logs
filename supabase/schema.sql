@@ -1372,3 +1372,24 @@ begin
 end $$;
 revoke execute on function public.set_analytics_off(uuid, text[]) from public, anon;
 grant execute on function public.set_analytics_off(uuid, text[]) to authenticated;
+
+---------------------------------------------------------------- tools a lifter sees
+-- Like analytics_off, for the Velocity Tracker ('vbt') and the RPE Calculator ('rpe'): a coach switches them off
+-- for a lifter (Manage Program > Lifter access). Only the lifter's coaches change it; the lifter can read it.
+alter table public.lifter_settings add column if not exists tools_off text[] not null default '{}';
+
+create or replace function public.set_tools_off(p_lifter uuid, p_off text[]) returns text[]
+language plpgsql security definer set search_path = '' as $$
+declare clean text[];
+begin
+  if not private.can_coach_live(p_lifter) then raise exception 'only a coach of this lifter sets what they see'; end if;
+  if exists (select 1 from unnest(coalesce(p_off, '{}'::text[])) k where k not in ('vbt', 'rpe')) then
+    raise exception 'unknown tool';
+  end if;
+  select coalesce(array_agg(distinct k order by k), '{}'::text[]) into clean from unnest(coalesce(p_off, '{}'::text[])) k;
+  insert into public.lifter_settings (lifter_id, tools_off) values (p_lifter, clean)
+  on conflict (lifter_id) do update set tools_off = excluded.tools_off, updated_at = now();
+  return clean;
+end $$;
+revoke execute on function public.set_tools_off(uuid, text[]) from public, anon;
+grant execute on function public.set_tools_off(uuid, text[]) to authenticated;

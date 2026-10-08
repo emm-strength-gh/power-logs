@@ -327,7 +327,7 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
     ["loadBtn", "saveBtn", "loadBtn2", "saveBtn2", "scanBtn"].every(id => D.$(id).classList.contains("files-only")) &&
     [...D.$("moreMenu").querySelectorAll('[data-for="loadBtn"], [data-for="saveBtn"]')].every(b => b.classList.contains("files-only")) &&
     !!D.$("loadBtnEmpty").closest(".files-only"));
-  check("but Overview, Analytics, RPE Calculator, Velocity Tracker and weeks", ["Overview", "Analytics", "RPE Calculator", "Velocity Tracker", "Week 1"].every(n => D.navs().includes(n)), D.navs().join());
+  check("but Overview, Analytics, RPE Calculator, Velocity Tracker and weeks", ["Current Program", "Analytics", "RPE Calculator", "Velocity Tracker", "Week 1"].every(n => D.navs().includes(n)), D.navs().join());
   check("no upload prompt for a lifter", !D.$("confirmScrim").classList.contains("show"));
   C.sync(); await C.settle();
   check("the coach sees he has signed in", await until(() => /Tom signed in · 1 coach/.test(C.$("dmShareBtn").textContent)), C.$("dmShareBtn").textContent);
@@ -364,7 +364,7 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   const aName = A.$("dmBody").querySelector('input[aria-label="Lifter name"]');
   aName.value = "Tommy"; aName.dispatchEvent(new A.w.Event("blur")); await tick(200);
   check("a name already taken here is refused", aName.value === "Sam" && /already a lifter called/.test(A.$("toastMsg").textContent) && (await lifters()).some(l => l.name === "Sam"));
-  A.nav("Overview");
+  A.nav("Current Program");
   nameIn().value = "Tom"; nameIn().dispatchEvent(new C.w.Event("blur"));
   check("renaming back works the same way", await until(() => D.names().includes("Tom") && C.names().includes("Tom")) && await until(async () => (await lifters()).some(l => l.name === "Tom")));
   await D.settle();
@@ -417,7 +417,7 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   C.$("acctBtn").click(); await tick();
   check("the person can ask to be a coach again", await until(() => !!C.btn("I’m a coach: request access", C.$("acctBody"))));
   C.close();
-  A.nav("Overview");
+  A.nav("Current Program");
   D.sync(); await D.settle();
   check("and Tom's phone loses it", !D.names().includes("Tom"), D.names().join());
 

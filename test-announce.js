@@ -143,7 +143,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   S.doc.dispatchEvent(new S.w.KeyboardEvent("keydown", { key: "Escape" }));
   await tick(100);
   check("clicking outside it, or Escape, doesn't dismiss it", S.shown() && S.items().length === 1);
-  S.nav("Overview"); await tick(100);
+  S.nav("Current Program"); await tick(100);
   check("leaving Home hides it...", !S.shown());
   S.nav("Home"); await tick(150);
   check("...and it is back on Home, still open", S.shown() && S.items().length === 1);

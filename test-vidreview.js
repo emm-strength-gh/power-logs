@@ -207,7 +207,7 @@ const MB = 1048576;
   check("it opens there with the conversation (and a message box), like on Overview", !L.$("chatWin").hidden && !!L.$("chatBody").querySelector("#msgInput"));
   L.$("chatMin").click(); await tick(100);
   check("...and minimises again", L.$("chatWin").hidden && !L.$("chatBubble").hidden);
-  C.nav("Overview"); await tick(100);
+  C.nav("Current Program"); await tick(100);
 
   console.log("\nChoosing a video, then crop and cut");
   await L.pickFile("squat.mov");
@@ -484,7 +484,7 @@ const MB = 1048576;
   check("...the player closes and the card goes", await until(() => !C.$("vidPlayScrim").classList.contains("show") && C.cards().length === 1));
   check("...and the coach's copy of it is removed from the device", await until(() => !C.priv.has("vid:" + v2.id)));
   L.sync(); await L.settle();
-  L.nav("Overview"); L.nav("Vid Review"); await tick(300);
+  L.nav("Current Program"); L.nav("Vid Review"); await tick(300);
   check("Tom's phone drops it too, and its copy", await until(() => L.cards().length === 1) && await until(() => !L.priv.has("vid:" + v2.id)));
   check("his own video is still there", /Squat/.test(L.cards()[0].textContent));
 
@@ -527,7 +527,7 @@ const MB = 1048576;
 
   /* ------------------------------------------------------------ compressing while you edit */
   console.log("\nThe crop left alone: nothing to wait for");
-  C.nav("Overview"); C.nav("Vid Review"); await tick(300);
+  C.nav("Current Program"); C.nav("Vid Review"); await tick(300);
   const nJobs = jobs.length, s0 = bgStarts.length, cut0 = bgCuts.length, vBefore = (await vrows()).length;
   await C.pickFile("fast.mov");
   check("opening a clip starts compressing it", bgStarts.length === s0 + 1 && !bgStarts[s0].cancelled);

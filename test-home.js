@@ -109,7 +109,7 @@ async function boot(wd, storage = {}) {
   A.btn("All lifters", A.$("homeLifters")).click(); await tick(50);
   [...A.doc.querySelectorAll("#liftersBody .msg-thread")].find(r => /Sam/.test(r.textContent)).click(); await tick(150);
   check("tapping a lifter opens their program as it always did", A.active() === "viewOverview" && A.$("ovName").textContent === "Sam", A.active() + " " + A.$("ovName").textContent);
-  check("...with the usual sidebar: Overview, Analytics, Messages…, the weeks", ["Overview", "Analytics", "Trophies"].every(l => A.navs().includes(l)) && A.navs().some(l => /^Week 1/.test(l)), A.navs().join());
+  check("...with the usual sidebar: Overview, Analytics, Messages…, the weeks", ["Current Program", "Analytics", "Trophies"].every(l => A.navs().includes(l)) && A.navs().some(l => /^Week 1/.test(l)), A.navs().join());
   check("...and Home is still in it", A.navs().includes("Home"));
   check("the lifter's page has a Home button of its own", !A.$("ovHome").hidden);
   A.nav("Analytics"); await tick(100);
@@ -214,7 +214,7 @@ async function boot(wd, storage = {}) {
   sw(A, A.$("viewHome"), 150, 100, 160, 260);
   await tick(50);
   check("and pulling down to sync still works on Home", /Syncing|Up to date/.test(A.$("toastMsg").textContent), A.$("toastMsg").textContent);
-  A.nav("Overview"); await tick(100);
+  A.nav("Current Program"); await tick(100);
   console.log("\nClosing the left navigation");
   A.$("layout").classList.add("nav-open");
   sw(A, A.$("sidebar"), 220, 300, 40, 310);

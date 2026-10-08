@@ -26,7 +26,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `manifest.webmanifest` | App name, icon set, colours, `display: standalone`. |
 | `sw.js` | Service worker. Offline caching, including Chart.js and supabase-js. |
 | `supabase/schema.sql` | The cloud database: tables and the row-level security rules that decide who sees and changes what. Paste into Supabase's SQL Editor; safe to re-run. |
-| `supabase/selftest.sql` | Checks on those rules (243 at present). Paste and run after the schema; every row should say PASS. |
+| `supabase/selftest.sql` | Checks on those rules (250 at present). Paste and run after the schema; every row should say PASS. |
 | `supabase/functions/notify/index.ts` | The Supabase Edge Function that sends phone/computer notifications (Web Push). Pasted into Supabase once; see *Messages and notifications*. |
 | `index.html` | **The only public page**: the sign-in screen (email code), which then downloads the app from the database, keeps it on the device and starts it in the same window. It is also the home-screen `start_url`. |
 | `power-logs.html` | Just forwards to `index.html` (keeping `?open=...`), so home-screen icons, bookmarks and notification links made before the move still work. |
@@ -182,12 +182,17 @@ Nobody can make an account unless their email is invited. Supabase asks the data
 
 Anyone else gets "This email hasn't been invited to Power Logs yet. Ask your coach to add it, then try again." on the sign-in page, and no email is sent. Accounts that already exist are not affected (the check only runs when an account would be created), and taking an invite back doesn't remove an account. The list is the `invites` table: only the owner reads or changes it. To turn this off, disable the hook in the dashboard.
 
-## Hiding Analytics from a lifter
+## What a lifter sees: Lifter access
 
-On a lifter's **Analytics** page, a coach sees a **Lifter access** card with a switch for the whole page and one for each part (Maxes, Total tonnage, Number of lifts, Heaviest top set). Switch one off and it disappears from that lifter's own devices: the whole page also drops out of their menu and takes them off it if they're on it. Coaches (the lifter's other coaches too, and the owner) always see everything, and the card is theirs alone.
+In **Manage Program**, a coach of a synced lifter has a **Lifter access** button (next to Sharing). Its dialog has a switch for:
 
-- It is stored per lifter (`lifter_settings.analytics_off`) and only that lifter's coaches can change it (RPC `set_analytics_off`); the lifter can read it but not write it. It reaches their phone with the normal sync (and live, when they're online).
-- This hides the *derived* numbers and charts. The lifter's own logged sets and program are still theirs, and their Overview still shows their maxes.
+- the **Analytics page**, and each of its parts (Maxes, Total tonnage, Number of lifts, Heaviest top set);
+- the **Velocity Tracker** and the **RPE Calculator**.
+
+Switch one off and it disappears from that lifter's own devices. Switching the Analytics page off (or every part of it) also removes its menu item and the Analytics button on the lifter's **Current Program** page, and takes them off the page if they're on it; a hidden tool leaves their menu the same way. When a lifter hides a tool on every program they have, the tool's file isn't kept on their device either. Coaches (the lifter's other coaches and the owner too) always see everything.
+
+- It is stored per lifter (`lifter_settings.analytics_off` and `tools_off`) and only that lifter's coaches can change it (RPCs `set_analytics_off` and `set_tools_off`); the lifter can read it but not write it. It reaches their phone with the normal sync, and live when they're online.
+- This hides the *derived* numbers and charts and the two tools. The lifter's own logged sets and program are still theirs, and their Current Program page still shows their maxes.
 
 ## Lifter limits for coaches
 

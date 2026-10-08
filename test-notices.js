@@ -150,7 +150,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("...showing the latest", /Latest: Tom: And can I swap/.test(rowsOf(C)[0].textContent));
   rowsOf(C)[0].querySelector(".nt-main").click(); await tick(200);
   check("tapping it opens that conversation and clears the banner", C.$("viewMessages").classList.contains("active") && empty(C));
-  C.nav("Overview"); await tick(50);
+  C.nav("Current Program"); await tick(50);
 
   console.log("\nMessages that get read elsewhere");
   await send(L, "One more thing");
@@ -161,7 +161,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   await send(L, "Typed while you're looking");
   C.sync(); await tick(1800); await C.settle();
   check("a message that arrives while you're reading that thread makes no banner", empty(C));
-  C.nav("Overview"); await tick(50);
+  C.nav("Current Program"); await tick(50);
 
   /* ----------------------------------------------------- finished days */
   console.log("\nFinished days");
@@ -178,7 +178,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("the lifter doesn't get banners for their own ticks", empty(L));
   C.nav("Week 1"); await tick(150);
   check("opening that week clears them", !titles(C).some(x => /finished/.test(x)), titles(C).join("|"));
-  C.nav("Overview"); await tick(50);
+  C.nav("Current Program"); await tick(50);
 
   /* ------------------------------------------------------- weekly notes */
   console.log("\nWeekly notes: who wrote it");
@@ -190,7 +190,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("the coach is told the lifter wrote one, and that it's the lifter", titles(C).some(x => /^Tom \(lifter\) added a note to week 2$/.test(x)), titles(C).join("|"));
   rowsOf(C).find(r => /note to week 2/.test(r.textContent)).querySelector(".nt-main").click(); await tick(200);
   check("tapping it opens that week", C.$("viewWeek").classList.contains("active") && /Week 2/.test(C.$("viewWeek").textContent) && !titles(C).some(x => /note to week 2/.test(x)));
-  C.nav("Overview"); await tick(50);
+  C.nav("Current Program"); await tick(50);
 
   /* ---------------------------------------------------- weeks and days */
   console.log("\nA coach adds weeks and days");
@@ -205,7 +205,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
 
   /* ----------------------------------------------------------- trophies */
   console.log("\nTrophies");
-  L.nav("Overview"); L.nav("Trophies"); await tick(200);
+  L.nav("Current Program"); L.nav("Trophies"); await tick(200);
   L.doc.querySelector('.tro-form [data-sex="m"]').click();
   L.$("troBw").value = "82";
   L.btn("Save", L.$("troBody")).click();
@@ -213,19 +213,19 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   L.sync(); await tick(1800); await L.settle();
   C.sync(); await tick(1800); await C.settle();
   check("the coach is told Tom earned a trophy, and which", titles(C).some(x => /Tom earned a trophy: /.test(x)) || titles(C).some(x => /new trophies/.test(x)), titles(C).join("|"));
-  C.nav("Overview"); C.nav("Trophies"); await tick(200);
+  C.nav("Current Program"); C.nav("Trophies"); await tick(200);
   check("opening Trophies clears them", !titles(C).some(x => /trophy|trophies/.test(x)));
   C.btn("Give an award", C.$("troBody")).click(); await tick(50);
   C.$("troAwardKind").value = "podium"; C.btn("Give award", C.$("troFormBody")).click(); await tick(200);
   C.sync(); await tick(1800); await C.settle();
-  L.nav("Overview"); await tick(50);
+  L.nav("Current Program"); await tick(50);
   L.sync(); await tick(1800); await L.settle(); await tick(300);
   await L.dismiss();
   check("the lifter is told a coach gave an award", titles(L).some(x => /^owner gave you an award: Podium$/.test(x)), titles(L).join("|"));
 
   /* --------------------------------------- away for days: stacking */
   console.log("\nAway for days: they stack");
-  C.nav("Overview"); await tick(50);
+  C.nav("Current Program"); await tick(50);
   for (const m of ["a", "b", "c"]) await send(L, "msg " + m);
   await L.dev.upsert("lifter_week_notes", [{ lifter_id: lifterId, week: "3", body: "Week three note" }], "lifter_id,week");
   L.nav("Week 2"); await tick(100);

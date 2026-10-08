@@ -222,8 +222,8 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   check("his message reaches Tom and the first coach", await until(() => L.bubbles().includes("Welcome aboard, Tom")) && await until(() => { C.nav("Messages"); return C.bubbles().includes("Welcome aboard, Tom"); }));
   check("Tom sees Jordan's name on it", await until(() => [...L.doc.querySelectorAll("#msgList .msg-who")].some(x => x.textContent === "Jordan")));
   await L.send("Thanks both");
-  J.sync(); await J.settle(); J.nav("Overview"); J.nav("Messages"); await tick();
-  C.sync(); await C.settle(); C.nav("Overview"); C.nav("Messages"); await tick();
+  J.sync(); await J.settle(); J.nav("Current Program"); J.nav("Messages"); await tick();
+  C.sync(); await C.settle(); C.nav("Current Program"); C.nav("Messages"); await tick();
   check("both coaches' reads show under Tom's latest", await until(() => L.seen() === "Seen by owner, Jordan"), L.seen());
   check("...while the first coach's latest counts only Tom, not Jordan (who joined after it)",
     await until(() => /^Seen by Tom$/.test(C.seen())), C.seen());
@@ -239,10 +239,10 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   [...L.doc.querySelectorAll("#msgBody .msg-thread")].find(b => /owner/.test(b.textContent)).click(); await tick();
   await L.send("Just between us: hip is sore");
   C.sync(); await C.settle();
-  C.nav("Overview"); C.nav("Messages"); await tick();
+  C.nav("Current Program"); C.nav("Messages"); await tick();
   check("the coach lands in their private thread", C.$("msgBody").querySelector(".msg-title").textContent === "Tom, just you" && C.bubbles().includes("Just between us: hip is sore"), C.$("msgBody").querySelector(".msg-title") && C.$("msgBody").querySelector(".msg-title").textContent);
   J.sync(); await J.settle();
-  J.nav("Overview"); J.nav("Messages"); await tick();
+  J.nav("Current Program"); J.nav("Messages"); await tick();
   check("the other coach can't see it", !J.bubbles().includes("Just between us: hip is sore"));
   check("...not even in the database", (await J.dev.fetch("messages", { sinceCol: "created_at", orderBy: "created_at" })).every(m => m.body !== "Just between us: hip is sore"));
   C.btn("‹ All threads", C.$("msgBody")).click(); await tick();
@@ -299,7 +299,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   check("the owner still gets the button to build one in it", !!C.btn("Build one in Program Hub", C.$("dmBody")));
   hubTab(C).click(); await tick(50);
   check("...and the tab opens", !C.$("dmPaneHub").classList.contains("hidden"));
-  C.nav("Overview"); await tick(50);
+  C.nav("Current Program"); await tick(50);
   check("and the server won't send it twice", (await J.dev.rpc("notify_new_week", { p_lifter: tomId })) === null);
   const newWeekPushes = pushesTo("lifter").filter(p => /new week/.test(p.body)).length;
   check("only one new-week banner in all", newWeekPushes === 1, String(newWeekPushes));
@@ -364,7 +364,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   await until(async () => (await server.sql("select team_thread from public.lifter_settings"))[0].team_thread === true);
   await tick(200);
   C.sync(); await C.settle();
-  C.nav("Overview"); C.nav("Messages"); await tick();
+  C.nav("Current Program"); C.nav("Messages"); await tick();
   L.$("acctBtn").click(); await tick();
   [...L.$("acctBody").querySelectorAll(".acct-check")].find(l => /New messages/.test(l.textContent)).querySelector("input").click();
   await tick(300); L.closeSheet();
@@ -399,10 +399,10 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   C.closeSheet();
   const lBanner = pushesTo("lifter").length;
   await C.send("Named now");
-  check("Tom sees the new name on the owner's messages", await until(() => { L.nav("Overview"); L.nav("Messages"); return [...L.doc.querySelectorAll("#msgList .msg-who")].some(x => x.textContent === "Coach Emm") && ![...L.doc.querySelectorAll("#msgList .msg-who")].some(x => x.textContent === "owner"); }));
+  check("Tom sees the new name on the owner's messages", await until(() => { L.nav("Current Program"); L.nav("Messages"); return [...L.doc.querySelectorAll("#msgList .msg-who")].some(x => x.textContent === "Coach Emm") && ![...L.doc.querySelectorAll("#msgList .msg-who")].some(x => x.textContent === "owner"); }));
   check("...and in his notification", await until(() => pushesTo("lifter").slice(lBanner).some(p => p.body === "New message from Coach Emm")), JSON.stringify(pushesTo("lifter").slice(lBanner)));
   await L.send("Nice name");
-  C.sync(); await C.settle(); C.nav("Overview"); C.nav("Messages"); await tick();
+  C.sync(); await C.settle(); C.nav("Current Program"); C.nav("Messages"); await tick();
   L.sync(); await L.settle();
   check("...and in Seen", await until(() => /Coach Emm/.test(L.seen())), L.seen());
   L.$("acctBtn").click(); await tick();

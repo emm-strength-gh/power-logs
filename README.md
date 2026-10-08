@@ -184,6 +184,8 @@ Anyone else gets "This email hasn't been invited to Power Logs yet. Ask your coa
 
 ## The floating bar (phones and tablets)
 
+It wears the colours of the block title pill at the top of the left menu: the pill's cream fill and thin outline, with the icons drawn in the pill's gold (the dark theme's own pill colours in dark mode). Where it shows, the person icon in the header is hidden (the bar's Account button is the same thing); computers have no bar, so they keep the header icon.
+
 On phones and tablets a see-through, blurred pill floats at the bottom of the screen with five buttons: **Home**, **Current Program**, **Messages** (a coach's is the **Inbox** of every lifter), **Analytics** and **Account**. The one you're on is lit, and a red dot marks unread messages (and, for the owner, a coach request waiting). Analytics drops out for a lifter whose coach has hidden it. It steps aside on a conversation (so it can't cover the message box), on the Velocity Tracker and RPE Calculator, and while you're typing. The floating chat button, pop-up messages and the Payments + sit above it.
 
 "Tablet" means a window up to 1024 px wide, or a touch screen without a mouse up to 1400 px (iPad Pro landscape). **Computers don't get it**: they keep only the left menu. The left menu stays on every device (a drawer behind the menu button on phones and narrow tablets, always open on wide ones, where the bar centres itself over the page beside it).
@@ -494,7 +496,7 @@ like Done ticks; only PRs and awards need a coach.
 ## Rearranging lifters
 
 With two or more lifters loaded, the lifter dropdown ends with **⇅ Rearrange lifters…**,
-and the sidebar has a **Rearrange lifters** button. Both open a sheet where you drag a
+which opens a sheet where you drag a
 lifter by its handle or nudge it with the arrows; the dropdown follows. The order is
 saved on the device as you go (`spotter.lifterOrder.v1`). Newly loaded lifters join
 at the bottom, a re-imported lifter keeps its place, and **Unload everything** resets

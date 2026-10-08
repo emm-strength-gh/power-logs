@@ -57,14 +57,14 @@ const pickRearrange = app => {
   console.log("\nOne lifter: nothing to arrange");
   await load(app, "Ava", "Block 1");
   check("no Rearrange entry in the dropdown", !options(app).includes(REARRANGE), options(app).join(","));
-  check("sidebar button hidden", app.$("orderBtn").style.display === "none");
+  check("there is no Rearrange button in the left menu", !app.$("orderBtn"));
 
   console.log("\nThree lifters, in load order");
   await load(app, "Ben", "Block 3");
   await load(app, "Cal", "Block 7");
   check("dropdown lists them in load order, then Rearrange", options(app).join(",") === `Ava,Ben,Cal,${REARRANGE}`, options(app).join(","));
   check("Rearrange entry is labelled", /Rearrange lifters/.test(app.$("lifterSelect").options[3].textContent));
-  check("sidebar button shown", app.$("orderBtn").style.display === "");
+  check("...still none with three (the dropdown is the way in)", !app.$("orderBtn") && !/Rearrange/.test(app.$("sideNav").textContent + app.$("sideNav").nextElementSibling.textContent));
   const before = app.$("lifterSelect").value;
 
   console.log("\nOpening the sheet from the dropdown");
@@ -97,9 +97,9 @@ const pickRearrange = app => {
   check("re-importing a lifter keeps its place", options(app).slice(0, 4).join(",") === "Cal,Ben,Ava,Dee", options(app).join(","));
   check("...and shows its new block", app.$("lifterSelect").options[1].textContent === "Ben · Block 3 Nats", app.$("lifterSelect").options[1].textContent);
 
-  console.log("\nSidebar button and Escape");
-  app.$("orderBtn").click();
-  check("sidebar button opens the sheet", app.$("orderScrim").classList.contains("show") && rows(app).length === 4);
+  console.log("\nEscape");
+  pickRearrange(app);
+  check("the dropdown opens the sheet again", app.$("orderScrim").classList.contains("show") && rows(app).length === 4);
   app.w.document.dispatchEvent(new app.w.KeyboardEvent("keydown", { key: "Escape" }));
   check("Escape closes it", !app.$("orderScrim").classList.contains("show"));
 

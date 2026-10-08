@@ -137,6 +137,7 @@ private script kept outside it (`private.settings`).
   on sign-up by `private.on_auth_user`, only from 'none'), a live `lifters.lifter_email`, or the owner's email. The app's
   owner UI is `buildInvitesSection()` (`loadInvites`/`addInvite`/`removeInvite`) in the account sheet. test-cloudfake's
   `pgServer({ inviteOnly: true })` runs the hook on sign-up; the other tests leave it off.
+- The floating tab bar styling is the block pill's own variables (`var(--gold-soft)` fill, `var(--border)`, `var(--gold)` icons, so both themes follow); `.acct-btn` is hidden in the same media query. The left menu has no Rearrange button (the lifter dropdown's entry opens that sheet).
 - The floating tab bar (`#tabBar`, `renderTabBar()`, called from `renderSidebar()`, `updateMsgBadges()` and `setCloudStatus()`): Home, Current Program,
   Messages (the Inbox for a coach), Analytics (not when `accessOffFor(current).all`) and Account, with `.tb-dot` red dots for unread / pending coach requests. Shown by CSS only at
   `(max-width: 1024px), (pointer: coarse) and (hover: none) and (max-width: 1400px)` (`.tabbar` is `display: none` otherwise: computers keep only the left menu); the JS always builds

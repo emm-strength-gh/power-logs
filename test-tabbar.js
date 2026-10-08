@@ -69,12 +69,14 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Max,Squat,172.5\r\nWeek,Day,Exercise,W
 
   /* ------------------------------------------------------------ the styling */
   console.log("The look");
-  const css = html.slice(html.indexOf("The floating tab bar"), html.indexOf("The floating tab bar") + 2600);
+  const css = html.slice(html.indexOf("The floating tab bar"), html.indexOf("The floating tab bar") + 3800);
   check("it is shown on phones and tablets only: a narrow window, or a touch screen without a mouse", /@media \(max-width: 1024px\), \(pointer: coarse\) and \(hover: none\) and \(max-width: 1400px\)/.test(css));
   check("...and not otherwise (hidden by default, so computers keep only the side menu)", /\.tabbar \{ display: none; \}/.test(html));
-  check("it is a see-through, blurred pill, with a darker one in dark mode", /backdrop-filter: blur\(20px\)/.test(css) && /rgba\(228,214,182,\.70\)/.test(css) && /rgba\(100,86,52,\.58\)/.test(css) && /1\.5px solid rgba\(243,227,163,\.95\)/.test(css) && /border-color: rgba\(243,227,163,\.7\)/.test(css) && /html\[data-theme="dark"\] \.tabbar/.test(css));
+  check("it wears the block title pill's colours (its fill and outline, its gold for the icons), so dark mode follows by itself", /backdrop-filter: blur\(20px\)/.test(css) && /background: var\(--gold-soft\); border: 1px solid var\(--border\)/.test(css) && /color: var\(--gold\)/.test(css) && /html\[data-theme="dark"\] \.tabbar/.test(css));
   check("the floating chat button, the message pop-up and the Payments + sit above it", /body\.has-tabbar \.chat-dock/.test(css) && /body\.has-tabbar #toast/.test(css) && /body\.has-tabbar \.pay-add/.test(css));
   check("the left menu button and menu are not touched by it", /\.menu-btn \{ display: grid; \}/.test(html));
+  check("the person icon leaves the header only where the bar shows (it is inside that rule, so computers keep it)", /\.acct-btn \{ display: none; \}/.test(css));
+  check("the left menu has no Rearrange lifters button", !/id="orderBtn"/.test(html));
 
   /* ------------------------------------------------------------ set-up */
   console.log("\nSet-up: the owner coaches Tom, who signs in");

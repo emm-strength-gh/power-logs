@@ -159,13 +159,13 @@ const csv = (o = {}) => {
   A.item("lvl:squat:advanced").click(); await tick(150);
   check("tapping an earned trophy opens it", A.$("troScrim").classList.contains("show"));
   check("the image is on the page", !!A.doc.querySelector("#troCard canvas.tro-canvas"));
-  check("it says what it is, in whose name, and when", ["TROPHY UNLOCKED", "Squat · Advanced", "Test Lifter", "EmmStrength Power Logs"].every(s => A.drawn.some(d => d.indexOf(s) !== -1)), A.drawn.join(" | "));
+  check("it says what it is, in whose name, and when", ["TROPHY UNLOCKED", "Squat · Advanced", "Test Lifter", "Power Logs"].every(s => A.drawn.some(d => d.indexOf(s) !== -1)), A.drawn.join(" | "));
   check("...with the lift that earned it", A.drawn.some(d => /172\.5 kg/.test(d)));
   check("the share button is offered (this browser can share files)", A.$("troShare").textContent === "Share to your story" && !A.$("troSave").hidden);
   check("the hint names the apps and says why it can't post for you", /Instagram/.test(A.$("troShareHint").textContent) && /directly/.test(A.$("troShareHint").textContent));
   A.$("troShare").click(); await tick(100);
   check("sharing hands the share sheet a PNG", A.shared.length === 1 && A.shared[0].files[0].type === "image/png" && /\.png$/.test(A.shared[0].files[0].name), JSON.stringify(A.shared.map(s => Object.keys(s))));
-  check("...with a caption", /Squat · Advanced/.test(A.shared[0].text) && /EmmStrength Power Logs/.test(A.shared[0].text));
+  check("...with a caption", /Squat · Advanced/.test(A.shared[0].text) && /\nPower Logs$/.test(A.shared[0].text));
   A.drawn.length = 0;
   A.$("troShowName").checked = false; A.$("troShowName").dispatchEvent(new A.w.Event("change")); await tick(100);
   check("hiding the name redraws the image without it", A.drawn.length > 0 && !A.drawn.some(d => d === "Test Lifter"), A.drawn.join(" | "));

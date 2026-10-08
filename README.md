@@ -1,4 +1,4 @@
-# EmmStrength Power Logs — iPhone home-screen app
+# Power Logs — iPhone home-screen app
 
 The app (`app.html`, kept out of this repo: see *The app itself is private too*) wrapped as an installable PWA. Runs full-screen with its own icon,
 works offline including charts, and exports JSON/CSV through the iOS share sheet.

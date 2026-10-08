@@ -1,4 +1,4 @@
-# EmmStrength Power Logs
+# Power Logs
 
 An installable iPhone/desktop PWA for powerlifting training logs. No build step,
 no framework, no server of our own — self-contained HTML files with inline

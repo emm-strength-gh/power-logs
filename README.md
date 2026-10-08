@@ -182,6 +182,12 @@ Nobody can make an account unless their email is invited. Supabase asks the data
 
 Anyone else gets "This email hasn't been invited to Power Logs yet. Ask your coach to add it, then try again." on the sign-in page, and no email is sent. Accounts that already exist are not affected (the check only runs when an account would be created), and taking an invite back doesn't remove an account. The list is the `invites` table: only the owner reads or changes it. To turn this off, disable the hook in the dashboard.
 
+## The floating bar (phones and tablets)
+
+On phones and tablets a see-through, blurred pill floats at the bottom of the screen with five buttons: **Home**, **Current Program**, **Messages** (a coach's is the **Inbox** of every lifter), **Analytics** and **Account**. The one you're on is lit, and a red dot marks unread messages (and, for the owner, a coach request waiting). Analytics drops out for a lifter whose coach has hidden it. It steps aside on a conversation (so it can't cover the message box), on the Velocity Tracker and RPE Calculator, and while you're typing. The floating chat button, pop-up messages and the Payments + sit above it.
+
+"Tablet" means a window up to 1024 px wide, or a touch screen without a mouse up to 1400 px (iPad Pro landscape). **Computers don't get it**: they keep only the left menu. The left menu stays on every device (a drawer behind the menu button on phones and narrow tablets, always open on wide ones, where the bar centres itself over the page beside it).
+
 ## What a lifter sees: Lifter access
 
 In **Manage Program**, a coach of a synced lifter has a **Lifter access** button (next to Sharing). Its dialog has a switch for:

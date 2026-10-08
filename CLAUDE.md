@@ -137,6 +137,11 @@ private script kept outside it (`private.settings`).
   on sign-up by `private.on_auth_user`, only from 'none'), a live `lifters.lifter_email`, or the owner's email. The app's
   owner UI is `buildInvitesSection()` (`loadInvites`/`addInvite`/`removeInvite`) in the account sheet. test-cloudfake's
   `pgServer({ inviteOnly: true })` runs the hook on sign-up; the other tests leave it off.
+- The floating tab bar (`#tabBar`, `renderTabBar()`, called from `renderSidebar()`, `updateMsgBadges()` and `setCloudStatus()`): Home, Current Program,
+  Messages (the Inbox for a coach), Analytics (not when `accessOffFor(current).all`) and Account, with `.tb-dot` red dots for unread / pending coach requests. Shown by CSS only at
+  `(max-width: 1024px), (pointer: coarse) and (hover: none) and (max-width: 1400px)` (`.tabbar` is `display: none` otherwise: computers keep only the left menu); the JS always builds
+  it and sets `body.has-tabbar` (which lifts the chat dock, toast and Payments +) except on Messages, VBT and RPE (`hidden`); `body.kbd` (from `wireTabBarKeyboard()`) hides it while a text field has focus. jsdom
+  has no media queries, so test-tabbar.js checks the built buttons and the CSS text.
 - Lifter access (Manage Program > Lifter access, `#accessScrim`/`#dmAccess`, button `dmAccessBtn`): `lifter_settings.analytics_off text[]`
   ('all' = the Analytics page; 'maxes', 'tonnage', 'nl', 'top' = its parts) and `tools_off text[]` ('vbt', 'rpe'), set only by the lifter's coaches
   through RPCs `set_analytics_off`/`set_tools_off`, read by the lifter (they ride `pullMessages` into `MSG.settings[id]`). `accessOffFor(name)`
@@ -336,6 +341,7 @@ node test-trophysync.js # Trophies across devices on the real rules, plus their 
 node test-notices.js    # In-app notice banner: kinds, who wrote it, x, stacking
 node test-hubprivate.js # The Program Hub's private copy: owner download, offline, sign-out delete
 node test-vbtprivate.js # The Velocity Tracker's private copy: any signed-in account, offline, sign-out delete
+node test-tabbar.js     # The floating tab bar: its five buttons, what they open, lit state, red dots, where it hides, Lifter access
 node test-lifteraccess.js # A coach hides parts of Analytics (or the page) and the two tools from a lifter: the dialog, the rules, the lifter's device
 node test-shell.js      # index.html: sign-in, first download, offline, new versions, ended sign-in, the real app started and signed out
 node test-rpeprivate.js # The RPE Calculator's private copy: same rules
@@ -349,7 +355,7 @@ node test-reactions.js  # Reactions on messages, coach-only on notes and days
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all thirty. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all thirty-one. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of app.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

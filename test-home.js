@@ -109,10 +109,10 @@ async function boot(wd, storage = {}) {
   A.btn("All lifters", A.$("homeLifters")).click(); await tick(50);
   [...A.doc.querySelectorAll("#liftersBody .msg-thread")].find(r => /Sam/.test(r.textContent)).click(); await tick(150);
   check("tapping a lifter opens their program as it always did", A.active() === "viewOverview" && A.$("ovName").textContent === "Sam", A.active() + " " + A.$("ovName").textContent);
-  check("...with the usual sidebar: Overview, Analytics, Messages…, the weeks", ["Current Program", "Analytics", "Trophies"].every(l => A.navs().includes(l)) && A.navs().some(l => /^Week 1/.test(l)), A.navs().join());
+  check("...with the usual sidebar: Overview, Analytics, Messages…, the weeks", ["Current Program", "Lifter’s Analytics", "Trophies"].every(l => A.navs().includes(l)) && A.navs().some(l => /^Week 1/.test(l)), A.navs().join());
   check("...and Home is still in it", A.navs().includes("Home"));
   check("the lifter's page has a Home button of its own", !A.$("ovHome").hidden);
-  A.nav("Analytics"); await tick(100);
+  A.nav("Lifter’s Analytics"); await tick(100);
   A.nav("Home"); await tick(50);
   check("Home works from any lifter screen", A.active() === "viewHome");
   A.btn("All lifters", A.$("homeLifters")).click(); await tick(50);
@@ -229,7 +229,7 @@ async function boot(wd, storage = {}) {
   const dimEl = A.doc.querySelector(".scrim");
   sw(A, dimEl, 300, 300, 100, 310);
   check("a swipe left on the dimmed page beside it closes it too", !A.$("layout").classList.contains("nav-open"));
-  A.nav("Analytics"); await tick(150);
+  A.nav("Lifter’s Analytics"); await tick(150);
   sw(A, A.$("viewAnalytics"), 60, 300, 230, 310);
   check("the same on Analytics", A.$("layout").classList.contains("nav-open"));
   A.$("layout").classList.remove("nav-open");

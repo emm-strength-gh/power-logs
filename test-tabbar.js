@@ -106,14 +106,14 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Max,Squat,172.5\r\nWeek,Day,Exercise,W
   /* ------------------------------------------------------------ a coach */
   console.log("\nThe coach's bar");
   C.nav("Current Program"); await tick(100);
-  check("five buttons: Home, Current Program, Inbox, Analytics, Account", C.names().join() === "Home,Current Program,Inbox,Analytics,Account", C.names().join());
+  check("five buttons: Home, Current Program, Inbox, Analytics, Account", C.names().join() === "Home,Current Program,Inbox,Lifter’s Analytics,Account", C.names().join());
   check("the bar is showing, and the page knows (so the floating things move up)", !C.$("tabBar").hidden && C.doc.body.classList.contains("has-tabbar"));
   check("each is a button with a label, no words on it", C.bar().every(b => b.tagName === "BUTTON" && b.querySelector("svg") && b.textContent.trim() === ""));
   check("on the Current Program page, that one is lit", C.lit().join() === "Current Program", C.lit().join());
   C.tap("Home"); await tick(100);
   check("Home opens Home and lights up", C.active() === "viewHome" && C.lit().join() === "Home", C.active() + " " + C.lit());
-  C.tap("Analytics"); await tick(100);
-  check("Analytics opens it and lights up", C.active() === "viewAnalytics" && C.lit().join() === "Analytics");
+  C.tap("Lifter’s Analytics"); await tick(100);
+  check("Analytics opens it and lights up", C.active() === "viewAnalytics" && C.lit().join() === "Lifter’s Analytics");
   C.tap("Current Program"); await tick(100);
   check("Current Program comes back", C.active() === "viewOverview" && C.lit().join() === "Current Program");
   C.tap("Inbox"); await tick(100);
@@ -148,7 +148,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Max,Squat,172.5\r\nWeek,Day,Exercise,W
   /* ------------------------------------------------------------ a lifter */
   console.log("\nTom's bar");
   L.sync(); await L.settle();
-  check("the same five, with his own Messages instead of an Inbox", L.names().join() === "Home,Current Program,Messages,Analytics,Account", L.names().join());
+  check("the same five, with his own Messages instead of an Inbox", L.names().join() === "Home,Current Program,Messages,Lifter’s Analytics,Account", L.names().join());
   L.tap("Messages"); await tick(100);
   check("Messages opens his conversation, and the bar steps aside", L.active() === "viewMessages" && L.$("tabBar").hidden);
   L.nav = l => { const b = [...L.doc.querySelectorAll("#sideNav .nav-item")].find(n => n.querySelector(".nav-label").textContent === l); if (b) b.click(); return !!b; };
@@ -161,7 +161,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Max,Squat,172.5\r\nWeek,Day,Exercise,W
   check("with Analytics hidden from him, its button goes", L.names().join() === "Home,Current Program,Messages,Account", L.names().join());
   await C.dev.rpc("set_analytics_off", { p_lifter: tomId, p_off: [] });
   L.sync(); await L.settle();
-  check("...and returns when it's switched back on", L.names().includes("Analytics"));
+  check("...and returns when it's switched back on", L.names().includes("Lifter’s Analytics"));
 
   console.log("\nThe red dot on Account");
   check("an owner with no one waiting has no dot", !C.dots().includes("Account"));

@@ -70,7 +70,7 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
 
   console.log("\nThe two dialogs");
   const toolNames = [...$("dmTools").querySelectorAll(".dm-tool b")].map(b => b.textContent);
-  check("Sharing, Maxes and notes and Analytics sit in that order, left to right", toolNames.join() === "Sharing,Maxes and notes,Analytics", toolNames.join());
+  check("Sharing, Maxes and notes and Coach’s Analytics sit in that order, left to right", toolNames.join() === "Sharing,Maxes and notes,Coach’s Analytics", toolNames.join());
   check("each says what's in it", /Only on this device/.test($("dmShareBtn").textContent) && /Add your 1-rep maxes/.test($("dmMaxesBtn").textContent), $("dmShareBtn").textContent + " | " + $("dmMaxesBtn").textContent);
   check("both dialogs start closed", !$("shareScrim").classList.contains("show") && !$("maxesScrim").classList.contains("show"));
   $("dmShareBtn").click(); await tick(50);
@@ -85,29 +85,52 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   $("maxesClose").click();
   check("the close button closes it", !$("maxesScrim").classList.contains("show"));
 
-  console.log("\nAnalytics");
+  console.log("\nCoach’s Analytics");
   const liveCharts = () => w.__charts.filter(c => c.alive);
   check("the tabs are Manage program, Warm up Calculator and Program Hub (Analytics moved)",
     [...$("dmTabs").querySelectorAll(".seg-btn")].map(b => b.textContent.trim()).join() === "Manage program,Warm up Calculator,Program Hub");
   check("the page itself no longer carries the program charts", !$("dmPaneManage").querySelector(".dm-charts") && !/Program charts/.test($("dmPaneManage").textContent) && !$("dmPaneAnalytics"));
-  check("nothing is drawn until the dialog opens", liveCharts().length === 0 && !$("viewDayMgr").querySelector("canvas"));
-  $("dmAnalyticsBtn").click(); await tick(100);
-  const dlg = $("dmAnalyticsScrim");
-  check("Analytics opens as a dialog for this lifter", dlg.classList.contains("show") && $("dmAnalyticsTitle").textContent === "Analytics" && $("dmAnalyticsFor").textContent === NAME);
-  check("...with the program charts first", /Program charts/.test($("dmCharts").textContent) && /Number of lifts/.test($("dmCharts").textContent) && /Heaviest top set/.test($("dmCharts").textContent));
-  check("...then the progression and load views", /Progression and load/.test(dlg.textContent) && $("dmAnBody").children.length > 0 && !!$("dmAnControls").querySelector(".seg"));
+  check("nothing is drawn until the page is opened", liveCharts().length === 0 && !$("viewDayMgr").querySelector("canvas"));
+  check("there is no Analytics dialog any more", !$("dmAnalyticsScrim"));
+  // tick one Squat set Done in the week view first, so the Estimated 1RM card has a completed set to read
+  [...doc.querySelectorAll("#sideNav .nav-item")].find(n => /^Week 8/.test(n.textContent.trim().replace(/\s+/g, " "))).click(); await tick(100);
+  $("wkList").querySelector("li").click(); await tick(100);
+  check("a Squat set (100 kg x 5) is ticked Done", Object.keys(JSON.parse(w.localStorage.getItem("spotter.done.v1") || "{}")[NAME] || {}).length === 1);
+  await openManage();
+  $("dmAnalyticsBtn").click(); await tick(150);
+  check("Coach’s Analytics opens in the main view, as its own page", $("viewCoachAn").classList.contains("active") && !$("viewDayMgr").classList.contains("active") && /^Coach.s Analytics$/.test($("viewCoachAn").querySelector("h1").textContent), $("viewCoachAn").querySelector("h1").textContent);
+  check("...for this lifter", $("cnSub").textContent.indexOf(NAME) === 0, $("cnSub").textContent);
+  check("...with a Back to Manage Program button at the top", /^Back to Manage Program$/.test($("cnBack").textContent.trim()) && $("viewCoachAn").firstElementChild === $("cnBack"));
+  check("...Manage program stays lit in the menu", [...doc.querySelectorAll("#sideNav .nav-item.active")].some(n => /Manage program/.test(n.textContent)));
+  const card = $("cnE1rm");
+  check("it opens on an Estimated 1RM card, above the program charts", /Estimated 1RM/.test(card.textContent) && !!card.compareDocumentPosition($("dmCharts")) && (card.compareDocumentPosition($("dmCharts")) & w.Node.DOCUMENT_POSITION_FOLLOWING) !== 0);
+  const tiles = [...card.querySelectorAll(".cn-tile")];
+  check("...a tile each for Squat, Bench and Deadlift", tiles.map(t => t.querySelector(".cn-lift").textContent).join() === "Squat,Bench,Deadlift");
+  check("Squat reads the completed set: 100 x 5 is 116.7 kg estimated (Epley)", /116\.7/.test(tiles[0].querySelector(".cn-val").textContent) && /from 100 kg . 5/.test(tiles[0].textContent), tiles[0].textContent);
+  check("Bench has none completed, and shows what is programmed", tiles[1].querySelector(".cn-val").textContent === "–" && /No completed sets yet/.test(tiles[1].textContent) && /Programmed best 116\.7 kg/.test(tiles[1].textContent), tiles[1].textContent);
+  check("Deadlift has nothing at all", /Nothing programmed/.test(tiles[2].textContent));
+  check("no total until all three have a completed set", !card.querySelector(".cn-total"));
+  check("...then the program charts first", /Program charts/.test($("dmCharts").textContent) && /Number of lifts/.test($("dmCharts").textContent) && /Heaviest top set/.test($("dmCharts").textContent));
+  check("...then the progression and load views", /Progression and load/.test($("viewCoachAn").textContent) && $("dmAnBody").children.length > 0 && !!$("dmAnControls").querySelector(".seg"));
   const both = () => liveCharts().some(c => c.inCharts) && liveCharts().some(c => c.inAn);
   check("charts are drawn in both the program-charts part and the progression-and-load part", both(), liveCharts().map(c => (c.inCharts ? "charts" : "") + (c.inAn ? "an" : "")).join());
-  // changing a control inside redraws in place
   const chartsBefore = w.__charts.length;
   [...$("dmCharts").querySelectorAll(".seg-btn")].find(b => b.textContent === "Daily").click(); await tick(50);
-  check("switching a control redraws the dialog's charts in place", w.__charts.length > chartsBefore && dlg.classList.contains("show"));
-  doc.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape" })); await tick(30);
-  check("Escape closes it, and the charts are freed", !dlg.classList.contains("show") && liveCharts().length === 0, liveCharts().map(c => c.id).join());
-  $("dmAnalyticsBtn").click(); await tick(60);
+  check("switching a control redraws the page's charts in place", w.__charts.length > chartsBefore && $("viewCoachAn").classList.contains("active"));
+  const formula = [...$("dmAnControls").querySelectorAll("select")].find(s => [...s.options].some(o => o.value === "brzycki"));
+  formula.value = "brzycki"; formula.dispatchEvent(new w.Event("change")); await tick(50);
+  check("choosing the Brzycki formula redraws the Estimated 1RM card too (100 x 5 is 112.5 kg)", /112\.5/.test($("cnE1rm").querySelector(".cn-tile .cn-val").textContent) && /Brzycki/.test($("cnE1rm").textContent), $("cnE1rm").textContent.slice(0, 200));
+  formula.value = "epley"; formula.dispatchEvent(new w.Event("change")); await tick(50);
+  check("the Weekly e1RM card sits under the Estimated 1RM card, with the sets Tom has ticked Done (Week 8 only so far)",
+    /Weekly e1RM/.test($("cnWeekly").textContent) && (card.compareDocumentPosition($("cnWeekly")) & w.Node.DOCUMENT_POSITION_FOLLOWING) !== 0 && [...$("cnWeekly").querySelectorAll("tbody tr")].map(r => r.firstChild.textContent).join() === "Week 8,Best", [...$("cnWeekly").querySelectorAll("tbody tr")].map(r => r.firstChild.textContent).join());
+  $("cnBack").click(); await tick(100);
+  check("Back to Manage Program returns to Manage Program, and the charts are freed", $("viewDayMgr").classList.contains("active") && !$("viewCoachAn").classList.contains("active") && liveCharts().length === 0, liveCharts().map(c => c.id).join());
+  check("...with Manage program still lit and its tools row in place", !!$("dmAnalyticsBtn") && [...doc.querySelectorAll("#sideNav .nav-item.active")].some(n => /Manage program/.test(n.textContent)));
+  $("dmAnalyticsBtn").click(); await tick(100);
   check("it opens again with the charts back", both());
-  $("dmAnalyticsClose").click();
-  check("the close button closes it too", !dlg.classList.contains("show") && liveCharts().length === 0);
+  [...doc.querySelectorAll("#sideNav .nav-item")].find(n => /Current Program/.test(n.textContent)).click(); await tick(100);
+  check("leaving by the menu frees the charts too", !$("viewCoachAn").classList.contains("active") && liveCharts().length === 0);
+  await openManage();
 
   console.log("\nLayout without an import");
   check("sections: the Lifter & program/block title card, then Edit a day and Import", caps().join(" | ") === "Edit a day | Import from another program" &&

@@ -205,7 +205,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("reopened, it has the new message and clears the count", /One more thing/.test(C.$("chatBody").textContent) && C.$("chatBadge").hidden);
   C.nav("Week 1"); await tick(150);
   check("on a week it's there too, still open", !dock(C).hidden && !C.$("chatWin").hidden && /One more thing/.test(C.$("chatBody").textContent));
-  C.nav("Analytics"); await tick(100);
+  C.nav("Lifter’s Analytics"); await tick(100);
   check("on Analytics it isn't", dock(C).hidden && C.$("chatBody").children.length === 0);
   C.nav("Home"); await tick(100);
   check("...nor on Home", dock(C).hidden);

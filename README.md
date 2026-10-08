@@ -116,7 +116,7 @@ by the app, so a modified copy of the page can't get around them.
   Manage Program → the **Sharing** button opens a dialog with the lifter's own sign-in
   email, the list of coaches (share by email, remove), and **Delete lifter for everyone**.
 - **Lifter**: signs in with the email their coach entered. Sees only their own program
-  (Overview, weeks, Analytics, 1-rep maxes, RPE Calculator, Velocity Tracker) and logs
+  (Current Program, weeks, Lifter’s Analytics, 1-rep maxes, RPE Calculator, Velocity Tracker) and logs
   it; no Manage Program, and no loading or saving files (Load CSV/JSON, Save
   progress): their program comes through their account.
 - **Signed out**: whatever is already on the device keeps working, but Manage
@@ -194,10 +194,10 @@ On phones and tablets a see-through, blurred pill floats at the bottom of the sc
 
 In **Manage Program**, a coach of a synced lifter has a **Lifter access** button (next to Sharing). Its dialog has a switch for:
 
-- the **Analytics page**, and each of its parts (Maxes, Total tonnage, Number of lifts, Heaviest top set);
+- the **Lifter’s Analytics page**, and each of its parts (Maxes, Total tonnage, Number of lifts, Heaviest top set);
 - the **Velocity Tracker** and the **RPE Calculator**.
 
-Switch one off and it disappears from that lifter's own devices. Switching the Analytics page off (or every part of it) also removes its menu item and the Analytics button on the lifter's **Current Program** page, and takes them off the page if they're on it; a hidden tool leaves their menu the same way. When a lifter hides a tool on every program they have, the tool's file isn't kept on their device either. Coaches (the lifter's other coaches and the owner too) always see everything.
+Switch one off and it disappears from that lifter's own devices. Switching the Lifter’s Analytics page off (or every part of it) also removes its menu item and the Analytics button on the lifter's **Current Program** page, and takes them off the page if they're on it; a hidden tool leaves their menu the same way. When a lifter hides a tool on every program they have, the tool's file isn't kept on their device either. Coaches (the lifter's other coaches and the owner too) always see everything.
 
 - It is stored per lifter (`lifter_settings.analytics_off` and `tools_off`) and only that lifter's coaches can change it (RPCs `set_analytics_off` and `set_tools_off`); the lifter can read it but not write it. It reaches their phone with the normal sync, and live when they're online.
 - This hides the *derived* numbers and charts and the two tools. The lifter's own logged sets and program are still theirs, and their Current Program page still shows their maxes.
@@ -524,12 +524,17 @@ That's why the dropdown opens a sheet instead.
    as a coach, on the left) opens a dialog with the lifter's sign-in email, their
    coaches, and deleting the lifter for everyone; a lifter only on this device gets an
    **Upload** button there instead. **Maxes and notes** opens the dialog described
-   below. **Analytics** opens one dialog with the program charts (number of lifts,
-   heaviest top sets, fatigue estimate) followed by the progression and load views
-   (estimated 1RM, adherence, acute:chronic workload, volume by lift). Each button's
-   second line summarises what's inside. The tabs underneath are Manage program, Warm up
-   Calculator and Program Hub; the charts are only drawn while the Analytics dialog is
-   open.
+   below. **Coach’s Analytics** opens its own page in the main view (not a pop-up),
+   with a **Back to Manage Program** button at the top. It starts with an **Estimated 1RM** card (per
+   lift: the best estimate from the sets the lifter has ticked Done, the best programmed set and
+   the 1RM entered for them), then a **Weekly e1RM** card (one row per week with that week's best
+   estimated 1RM of each lift, the change from the last week that had one, and a Best row; switch between the
+   sets ticked Done and the programmed sets), then the program charts (number of lifts, heaviest top sets,
+   fatigue estimate) and the progression and load views (estimated 1RM trend, adherence,
+   acute:chronic workload, volume by lift). Each button's second line summarises what's
+   inside. The tabs underneath are Manage program, Warm up Calculator and Program Hub; the
+   charts are only drawn while the Coach’s Analytics page is open. The **Analytics** in the left
+   menu is the lifter's own, called **Lifter’s Analytics** to tell the two apart.
 
 ## Notes in Manage Program
 

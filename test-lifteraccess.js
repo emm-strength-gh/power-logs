@@ -105,8 +105,8 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   console.log("\nBy default Tom sees everything");
   L.nav("Current Program"); await tick(100);
   check("Analytics, the Velocity Tracker and the RPE Calculator are in his menu, and Analytics has a button on the Current Program page",
-    ["Analytics", "RPE Calculator", "Velocity Tracker"].every(n => L.navs().includes(n)) && L.shown("ovAnalyticsBtn"), L.navs().join());
-  L.nav("Analytics"); await tick(100);
+    ["Lifter’s Analytics", "RPE Calculator", "Velocity Tracker"].every(n => L.navs().includes(n)) && L.shown("ovAnalyticsBtn"), L.navs().join());
+  L.nav("Lifter’s Analytics"); await tick(100);
   check("every part of Analytics shows", ["anMaxes", "anTonPanel", "anNlPanel", "anTopPanel", "anGran"].every(L.shown));
   check("Analytics has no coach controls of its own", !L.$("anAccess"));
 
@@ -123,7 +123,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   await C.flip("tonnage", false);
   check("switching Total tonnage off is saved", JSON.stringify((await dbRow()).analytics_off) === '["tonnage"]', JSON.stringify(await dbRow()));
   check("...and the button says so", /1 hidden from Tom/.test(C.$("dmAccessBtn").textContent), C.$("dmAccessBtn").textContent);
-  C.$("accessClose").click(); C.nav("Analytics"); await tick(100);
+  C.$("accessClose").click(); C.nav("Lifter’s Analytics"); await tick(100);
   check("the coach still has every part on their own Analytics", C.$("viewAnalytics").classList.contains("active") && ["anMaxes", "anTonPanel", "anNlPanel", "anTopPanel"].every(C.shown));
   L.sync(); await L.settle();
   check("on Tom's device Total tonnage is hidden and its number isn't left in the page", !L.shown("anTonPanel") && L.$("anTonKpi").textContent === "");
@@ -134,20 +134,20 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   await C.flip("top", false);
   L.sync(); await L.settle();
   check("with every part off, Analytics goes altogether: its menu item and its button",
-    !L.navs().includes("Analytics") && !L.shown("ovAnalyticsBtn"), L.navs().join());
+    !L.navs().includes("Lifter’s Analytics") && !L.shown("ovAnalyticsBtn"), L.navs().join());
   check("...and Tom is off the Analytics page he was on", !L.$("viewAnalytics").classList.contains("active"));
 
   console.log("\nThe Analytics page and the Current Program page");
   for (const k of ["maxes", "nl", "top", "tonnage"]) await C.flip(k, true);
   L.sync(); await L.settle();
-  check("everything back on brings Analytics back", L.navs().includes("Analytics") && L.shown("ovAnalyticsBtn"));
+  check("everything back on brings Analytics back", L.navs().includes("Lifter’s Analytics") && L.shown("ovAnalyticsBtn"));
   await C.flip("all", false);
   check("switching the page off is saved, and dims the part switches", (await dbRow()).analytics_off.includes("all") && C.sw("tonnage").disabled === true);
   L.sync(); await L.settle();
   L.nav("Current Program"); await tick(100);
-  check("Tom's menu loses Analytics", !L.navs().includes("Analytics"), L.navs().join());
+  check("Tom's menu loses Analytics", !L.navs().includes("Lifter’s Analytics"), L.navs().join());
   check("...and the Analytics button is gone from his Current Program page", !L.shown("ovAnalyticsBtn"));
-  check("...but the coach's pages keep it", C.shown("ovAnalyticsBtn") && C.navs().includes("Analytics"));
+  check("...but the coach's pages keep it", C.shown("ovAnalyticsBtn") && C.navs().includes("Lifter’s Analytics"));
   const lifterId = (await rows("select id from public.lifters"))[0].id;
   const refused = await L.dev.rpc("set_analytics_off", { p_lifter: lifterId, p_off: [] }).then(() => "allowed", e => String(e.message));
   check("Tom can't switch it back on himself", /only a coach/.test(refused), refused);

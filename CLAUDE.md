@@ -96,8 +96,12 @@ the `.vN` suffix if you ever change a stored shape incompatibly.
   carried over by re-imports like `trainingMaxes`. Manage Program shows 1-rep maxes, training
   maxes and the Notes in one dialog (`buildMaxesNotesBody()`, opened from the "Maxes
   and notes" button), Sharing in another (`buildShareSection()`), and the program charts plus the
-  progression/load views in a third (`fillAnalyticsDialog()`: `renderDMCharts()` +
-  `renderDMAnalytics()`, drawn only while it's open, freed on close); the buttons are
+  progression/load views on their own page, **Coach’s Analytics** (`#viewCoachAn`, `openCoachAnalytics()`/`renderCoachAnalytics()`/
+  `closeCoachAnalytics()`: `renderCoachE1rm()` (the Estimated 1RM card, `#cnE1rm`: best estimate from Done sets of <= 10 reps via
+  `dmEst()`, vs the best programmed set and `enteredMax()`) + `renderCoachWeeklyE1rm()` (the Weekly e1RM card, `#cnWeekly`: a row per week, deltas from the last
+  week with a value, Best row, `dmWeeklySrc` 'done'|'plan'; both cards are redrawn by `renderDMAnalytics()` so they follow the formula select) + `renderDMCharts()` + `renderDMAnalytics()`; `inCoachAn`; it leaves
+  `inDayMgr` true so Manage program stays lit, `#cnBack` returns to it, and `showView()` frees its charts when you leave). The
+  lifter's own page, the left menu's Analytics, is called **Lifter’s Analytics** (`#viewAnalytics`). The buttons are
   `renderDMMaxes()`'s `#dmTools` row, which also refills an open dialog (`fillDialog`).
   Both scrims sit before the note editor and confirmations in the DOM so those open on
   top. One undo step
@@ -139,7 +143,7 @@ private script kept outside it (`private.settings`).
   `pgServer({ inviteOnly: true })` runs the hook on sign-up; the other tests leave it off.
 - The floating tab bar styling is the block pill's own variables (`var(--gold-soft)` fill, `var(--border)`, `var(--gold)` icons, so both themes follow); `.acct-btn` is hidden in the same media query. The left menu has no Rearrange button (the lifter dropdown's entry opens that sheet).
 - The floating tab bar (`#tabBar`, `renderTabBar()`, called from `renderSidebar()`, `updateMsgBadges()` and `setCloudStatus()`): Home, Current Program,
-  Messages (the Inbox for a coach), Analytics (not when `accessOffFor(current).all`) and Account, with `.tb-dot` red dots for unread / pending coach requests. Shown by CSS only at
+  Messages (the Inbox for a coach), Lifter’s Analytics (not when `accessOffFor(current).all`) and Account, with `.tb-dot` red dots for unread / pending coach requests. Shown by CSS only at
   `(max-width: 1024px), (pointer: coarse) and (hover: none) and (max-width: 1400px)` (`.tabbar` is `display: none` otherwise: computers keep only the left menu); the JS always builds
   it and sets `body.has-tabbar` (which lifts the chat dock, toast and Payments +) except on Messages, VBT and RPE (`hidden`); `body.kbd` (from `wireTabBarKeyboard()`) hides it while a text field has focus. jsdom
   has no media queries, so test-tabbar.js checks the built buttons and the CSS text.
@@ -343,6 +347,7 @@ node test-notices.js    # In-app notice banner: kinds, who wrote it, x, stacking
 node test-hubprivate.js # The Program Hub's private copy: owner download, offline, sign-out delete
 node test-vbtprivate.js # The Velocity Tracker's private copy: any signed-in account, offline, sign-out delete
 node test-tabbar.js     # The floating tab bar: its five buttons, what they open, lit state, red dots, where it hides, Lifter access
+node test-coachweekly.js # Coach’s Analytics Weekly e1RM card: rows, changes, Best, Completed/Programmed, formula
 node test-lifteraccess.js # A coach hides parts of Analytics (or the page) and the two tools from a lifter: the dialog, the rules, the lifter's device
 node test-shell.js      # index.html: sign-in, first download, offline, new versions, ended sign-in, the real app started and signed out
 node test-rpeprivate.js # The RPE Calculator's private copy: same rules
@@ -356,7 +361,7 @@ node test-reactions.js  # Reactions on messages, coach-only on notes and days
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all thirty-one. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all thirty-three. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of app.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

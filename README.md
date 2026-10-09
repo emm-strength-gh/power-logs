@@ -38,7 +38,8 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-genpop.js` | Meet Peak v2 · Gen Pop builder checks, plus a real import of its CSV into the app — `node test-genpop.js`. |
 | `test-lifterorder.js` | Rearranging lifters: the sheet, the dropdown entry, saving and reloading the order — `node test-lifterorder.js`. |
 | `test-dmnotes.js` | Manage Program's Notes card: coach-only, editing, links, backups, and that Weekly notes still work — `node test-dmnotes.js`. |
-| `test-reimport.js` | Re-importing a lifter's CSV or an older JSON backup keeps their training maxes; the CSV still sets the 1-rep maxes — `node test-reimport.js`. |
+| `test-reimport.js` | Loading a file with a lifter's name again (CSV or JSON backup) makes a separate lifter and leaves the original, training maxes included, untouched — `node test-reimport.js`. |
+| `test-lifterids.js` | Lifter IDs: two lifters with one name, files never overwrite, IDs become cloud ids, one sign-in with several programs — `node test-lifterids.js`. |
 | `test-trainingmax.js` | Training maxes: 90% of the 1-rep maxes by default, the 100/95/90/85/80% buttons, typed numbers winning, undo, the Hub and backups — `node test-trainingmax.js`. |
 | `test-hubanalytics.js` | Program Hub analytics: charts for each program, controls, and the same numbers as Power Logs' Analytics for the same CSV — `node test-hubanalytics.js`. |
 | `test-hubprefill.js` | Program Hub builders filled from the loaded lifter: every builder, typed values kept, Wendler/Massthetics TM %, and Power Logs sending it — `node test-hubprefill.js`. |
@@ -217,6 +218,16 @@ On **Coach Settings** (the person icon > **Coach Settings**), each approved coac
 - It counts every way of getting a lifter: creating one, importing a CSV or JSON, uploading lifters that were only on their device, and being shared one by another coach.
 - The database enforces it (`accounts.lifter_limit`, a trigger on `lifter_coaches`, RPC `set_lifter_limit` for the owner only); the app also stops at the same number before anything is made, counting lifters only on the device too, and says "Ask the owner for more".
 - Lowering a limit below what a coach already has doesn't remove any lifters; they just can't add more. The coach sees "Lifters: 3 of 4 (set by the owner)" in their account sheet.
+
+## Lifter IDs: two lifters can share a name
+
+Every program has a **lifter ID** of its own (a UUID, shown at the top of Manage Program under the lifter's name). It is made when the program is created, loaded from a file or downloaded, and it never changes: it is also the id the lifter gets in the cloud when it is uploaded. The name is only a label.
+
+- **Loading a CSV or JSON backup always adds a new lifter** with a new ID. It never replaces another lifter, even one with the same `#Name` and whatever the block title. If the name is taken here the new lifter is numbered (**Tom**, **Tom (2)**, **Tom (3)**) and the message says so; rename it in Manage Program if you like. Creating a lifter by hand (Add new lifter / program) does the same.
+- To change an existing program, edit it in Manage Program (or bring in weeks and days with its Replace and Merge), or load the file as a new lifter and delete the old one. A JSON backup restores into a new lifter too, with the ticks and notes it holds.
+- **One sign-in can have several programs**: put the same sign-in email on each lifter (Sharing) and that person sees every one of them, whatever they are called, each with its own ticks, notes, messages and trophies.
+- Signing in on a device that has its own Tom: if it is the very same program as the account's Tom, they are the same lifter and join; a different program keeps its own entry beside it, so nothing is overwritten.
+- Programs saved before lifter IDs get one the next time the app starts (a synced lifter's ID is its cloud id). Only coaches can load files; a lifter whose coach gave them a program can't add lifters from files.
 
 ## Coach Settings (owner only)
 
@@ -518,7 +529,7 @@ With two or more lifters loaded, the lifter dropdown ends with **⇅ Rearrange l
 which opens a sheet where you drag a
 lifter by its handle or nudge it with the arrows; the dropdown follows. The order is
 saved on the device as you go (`spotter.lifterOrder.v1`). Newly loaded lifters join
-at the bottom, a re-imported lifter keeps its place, and **Unload everything** resets
+at the bottom (a second file with the same name is a new lifter, see *Lifter IDs*), and **Unload everything** resets
 it. iOS draws its own menu for a dropdown, so its items can't be dragged in place.
 That's why the dropdown opens a sheet instead.
 
@@ -566,7 +577,7 @@ max, a training max, or both. Below that sits the **Notes** section: one
 free-text note per lifter, edited in the same sheet as Weekly notes (multi-line, with an emoji button and **Select all**,
 links become tappable). It never appears on the Overview or the week pages, and it
 syncs only between the lifter's coaches: the database never sends it to the lifter.
-It's stored separately from the program, so re-importing a lifter's CSV keeps it. It
+It's stored separately from the program and stays with its lifter. It
 travels in **Save progress (JSON)** backups but never in CSV exports.
 
 ## Generating a program straight into Manage Program

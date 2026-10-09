@@ -118,9 +118,11 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   check("...and shown on the week page", $("wkNotes").textContent.includes("Deload feel this week"));
   check("Manage Program note untouched", stored()[NAME] === NOTE);
 
-  console.log("\nSurvives re-imports and backups");
+  console.log("\nA second file with the same name, and backups");
+  const pick = name => { $("lifterSelect").value = name; $("lifterSelect").dispatchEvent(new w.Event("change")); };
   await loadFile(CSV, "lifter.csv");
-  check("re-importing the program CSV keeps the note", stored()[NAME] === NOTE);
+  check("loading the same CSV again is a separate lifter and leaves the note alone", stored()[NAME] === NOTE && !((NAME + " (2)") in stored()));
+  pick(NAME); await tick(100);
   let blob = null;
   w.URL.createObjectURL = b => { blob = b; return "blob:test"; };
   w.URL.revokeObjectURL = () => {};
@@ -130,10 +132,11 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   check("Save progress (JSON) includes it", backup.manageNotes === NOTE, JSON.stringify(backup.manageNotes));
   backup.manageNotes = "Restored from a backup";
   await loadFile(JSON.stringify(backup), "backup.json");
-  check("loading a backup restores it", stored()[NAME] === "Restored from a backup", JSON.stringify(stored()));
+  check("loading a backup gives its own new lifter the note and leaves the original's alone", stored()[NAME + " (3)"] === "Restored from a backup" && stored()[NAME] === NOTE, JSON.stringify(stored()));
   delete backup.manageNotes;
   await loadFile(JSON.stringify(backup), "older-backup.json");
-  check("an older backup without notes leaves them alone", stored()[NAME] === "Restored from a backup");
+  check("an older backup without notes gives its lifter none, and leaves the others alone", !((NAME + " (4)") in stored()) && stored()[NAME] === NOTE && stored()[NAME + " (3)"] === "Restored from a backup");
+  pick(NAME); await tick(100);
 
   console.log("\nClearing and unloading");
   navTo("Manage program");

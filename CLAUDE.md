@@ -71,7 +71,8 @@ Everything lives in `localStorage` under versioned keys (`STORE_*` near the
 top of the `<script>` in app.html, e.g. `spotter.profiles.v1`). Bump
 the `.vN` suffix if you ever change a stored shape incompatibly.
 
-- `PROFILES`: `name -> { name, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...]}]}] }`
+- Lifter IDs: every profile has `p.lid` (a UUID: `ensureLids()` at boot gives older ones theirs, `ingestText`/`ingestJSON`/`createLifter` make one, `profileFromCloud` sets it to the row id). It is the cloud id on upload (`uploadLifter` inserts `id: p.lid`, then `cloudId = lid`) and is left out of the stored program (`programForCloud`). Local stores are still keyed by NAME, so two lifters with one name get distinct keys: `freeName(name)` (Tom, Tom (2)) for new ones, `localNameFor()` for downloaded ones. **A loaded file never replaces a lifter**: `ingestText`/`ingestJSON` always add a new one (`was` = the taken name, reported by `finishLoad`); `filesBlocked()` stops a signed-in non-coach with assigned programs. Signing in merges a local-only lifter into a cloud one only when it is the same program (`sameProgram`), else they stay apart. One sign-in with several programs is just several `lifters` rows with the same `lifter_email`. test-lifterids.js covers it.
+- `PROFILES`: `name -> { name, lid, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...]}]}] }`
   — one profile per lifter, built by `buildProfile()` from an imported
   `#Name`-header CSV or a Power Logs JSON export.
 - `DONE` / `SKIP`: `name -> { rid: true }` — per-row completion/skip state,
@@ -83,7 +84,7 @@ the `.vN` suffix if you ever change a stored shape incompatibly.
 - `WKNOTES` (`spotter.weekNotes.v1`): `name -> { week: "text" }`, Weekly notes.
   `DMNOTES` (`spotter.dmNotes.v1`): `name -> "text"`, the single Notes entry in
   Manage Program's top section, never rendered outside Manage Program. Both are
-  their own stores, not on the profile, because a CSV re-import replaces the whole
+  their own stores, not on the profile, because a profile can be replaced whole (cloud download, Manage Program's replace); a CSV load is now a new lifter, never a replacement
   profile. Both share one editor sheet (`openNoteEditor()` with save/done
   callbacks) and ride in the JSON export (`weekNotes`, `manageNotes`).
 - `trainingMaxes` does live on the profile, and it has no CSV form, so
@@ -93,7 +94,7 @@ the `.vN` suffix if you ever change a stored shape incompatibly.
   `p.tmPct`% (90 until a 100/95/90/85/80% button is pressed) of its 1-rep max, to
   the nearest 0.5 kg (`trainingMaxesOf(p)`, which the card and the Hub use), so
   defaults follow the 1-rep maxes and a lift without one has none. `tmPct` is
-  carried over by re-imports like `trainingMaxes`. Manage Program shows 1-rep maxes, training
+  kept on the profile like `trainingMaxes`. Manage Program shows 1-rep maxes, training
   maxes and the Notes in one dialog (`buildMaxesNotesBody()`, opened from the "Maxes
   and notes" button), Sharing in another (`buildShareSection()`), and the program charts plus the
   progression/load views on their own page, **Coach’s Analytics** (`#viewCoachAn`, `openCoachAnalytics()`/`renderCoachAnalytics()`/
@@ -336,7 +337,8 @@ node test-genpop.js     # Meet Peak v2 Gen Pop: balance, loads, attempts, Clean,
 node test-taper.js      # Taper builder: each lifter type's last heavy days, light sessions, rest, volume cut, Clean, import
 node test-lifterorder.js # Rearrange lifters: sheet, dropdown entry, persistence, reload, unload
 node test-dmnotes.js    # Manage Program Notes: coach-only, editor, links, backups, Weekly notes regression
-node test-reimport.js   # Re-imports keep training maxes; CSV still wins for 1-rep maxes
+node test-reimport.js   # Loading a file with an existing name is a separate lifter; the original and its training maxes are untouched
+node test-lifterids.js  # Lifter IDs: duplicate names, files never overwrite, IDs = cloud ids, one sign-in with several programs
 node test-trainingmax.js # Training maxes: 90% default, 100-80% buttons, typed numbers win, Hub + backups
 node test-managelayout.js # Manage tab: section order + every action from its new place
 node test-hubprefill.js # Hub builders prefilled from the loaded lifter (both pages)
@@ -366,7 +368,7 @@ node test-reactions.js  # Reactions on messages, coach-only on notes and days
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all thirty-five. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all thirty-six. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of app.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

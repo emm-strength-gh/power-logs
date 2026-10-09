@@ -1,5 +1,5 @@
-/* Re-importing a lifter must keep what only Manage Program holds (training maxes),
- * while the CSV stays the source of truth for everything it carries (1-rep maxes).
+/* Loading a file is always a new lifter (it never replaces one with the same name), so what only Manage Program
+ * holds (training maxes) stays with the original and the new lifter starts from what its file carries.
  * Run: node test-reimport.js
  *
  * Manage Program is for coaches; like test-dmnotes.js, this boots the page signed
@@ -76,37 +76,45 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   await setField("Squat max in kg", "205");
   check("1-rep max edited in the app too", prof().maxes.Squat === "205", prof().maxes.Squat);
 
-  console.log("\nRe-importing the program CSV");
+  console.log("\nLoading the same CSV again");
+  const profiles = () => JSON.parse(w.localStorage.getItem("spotter.profiles.v1") || "{}");
+  const names = () => Object.keys(profiles());
+  const pick = name => { $("lifterSelect").value = name; $("lifterSelect").dispatchEvent(new w.Event("change")); };
   navTo("Current Program");
   await loadFile(CSV, "lifter.csv");
-  check("training maxes survive the re-import", tms() === '{"Squat":"175","Bench":"145"}', tms());
-  check("1-rep maxes still follow the CSV", prof().maxes.Squat === "195", prof().maxes.Squat);
-  check("Manage Program shows them again", await openManage() &&
+  check("it is a separate lifter, Test Lifter (2): nothing is replaced", names().join() === "Test Lifter,Test Lifter (2)", names().join());
+  check("the original keeps its training maxes and its edited 1-rep max", tms() === '{"Squat":"175","Bench":"145"}' && prof().maxes.Squat === "205", tms() + " " + prof().maxes.Squat);
+  const second = () => profiles()["Test Lifter (2)"] || {};
+  check("the new one has the CSV's 1-rep maxes and no training maxes of its own", second().maxes.Squat === "195" && JSON.stringify(second().trainingMaxes || {}) === "{}", JSON.stringify(second().maxes) + JSON.stringify(second().trainingMaxes));
+  pick(NAME); await tick(100);
+  check("Manage Program for the original still shows them", await openManage() &&
     field("Squat training max in kg").value === "175" && field("Bench training max in kg").value === "145",
     field("Squat training max in kg") && field("Squat training max in kg").value);
 
-  console.log("\nJSON backups");
+  console.log("\nJSON backups are new lifters too");
   let blob = null;
   w.URL.createObjectURL = b => { blob = b; return "blob:test"; };
   w.URL.revokeObjectURL = () => {};
   $("saveBtn").click();
   await tick();
   const backup = blob ? JSON.parse(await blob.text()) : {};
-  check("backup carries the training maxes", JSON.stringify(backup.profile && backup.profile.trainingMaxes) === '{"Squat":"175","Bench":"145"}');
+  check("a backup carries the training maxes", JSON.stringify(backup.profile && backup.profile.trainingMaxes) === '{"Squat":"175","Bench":"145"}');
   const variant = mutate => { const b = JSON.parse(JSON.stringify(backup)); mutate(b); return JSON.stringify(b); };
+  const tmOf = name => JSON.stringify((profiles()[name] || {}).trainingMaxes || {});
   navTo("Current Program");
   await loadFile(variant(b => { delete b.profile.trainingMaxes; }), "older.json");
-  check("an older backup without them keeps the device's", tms() === '{"Squat":"175","Bench":"145"}', tms());
+  check("an older backup without them becomes Test Lifter (3) with none, and doesn't borrow the original's", names().includes("Test Lifter (3)") && tmOf("Test Lifter (3)") === "{}", tmOf("Test Lifter (3)"));
   await loadFile(variant(b => { b.profile.trainingMaxes = { Squat: "180" }; }), "newer.json");
-  check("a backup that has them restores them as saved", tms() === '{"Squat":"180"}', tms());
+  check("a backup that has them restores them as saved, as Test Lifter (4)", tmOf("Test Lifter (4)") === '{"Squat":"180"}', tmOf("Test Lifter (4)"));
   await loadFile(variant(b => { b.profile.trainingMaxes = {}; }), "cleared.json");
-  check("a backup saved with none clears them", tms() === "{}", tms());
+  check("a backup saved with none has none", tmOf("Test Lifter (5)") === "{}", tmOf("Test Lifter (5)"));
+  check("and the original is exactly as it was", tms() === '{"Squat":"175","Bench":"145"}' && names().length === 5, names().join());
 
   console.log("\nA brand-new lifter");
   await loadFile(CSV.replace(`#Name,${NAME}`, "#Name,New Lifter"), "new.csv");
-  const fresh = (JSON.parse(w.localStorage.getItem("spotter.profiles.v1") || "{}"))["New Lifter"] || {};
+  const fresh = profiles()["New Lifter"] || {};
   check("starts with no training maxes", !fresh.trainingMaxes || Object.keys(fresh.trainingMaxes).length === 0, JSON.stringify(fresh.trainingMaxes));
-  check("and doesn't borrow another lifter's", tms() === "{}" && JSON.stringify(fresh.trainingMaxes || {}) === "{}");
+  check("and doesn't borrow another lifter's", tms() === '{"Squat":"175","Bench":"145"}' && JSON.stringify(fresh.trainingMaxes || {}) === "{}");
 
   check("no script errors along the way", real().length === 0, real().join(" | ").slice(0, 300));
   console.log(`\n${checks} checks · ${failures === 0 ? "ALL PASSED" : failures + " FAILED"}\n`);

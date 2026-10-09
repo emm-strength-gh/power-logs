@@ -90,16 +90,16 @@ const pickRearrange = app => {
   app.$("orderDone").click();
   check("Done closes the sheet", !app.$("orderScrim").classList.contains("show"));
 
-  console.log("\nNew and re-imported lifters");
+  console.log("\nNew lifters, and a second file with the same name");
   await load(app, "Dee", "Block 8");
   check("a newly loaded lifter goes to the end", options(app).slice(0, 4).join(",") === "Cal,Ben,Ava,Dee", options(app).join(","));
   await load(app, "Ben", "Block 3 Nats");
-  check("re-importing a lifter keeps its place", options(app).slice(0, 4).join(",") === "Cal,Ben,Ava,Dee", options(app).join(","));
-  check("...and shows its new block", app.$("lifterSelect").options[1].textContent === "Ben · Block 3 Nats", app.$("lifterSelect").options[1].textContent);
+  check("a second Ben is a separate lifter at the end, Ben (2); the first keeps its place", options(app).slice(0, 5).join(",") === "Cal,Ben,Ava,Dee,Ben (2)", options(app).join(","));
+  check("...and each shows its own block", app.$("lifterSelect").options[1].textContent === "Ben · Block 3" && app.$("lifterSelect").options[4].textContent === "Ben (2) · Block 3 Nats", app.$("lifterSelect").options[1].textContent + " / " + app.$("lifterSelect").options[4].textContent);
 
   console.log("\nEscape");
   pickRearrange(app);
-  check("the dropdown opens the sheet again", app.$("orderScrim").classList.contains("show") && rows(app).length === 4);
+  check("the dropdown opens the sheet again", app.$("orderScrim").classList.contains("show") && rows(app).length === 5);
   app.w.document.dispatchEvent(new app.w.KeyboardEvent("keydown", { key: "Escape" }));
   check("Escape closes it", !app.$("orderScrim").classList.contains("show"));
 

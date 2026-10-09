@@ -234,6 +234,14 @@ Each lifter also has a **Display Name**: the name everyone sees (the dropdown, t
 - Signing in on a device that has its own Tom: if it is the very same program as the account's Tom, they are the same lifter and join; a different program keeps its own entry beside it, so nothing is overwritten.
 - Programs saved before lifter IDs get one the next time the app starts (a synced lifter's ID is its cloud id). Only coaches can load files; a lifter whose coach gave them a program can't add lifters from files.
 
+## Programs and their status
+
+Every program is **Open** or **Closed** (Open until a coach changes it). A coach sets it in Manage Program's *Lifter & program* card (Status), or by tapping the status on the Programs page; it is part of the program, so it syncs to the lifter, who sees it but can't change it.
+
+**All Programs**, at the top right of Current Program (in line with Home), opens the **Programs** page: every program of the lifter in view (all the programs on their sign-in email, or with their name if they haven't signed in), with its status beside it. Tap one to open it.
+
+**Opening the app:** signed in, the app opens with no lifter or program chosen (the dropdown says *Select a lifter…* or *Select a program…*). Until one is chosen, **Current Program** and **Lifter’s Analytics** take a coach to the Lifters page and a lifter to their Programs page; after that everything works as before. Signed out, it opens on the last lifter as it always did.
+
 ## Coach Settings (owner only)
 
 The owner's account sheet has a **Coach Settings** button. It opens a page in the main window (Back returns to Home) with everything about coaches in one place; coaches never see it:
@@ -252,6 +260,8 @@ The switches are stored on the coach's account (`accounts.coach_cards_off`, RPC 
 Signed-in lifters and their coaches message each other in the app: **Messages** in
 the lifter's sidebar, plus an **Inbox** for coaches listing every lifter they coach
 (unread counts on both, and a red dot on the menu button on phones).
+
+- **One conversation per lifter:** a signed-in lifter with more than one program (the same sign-in email on each) has one chat with their coaches, whatever program is on screen, and one row in the coach's Inbox. Each message is still saved on the program it was sent from, so that program's coaches always receive it; the chat shows every program's messages together, unread counts once, and reading it once reads it everywhere. The lifter's thread switch and the owner's Clear apply to the whole conversation.
 
 - **One thread or one per coach:** the lifter chooses, with the switch at the top of
   their Messages. On (the default): one thread with all their coaches. Off: a private
@@ -566,9 +576,8 @@ That's why the dropdown opens a sheet instead.
    lift: the best estimate from the sets the lifter has ticked Done, the best programmed set and
    the 1RM entered for them), then a **Weekly e1RM** card (one row per week with that week's best
    estimated 1RM of each lift, the change from the last week that had one, and a Best row; switch between the
-   sets ticked Done and the programmed sets), then the program charts (number of lifts, heaviest top sets,
-   fatigue estimate) and the progression and load views (estimated 1RM trend, adherence,
-   acute:chronic workload, volume by lift). Each button's second line summarises what's
+   sets ticked Done and the programmed sets), then the program charts (number of lifts, heaviest top sets) and the progression and load views (estimated 1RM trend, adherence,
+   acute:chronic workload, volume by lift, and the fatigue estimate with its Starting condition). Each button's second line summarises what's
    inside. The tabs underneath are Manage program, Warm up Calculator and Program Hub; the
    charts are only drawn while the Coach’s Analytics page is open. The **Analytics** in the left
    menu is the lifter's own, called **Lifter’s Analytics** to tell the two apart.

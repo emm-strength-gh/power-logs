@@ -215,6 +215,8 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   C.sync(); await C.settle();
   check("a coach can update the lifter's bodyweight", await until(async () => (await rows("select bodyweight::float8 bw from public.lifter_settings where lifter_id = $1", [tomId]))[0].bw === 89));
   L2.sync(); await L2.settle();
+  // Reopened, the app has no program chosen yet: Tom picks his (the dropdown) before his Trophies.
+  L2.$("lifterSelect").value = "Tom"; L2.$("lifterSelect").dispatchEvent(new L2.w.Event("change")); await tick(100);
   L2.nav("Trophies"); await tick(200);
   check("Tom's class follows (93 kg)", /Men’s 93 kg/.test(L2.$("troSub").textContent), L2.$("troSub").textContent);
   check("...and what he earned in the 83s keeps its class", L2.tro("Tom").earned["lvl:squat:advanced"].cls === "Men’s 83 kg");

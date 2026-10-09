@@ -211,6 +211,8 @@ private script kept outside it (`private.settings`).
   lifters are always their program's `#Name`.
   "Clear": owner-only RPC `clear_thread` deletes a thread's messages and stamps
   `lifter_settings.cleared[thread]`, which other devices use to drop their copies.
+- Programs + status: p.status = 'closed' or absent (= Open), part of the program (rides programForCloud, so coaches write it and the lifter reads it); progStatus(p), setProgStatus(name, st) (needs canManage), statusPill(). Manage Program's card has the #dmStatus seg. The Programs page (#viewPrograms, inPrograms, openPrograms(key)/enderPrograms(), #progsList) lists programsOf(key): the same lifterMeta.userId, else the same display name; for a lifter with no key, thleteNames(). Current Program's #ovPrograms (All Programs, beside #ovHome) opens it. Start empty: signed in, oot() leaves current null and sets pickLater (so cloudRefreshUI doesn't pick one) until selectLifter(); enderPicker() adds a disabled 'Select a lifter/program…' option; with no current, the sidebar/tab bar still show Current Program and Lifter’s Analytics and openOverview/openAnalytics route to pickFirst() (coach: Lifters, lifter: Programs). test-programs.js covers it.
+- One conversation per lifter: chatIds(id) = every program of the same signed-in lifter (lifterMeta.userId) this account can message; msgsOf/hasMsgs/	hreadsFor/unreadIn/markRead (per program, as the server keeps reads), 	eamOn (the conversation's chatHome), the lifter's team switch and clearThread all work over it; unreadAll and the Inbox count one per chatHome; a new message goes to sendIdFor(id, th) (the program on screen, or for a private thread a program that coach coaches); reactions and Seen use the message's own lifter_id. No database change. test-sharedchat.js covers it (plus the fatigue chart now in Progression and load).
 - Replies in Messages: `messages.reply_to` (a trigger drops pointers outside the thread);
   the app only sends `reply_to` when set, so plain messages still work before the column
   exists. `renderThread()` builds the dock (reply bar, emoji panel, box), `fillThread()`
@@ -339,6 +341,8 @@ node test-taper.js      # Taper builder: each lifter type's last heavy days, lig
 node test-lifterorder.js # Rearrange lifters: sheet, dropdown entry, persistence, reload, unload
 node test-dmnotes.js    # Manage Program Notes: coach-only, editor, links, backups, Weekly notes regression
 node test-reimport.js   # Loading a file with an existing name is a separate lifter; the original and its training maxes are untouched
+node test-programs.js   # Program Open/Closed status, the Programs page (All Programs), opening the app with nothing selected
+node test-sharedchat.js # One chat per lifter across their programs; Inbox one row; fatigue chart in Progression and load
 node test-displayname.js # Display Name: identical shown names, renaming shows everywhere, lifter's device follows, files keep it
 node test-lifterids.js  # Lifter IDs: duplicate names, files never overwrite, IDs = cloud ids, one sign-in with several programs
 node test-trainingmax.js # Training maxes: 90% default, 100-80% buttons, typed numbers win, Hub + backups
@@ -370,7 +374,7 @@ node test-reactions.js  # Reactions on messages, coach-only on notes and days
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all thirty-seven. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all thirty-nine. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of app.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

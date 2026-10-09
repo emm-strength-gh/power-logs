@@ -686,7 +686,7 @@ begin
   perform pg_temp.ok('...nor write the column directly', r like 'refused%' or r = 'ok 0', r);
   r := pg_temp.act(o, format($q$select public.set_coach_cards(%L, '{e1rm,load,e1rm}')$q$, c1));
   perform pg_temp.ok('the owner hides cards from one coach (duplicates collapse)', r like 'ok%' and (select coach_cards_off from public.accounts where user_id = c1) = '{e1rm,load}', r);
-  perform pg_temp.ok('...the other coach still sees everything', (select coach_cards_off from public.accounts where user_id = c2) = '{}');
+  perform pg_temp.ok('...the other coach is untouched (still the default)', (select coach_cards_off from public.accounts where user_id = c2) = array['load']);
   v := pg_temp.val(c1, format($q$select coach_cards_off::text from public.accounts where user_id = %L$q$, c1));
   perform pg_temp.ok('...and the coach can read their own switches', v = '{e1rm,load}', v);
   r := pg_temp.act(o, format($q$select public.set_coach_cards(%L, '{secret}')$q$, c1));
@@ -695,6 +695,19 @@ begin
   perform pg_temp.ok('the owner has nothing to hide from themselves', r like 'refused%', r);
   perform pg_temp.act(o, format($q$select public.set_coach_cards(%L, '{}')$q$, c1));
   perform pg_temp.ok('...and an empty list shows everything again', (select coach_cards_off from public.accounts where user_id = c1) = '{}');
+
+  -- Defaults: a new lifter starts with Analytics and the Velocity Tracker hidden (RPE Calculator on); a newly approved coach
+  -- has Progression and load hidden
+  perform pg_temp.act(c1, format($q$insert into public.lifters (id, name) values (%L, 'SELFTEST default')$q$, gen_random_uuid()));
+  perform pg_temp.ok('a new lifter starts with the Analytics page and its parts hidden', (select analytics_off from public.lifter_settings s join public.lifters l on l.id = s.lifter_id where l.name = 'SELFTEST default') @> array['all','maxes','tonnage','nl','top'], '');
+  perform pg_temp.ok('...and the Velocity Tracker hidden, the RPE Calculator not', (select tools_off from public.lifter_settings s join public.lifters l on l.id = s.lifter_id where l.name = 'SELFTEST default') = array['vbt'], '');
+  update public.accounts set coach_status = 'none', coach_cards_off = '{}' where user_id = c2;
+  update public.accounts set coach_status = 'approved' where user_id = c2;
+  perform pg_temp.ok('a newly approved coach has Progression and load hidden', (select coach_cards_off from public.accounts where user_id = c2) = array['load'], '');
+  update public.accounts set coach_status = 'none', coach_cards_off = '{e1rm}' where user_id = c2;
+  update public.accounts set coach_status = 'approved' where user_id = c2;
+  perform pg_temp.ok('...but not when the owner already chose', (select coach_cards_off from public.accounts where user_id = c2) = array['e1rm'], '');
+  update public.accounts set coach_cards_off = '{}' where user_id = c2;
 
   -- Invite-only sign-up: what Supabase Auth asks before it creates an account
   perform pg_temp.ok('sign-up: an email nobody invited is refused',

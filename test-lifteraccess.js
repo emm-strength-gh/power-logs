@@ -96,6 +96,15 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   L.closeSheet(); await tick(100);
   C.sync(); await C.settle();
 
+  /* ------------------------------------------------------------ the defaults */
+  console.log("A new lifter starts with everything hidden except the RPE Calculator");
+  const row0 = (await rows("select analytics_off, tools_off from public.lifter_settings"))[0];
+  check("the database started it with the Analytics page, its parts and the Velocity Tracker off", ["all", "maxes", "tonnage", "nl", "top"].every(k => row0.analytics_off.includes(k)) && row0.tools_off.join() === "vbt", JSON.stringify(row0));
+  L.sync(); await L.settle();
+  check("on Tom's device: no Lifter's Analytics, no Velocity Tracker, the RPE Calculator is there", !L.navs().includes("Lifter’s Analytics") && !L.navs().includes("Velocity Tracker") && L.navs().includes("RPE Calculator"), L.navs().join());
+  await rows("update public.lifter_settings set analytics_off = '{}', tools_off = '{}'");   // the rest of this file starts from everything on
+  L.sync(); await L.settle(); C.sync(); await C.settle();
+
   /* ------------------------------------------------------------ the rename */
   console.log("\nThe Overview is the Current Program now");
   check("Tom's first menu item says Current Program", L.navs().includes("Current Program") && !L.navs().includes("Overview"), L.navs().join());

@@ -207,6 +207,8 @@ In **Manage Program**, a coach of a synced lifter has a **Lifter access** button
 - the **Lifter’s Analytics page**, and each of its parts (Maxes, Total tonnage, Number of lifts, Heaviest top set);
 - the **Velocity Tracker** and the **RPE Calculator**.
 
+**A lifter created from now on starts with everything switched off except the RPE Calculator** (the Analytics page and its parts, and the Velocity Tracker); the coach switches on what they want. Lifters that already existed keep their settings.
+
 Switch one off and it disappears from that lifter's own devices. Switching the Lifter’s Analytics page off (or every part of it) also removes its menu item and the Analytics button on the lifter's **Current Program** page, and takes them off the page if they're on it; a hidden tool leaves their menu the same way. When a lifter hides a tool on every program they have, the tool's file isn't kept on their device either. Coaches (the lifter's other coaches and the owner too) always see everything.
 
 - It is stored per lifter (`lifter_settings.analytics_off` and `tools_off`) and only that lifter's coaches can change it (RPCs `set_analytics_off` and `set_tools_off`); the lifter can read it but not write it. It reaches their phone with the normal sync, and live when they're online.
@@ -240,6 +242,8 @@ The owner's account sheet has a **Coach Settings** button. It opens a page in th
 - **Coaches**: one card per approved coach with their lifter count, the **Max lifters** box, **Remove**, and four switches for **Coach's Analytics**: *Estimated 1RM*, *Weekly e1RM*, *Program charts* and *Progression and load*. Switched off, that card is hidden from that coach only (another coach can still have it); with all four off, the coach has no Coach's Analytics button in Manage Program at all. The owner always sees every card.
 - **Past requests**: declined or removed coaches, to approve again or delete.
 - **Invites**: as before.
+
+A coach approved from now on starts with **Progression and load** switched off (only when you haven't chosen anything for them yet); coaches already approved keep what they have.
 
 The switches are stored on the coach's account (`accounts.coach_cards_off`, RPC `set_coach_cards`, owner only; the coach can read their own row but not write it) and reach their devices with the normal sync. This hides the cards, not the lifters' data.
 

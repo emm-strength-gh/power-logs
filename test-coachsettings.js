@@ -88,10 +88,13 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   await rows("update public.accounts set coach_status = 'approved', display_name = 'Coach Kay' where user_id = $1", [kayId]);
   await rows("update public.accounts set coach_status = 'approved', display_name = 'Coach Lee' where user_id = $1", [leeId]);
   await rows("update public.accounts set coach_status = 'pending', display_name = 'Pat' where email = 'pat@test.invalid'");
+  const defaults = JSON.stringify([await off("kay@test.invalid"), await off("lee@test.invalid")]);
+  await rows("update public.accounts set coach_cards_off = '{}' where user_id in ($1, $2)", [kayId, leeId]);   // the rest of this file starts from every card on
   await rows("insert into public.lifter_coaches (lifter_id, coach_id) values ($1, $2), ($1, $3)", [tomLifter, kayId, leeId]);
   for (const a of [O, K, L]) { a.sync(); await a.settle(); }
 
   /* ------------------------------------------------------------ the page */
+  check("a newly approved coach starts with Progression and load hidden", defaults === '[["load"],["load"]]', defaults);
   console.log("\nThe owner's account sheet has a Coach Settings button");
   O.$("acctBtn").click(); await tick(100);
   check("there is a Coach Settings button in the owner's account popup", !!O.$("acctCoachSet") && O.$("acctCoachSet").textContent.trim() === "Coach Settings");

@@ -1453,3 +1453,32 @@ begin
 end $$;
 revoke execute on function public.touch_presence(), public.leave_presence(), public.presence_online(integer) from public, anon;
 grant execute on function public.touch_presence(), public.leave_presence(), public.presence_online(integer) to authenticated;
+
+---------------------------------------------------------------- defaults for new lifters and newly approved coaches
+-- A lifter created from now on starts with everything the coach can switch off already hidden from them (the
+-- Analytics page and its parts, and the Velocity Tracker); only the RPE Calculator is on. The coach turns things on in
+-- Manage Program > Lifter access. Lifters that already exist keep what they have.
+create or replace function private.lifters_settings() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  insert into public.lifter_settings (lifter_id, notified_weeks, analytics_off, tools_off)
+  values (new.id, private.program_weeks(new.program), array['all', 'maxes', 'tonnage', 'nl', 'top'], array['vbt'])
+  on conflict do nothing;
+  return new;
+end $$;
+
+-- A coach approved from now on (the owner approves, or an invite as a coach is used) starts with Progression and load
+-- hidden in Coach's Analytics (accounts.coach_cards_off); only when the owner hasn't chosen anything for them yet.
+create or replace function private.coach_default_cards() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if new.coach_status = 'approved' and old.coach_status is distinct from 'approved' and new.role <> 'owner'
+     and coalesce(cardinality(new.coach_cards_off), 0) = 0 then
+    new.coach_cards_off := array['load'];
+  end if;
+  return new;
+end $$;
+drop trigger if exists coach_default_cards on public.accounts;
+create trigger coach_default_cards before update on public.accounts
+  for each row execute function private.coach_default_cards();
+revoke execute on function private.coach_default_cards() from public, anon, authenticated;

@@ -148,7 +148,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Max,Squat,172.5\r\nWeek,Day,Exercise,W
   /* ------------------------------------------------------------ a lifter */
   console.log("\nTom's bar");
   L.sync(); await L.settle();
-  check("the same five, with his own Messages instead of an Inbox", L.names().join() === "Home,Current Program,Messages,Lifter’s Analytics,Account", L.names().join());
+  check("the same, with his own Messages instead of an Inbox, and no Analytics (a new lifter starts with it hidden)", L.names().join() === "Home,Current Program,Messages,Account", L.names().join());
   L.tap("Messages"); await tick(100);
   check("Messages opens his conversation, and the bar steps aside", L.active() === "viewMessages" && L.$("tabBar").hidden);
   L.nav = l => { const b = [...L.doc.querySelectorAll("#sideNav .nav-item")].find(n => n.querySelector(".nav-label").textContent === l); if (b) b.click(); return !!b; };

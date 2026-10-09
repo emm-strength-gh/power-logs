@@ -168,6 +168,22 @@ begin
   perform pg_temp.ok('...or read it', pg_temp.cnt(x, 'select * from public.lifter_marks') = 0
                                    and pg_temp.cnt(x, 'select * from public.lifter_row_notes') = 0);
 
+  -- A Closed program: the lifter can't log on it any more; its coach can
+  update public.lifters set program = program || '{"status":"closed"}'::jsonb where id = a;
+  perform pg_temp.ok('on a Closed program the lifter can''t tick, note, add items or write weekly notes',
+    pg_temp.act(l, format($q$insert into public.lifter_marks (lifter_id, rid, state) values (%L, 'rc', 'done')$q$, a)) like 'refused%'
+    and pg_temp.act(l, format($q$insert into public.lifter_row_notes (lifter_id, rid, body) values (%L, 'rc', 'x')$q$, a)) like 'refused%'
+    and pg_temp.act(l, format($q$insert into public.lifter_custom (lifter_id, cid, item) values (%L, 'cc', '{"text":"x"}')$q$, a)) like 'refused%'
+    and pg_temp.act(l, format($q$insert into public.lifter_week_notes (lifter_id, week, body) values (%L, '9', 'x')$q$, a)) like 'refused%');
+  r := pg_temp.act(l, format($q$update public.lifter_marks set state = 'done' where lifter_id = %L and rid = 'r1'$q$, a));
+  perform pg_temp.ok('...nor change a tick he made before', r like 'refused%' or r = 'ok 0', r);
+  r := pg_temp.act(c1, format($q$insert into public.lifter_marks (lifter_id, rid, state) values (%L, 'rc', 'done')$q$, a));
+  perform pg_temp.ok('...but the coach still can', r = 'ok 1', r);
+  update public.lifters set program = program - 'status' where id = a;
+  r := pg_temp.act(l, format($q$insert into public.lifter_marks (lifter_id, rid, state) values (%L, 'ro', 'done')$q$, a));
+  perform pg_temp.ok('Open again, the lifter can log again', r = 'ok 1', r);
+  delete from public.lifter_marks where lifter_id = a and rid in ('rc', 'ro');
+
   -- Manage Program notes
   r := pg_temp.act(c1, format($q$insert into public.lifter_coach_notes (lifter_id, body) values (%L, 'watch the knee')$q$, a));
   perform pg_temp.ok('the coach writes Manage Program notes', r = 'ok 1', r);

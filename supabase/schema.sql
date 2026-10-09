@@ -168,6 +168,14 @@ language sql stable security definer set search_path = '' as $$
   select private.can_see(lid)
      and exists (select 1 from public.lifters l where l.id = lid and l.deleted_at is null);
 $$;
+-- The log (ticks, exercise notes, added items, weekly notes): as can_log, except that a program a coach marked
+-- Closed (program.status = 'closed') takes no new entries from its lifter. Its coaches still can.
+create or replace function private.can_edit_log(lid uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select private.can_log(lid)
+     and (private.coaches(lid)
+          or not exists (select 1 from public.lifters l where l.id = lid and l.program ->> 'status' = 'closed'));
+$$;
 
 create or replace function private.can_coach_live(lid uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
@@ -426,9 +434,9 @@ begin
     execute format('drop policy if exists read on public.%I', t);
     execute format('create policy read on public.%I for select to authenticated using (private.can_see(lifter_id))', t);
     execute format('drop policy if exists add on public.%I', t);
-    execute format('create policy add on public.%I for insert to authenticated with check (private.can_log(lifter_id))', t);
+    execute format('create policy add on public.%I for insert to authenticated with check (private.can_edit_log(lifter_id))', t);
     execute format('drop policy if exists edit on public.%I', t);
-    execute format('create policy edit on public.%I for update to authenticated using (private.can_see(lifter_id)) with check (private.can_log(lifter_id))', t);
+    execute format('create policy edit on public.%I for update to authenticated using (private.can_see(lifter_id)) with check (private.can_edit_log(lifter_id))', t);
   end loop;
 end $$;
 
@@ -450,7 +458,7 @@ create policy own on public.user_prefs for all to authenticated
 -- Functions: Postgres lets everyone execute new functions; narrow that.
 revoke execute on all functions in schema private from public, anon;
 grant execute on function private.is_owner(), private.is_coach(), private.coaches(uuid),
-  private.can_see(uuid), private.can_log(uuid), private.can_coach_live(uuid),
+  private.can_see(uuid), private.can_log(uuid), private.can_edit_log(uuid), private.can_coach_live(uuid),
   private.shares_lifter_with(uuid), private.coaches_me(uuid) to authenticated;
 revoke execute on function public.request_coach_access(text), public.set_display_name(text),
   public.decide_coach(uuid, text), public.share_lifter(uuid, text),

@@ -82,7 +82,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("the ⋯ menu has a Color theme item", !!item && /Color theme/.test(item.textContent));
   item.click(); await tick(50);
   check("it opens the picker with the five themes, in order", O.$("accentScrim").classList.contains("show")
-    && O.opts().map(b => b.getAttribute("data-accent")).join() === "sage,ocean,purple,amber,charcoal", O.opts().map(b => b.getAttribute("data-accent")).join());
+    && O.opts().map(b => b.getAttribute("data-accent")).join() === "sage,ocean,purple,amber,charcoal,rose,gold,lemon,beige,blood,noir,bee", O.opts().map(b => b.getAttribute("data-accent")).join());
   check("...named Sage Green, Ocean Blue, Purple Clean, Amber Warm and Charcoal Mode, each with its tagline", [["Sage Green", "Fresh & Calm"], ["Ocean Blue", "Trust & Focus"], ["Purple Clean", "Modern & Energetic"], ["Amber Warm", "Friendly & Inviting"], ["Charcoal Mode", "Sleek & Professional"]]
     .every(([n, s], i) => O.opts()[i].textContent.includes(n) && O.opts()[i].textContent.includes(s)));
   check("...each showing five swatches", O.opts().every(b => b.querySelectorAll(".accent-sw i").length === 5));
@@ -111,9 +111,15 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   await tick(200);
   check("an unknown saved value falls back to Sage Green", bad.accent() === null);
   const css = html.slice(html.indexOf("<style>"), html.indexOf("</style>"));
-  check("the stylesheet has a light and a dark rule for each of the four other themes", ["ocean", "purple", "amber", "charcoal"].every(id =>
+  check("the stylesheet has a light and a dark rule for each of the other light themes", ["ocean", "purple", "amber", "charcoal", "rose", "gold", "lemon", "beige", "bee"].every(id =>
     css.includes(`html:not([data-theme="dark"])[data-accent="${id}"]`) && css.includes(`html[data-theme="dark"][data-accent="${id}"]`)));
   check("the header button is hidden on phones (the ⋯ menu has it) like Theme and About", /#themeBtn, #accentBtn, #aboutBtn \{ display: none; \}/.test(css));
+  check("Blood Red and Black + Blood Red are dark designs: their own rules, the dark palette in either mode", ["blood", "noir"].every(id => css.includes(`html[data-accent="${id}"] {`) && css.includes(`html[data-accent="${id}"],`) || css.includes(`, html[data-accent="${id}"]`)));
+  const D2 = boot("dark design", { "spotter.accent": '"noir"', "spotter.theme": "light" });
+  await tick(200);
+  check("...and the status bar takes the design's own dark tint even in light mode", D2.accent() === "noir" && D2.statusTint() === "#0c0c0d", D2.statusTint());
+  check("the new names are in the picker: Rose Pink, Gold Elegant Warm Ivory, Lemon Chiffon, Beige, Blood Red, Black + Blood Red", (O.$("accentBtn").click(), ["Rose Pink", "Gold Elegant Warm Ivory", "Lemon Chiffon", "Beige", "Blood Red", "Black + Blood Red", "Black & Yellow"].every(n => O.$("accentList").textContent.includes(n))));
+  O.$("accentClose").click();
   check("no script errors", O.real().length === 0 && R.real().length === 0, O.real().concat(R.real()).join(" | "));
 
   /* ------------------------------------------------------------ who is online */

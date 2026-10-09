@@ -150,6 +150,48 @@ const SAM = csv("Sam", "Base", [[1, 1, "Squat", 120, 5, 5, 7, ""]]);
   check("...as labels, not buttons", T.progRows().every(r => !r.btn));
   check("Manage Program isn't his, so there's no other way to change it", !T.navs().includes("Manage program"));
 
+  console.log("\nA Closed program can't be logged");
+  T.progRows().find(r => r.title === "Prep").el.querySelector(".msg-thread").click(); await tick(150);
+  check("Current Program says it's Closed", !T.$("ovLocked").hidden);
+  T.nav("Week 1"); await tick(150);
+  const firstRow = () => T.$("wkList").querySelector("li");
+  const doneBefore = JSON.stringify((T.store("spotter.done.v1") || {})[T.keyOf("Prep")] || {});
+  check("the week says so, with no Skip, Note or Mark all done, and no Add an Exercise or Weekly notes",
+    !T.$("wkLocked").hidden && !T.$("wkList").querySelector(".act-btn") && !T.$("wkList").querySelector(".day-alldone") && T.doc.querySelector("#viewWeek .addbox").hidden && T.$("wkNotesBtn").hidden);
+  firstRow().click(); firstRow().querySelector(".check").click(); await tick(100);
+  check("tapping a set doesn't tick it", JSON.stringify((T.store("spotter.done.v1") || {})[T.keyOf("Prep")] || {}) === doneBefore);
+  let refusedClosed = null;
+  try { await T.dev.upsert("lifter_marks", [{ lifter_id: (await rows("select id from public.lifters where program->>'block' = 'Prep'"))[0].id, rid: "x", state: "done" }], "lifter_id,rid"); } catch (e) { refusedClosed = e.message; }
+  check("...and the database refuses it from the lifter too", !!refusedClosed, String(refusedClosed));
+  O.pick(O.keyOf("Prep")); await tick(100);
+  O.nav("Week 1"); await tick(150);
+  check("for the coach the Current Program side is locked too", !O.$("wkLocked").hidden && !O.$("wkList").querySelector(".act-btn"));
+  O.nav("Manage program"); await tick(150);
+  check("...but Manage Program still edits it", !!O.$("dmStatus") && !!O.$("dmBody").querySelector('input[aria-label="Block or program title"]'));
+  T.pick(T.keyOf("Peak")); await tick(100);
+  T.nav("Week 1"); await tick(150);
+  check("an Open program is unchanged", T.$("wkLocked").hidden && !!T.$("wkList").querySelector(".act-btn"));
+
+  /* ------------------------------------------------------------ payments per lifter */
+  console.log("\nPayments: one per lifter, however many programs");
+  O.nav("Home"); await tick(100);
+  O.$("homePay").querySelector("button").click(); await tick(150);
+  const payRows = X => [...X.doc.querySelectorAll("#payList .msg-thread")].map(r => r.querySelector("b").textContent);
+  check("the coach's Payments list has Tom once, and Sam", payRows(O).join() === "Tom,Sam", payRows(O).join());
+  check("...and Home counts lifters, not programs", (O.nav("Home"), await tick(80), /of 2 paid/.test(O.$("homePay").textContent)), O.$("homePay").textContent);
+  O.$("homePay").querySelector("button").click(); await tick(150);
+  [...O.doc.querySelectorAll("#payList .msg-thread")][0].click(); await tick(100);
+  O.doc.querySelector("#payMonths .msg-thread").click(); await tick(100);
+  O.$("troFormBody").querySelector('[data-paid="1"]').click();
+  O.btn("Save", O.$("troFormBody")).click(); await tick(150);
+  const mk = O.doc.querySelector("#payMonths .msg-thread").getAttribute("data-month"), pays = O.store("spotter.payments.v1");
+  check("marking a month paid marks it on both of Tom's programs (they stay in step)", pays.Tom.months[mk].paid && pays["Tom (2)"].months[mk].paid, JSON.stringify(Object.keys(pays)));
+  await O.settle();
+  T.sync(); await T.settle();
+  T.nav("Home"); await tick(150);
+  const lines = [...T.doc.querySelectorAll("#homePay .home-line")];
+  check("Tom's Home shows one payments line, Paid", lines.length === 1 && /Paid/.test(lines[0].textContent) && !/Prep|Peak/.test(lines[0].textContent), lines.map(l => l.textContent).join(" | "));
+
   /* ------------------------------------------------------------ opening the app */
   console.log("\nOpening the app again: nothing selected");
   const O2 = boot("owner again", O.storage(), O.dev);

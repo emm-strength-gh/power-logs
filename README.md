@@ -194,7 +194,7 @@ On phones and tablets a see-through, blurred pill floats at the bottom of the sc
 
 ## Colour themes
 
-The **⋯** menu (and, on computers, a palette button in the header) has **Color theme**. Pick one of five: **Sage Green** (Fresh & Calm, the default), **Ocean Blue** (Trust & Focus), **Purple Clean** (Modern & Energetic), **Amber Warm** (Friendly & Inviting) or **Charcoal Mode** (Sleek & Professional). The accent colours the icon tiles, buttons, section captions and the floating bar, and the page gets a faint matching tint; dark mode works with every theme. The choice is per device (`localStorage` `spotter.accent`); nothing is synced.
+The **⋯** menu (and, on computers, a palette button in the header) has **Color theme**. Pick one of twelve: **Sage Green** (Fresh & Calm, the default), **Ocean Blue** (Trust & Focus), **Purple Clean** (Modern & Energetic), **Amber Warm** (Friendly & Inviting) **Charcoal Mode** (Sleek & Professional), **Rose Pink** (Soft & Romantic), **Gold Elegant Warm Ivory** (Luxurious & Sophisticated), **Lemon Chiffon** (Bright & Cheerful), **Beige** (Natural & Minimal), **Black & Yellow** (a yellow page with black, Bold & Energetic), or the two dark designs **Blood Red** (Bold & Passionate) and **Black + Blood Red** (Powerful & Dramatic), which look the same in light and dark mode. The accent colours the icon tiles, buttons, section captions and the floating bar, and the page gets a faint matching tint; dark mode works with every theme. The choice is per device (`localStorage` `spotter.accent`); nothing is synced.
 
 ## Who is online (owner only)
 
@@ -237,6 +237,8 @@ Each lifter also has a **Display Name**: the name everyone sees (the dropdown, t
 ## Programs and their status
 
 Every program is **Open** or **Closed** (Open until a coach changes it). A coach sets it in Manage Program's *Lifter & program* card (Status), or by tapping the status on the Programs page; it is part of the program, so it syncs to the lifter, who sees it but can't change it.
+
+**A Closed program is locked on the Current Program side, for everyone:** a note says it is Closed, and its sets can't be ticked or skipped, and there are no exercise notes, added items, Mark all done or Weekly notes. A coach still edits it in Manage Program (and can reopen it there). The database enforces it for the lifter (`private.can_edit_log`: a lifter's ticks, notes, added items and weekly notes are refused on a Closed program; coaches aren't).
 
 **All Programs**, at the top right of Current Program (in line with Home), opens the **Programs** page: every program of the lifter in view (all the programs on their sign-in email, or with their name if they haven't signed in), with its status beside it. Tap one to open it.
 

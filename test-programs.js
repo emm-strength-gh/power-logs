@@ -123,6 +123,24 @@ const SAM = csv("Sam", "Base", [[1, 1, "Squat", 120, 5, 5, 7, ""]]);
   O.$("progsBack").click(); await tick(100);
   check("Back from Programs returns to Current Program", O.active() === "viewOverview");
 
+  console.log("\nThe Lifters page: one card per lifter");
+  O.nav("Lifters"); await tick(150);
+  const cards = () => [...O.doc.querySelectorAll("#liftersBody .ll-item")].map(r => ({ name: r.querySelector(".msg-mid b").childNodes[0].textContent, sub: r.querySelector(".msg-mid > span").textContent, more: !!r.querySelector(".ll-more"), dot: !!r.querySelector(".pres-dot"), el: r }));
+  check("Tom's two programs are one card, Sam (not signed in) another", cards().map(c => c.name).join() === "Tom,Sam", cards().map(c => c.name).join());
+  check("Tom's card says 2 programs, how many are open, and has no ⋯ (each program has its own on Programs)", /2 programs · 1 open/.test(cards()[0].sub) && !cards()[0].more, cards()[0].sub);
+  check("Sam's card is his one program, with its ⋯", /Base/.test(cards()[1].sub) && cards()[1].more);
+  check("only signed-in lifters get an online dot (shown to the owner)", cards()[0].dot && !cards()[1].dot);
+  check("the subtitle counts lifters, not programs", /^2 lifters/.test(O.$("liftersSub").textContent), O.$("liftersSub").textContent);
+  cards()[0].el.querySelector(".msg-thread").click(); await tick(150);
+  check("tapping Tom opens his Programs page to choose one", O.active() === "viewPrograms" && O.progRows().length === 2);
+  check("...where each program has its own ⋯", O.progRows().every(r => !!r.el.querySelector(".ll-more")));
+  O.progRows()[0].el.querySelector(".ll-more").click(); await tick(100);
+  check("...offering Delete program / Delete lifter for that program", O.$("troFormScrim").classList.contains("show") && !!O.btn("Delete program", O.$("troFormBody")) && !!O.btn("Delete lifter", O.$("troFormBody")));
+  O.$("troFormClose").click(); await tick(50);
+  O.nav("Lifters"); await tick(100);
+  cards()[1].el.querySelector(".msg-thread").click(); await tick(150);
+  check("a lifter with one program goes there too", O.active() === "viewPrograms" && O.progRows().map(r => r.title).join() === "Base");
+
   console.log("\nThe lifter sees the status, and can't change it");
   T.sync(); await T.settle();
   T.pick(T.keyOf("Prep")); await tick(100);

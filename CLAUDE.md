@@ -144,7 +144,7 @@ private script kept outside it (`private.settings`).
   owner UI is `buildInvitesSection()` (`loadInvites`/`addInvite`/`removeInvite`) on the Coach Settings page. test-cloudfake's
   `pgServer({ inviteOnly: true })` runs the hook on sign-up; the other tests leave it off.
 - Colour themes: `ACCENTS` (sage default, ocean, purple, amber, charcoal), `applyAccent(id)` sets/removes `html[data-accent]` (stored in `spotter.accent`, per device); the CSS only overrides `--pine`, `--pine-dark`, `--bg`, `--bg-glass` and, in dark mode, the bar variables per `[data-accent]`. Picker: `openAccent()`/`#accentScrim`, from the ⋯ menu item `data-for="accentBtn"`. The status-bar tint is the theme's `bg` (`applyTheme`). New accent-aware CSS should use `var(--pine)` etc., never a literal.
-- Who is online (owner only): `user_presence` table (no policies), RPCs `touch_presence` (every device, `PRESENCE_EVERY` ms while visible), `leave_presence` (sign-out) and `presence_online` (owner-only, server-side freshness). `presenceRefresh()`/`presenceWatch()` run only for `isOwner()` on the Lifters page (`renderLifters()` draws `.pres-dot`, `lifterOnline(name)` via `CLOUD.lifterMeta[id].userId`). Coaches never call it (test-themes.js spies on the RPC names).
+- Who is online (owner only): `user_presence` table (no policies), RPCs `touch_presence` (every device, `PRESENCE_EVERY` ms while visible), `leave_presence` (sign-out) and `presence_online` (owner-only, server-side freshness). `presenceRefresh()`/`presenceWatch()` run only for `isOwner()` on the Lifters page (`renderLifters()` draws `.pres-dot` per card from `presence.map[group.userId]`). Coaches never call it (test-themes.js spies on the RPC names).
 - The floating tab bar uses the theme's bar variables (`--bar-bg` fill, `--bar-ink` icons, `--bar-line` outline, `--bar-active` for the current page; the dark theme sets them per accent); `.acct-btn` is hidden in the same media query. The left menu has no Rearrange button (the lifter dropdown's entry opens that sheet).
 - The floating tab bar (`#tabBar`, `renderTabBar()`, called from `renderSidebar()`, `updateMsgBadges()` and `setCloudStatus()`): Home, Current Program,
   Messages (the Inbox for a coach), Lifter’s Analytics (not when `accessOffFor(current).all`) and Account, with `.tb-dot` red dots for unread / pending coach requests. Shown by CSS only at
@@ -239,7 +239,7 @@ private script kept outside it (`private.settings`).
   devices learn of it); swipe-to-delete is `paySwipe`/`payDelete`, the + button `payAddMonth`.
 - New lifters from the app: `openNewLifter()` (Lifters page) → `createLifter()` builds the profile,
   `addEmptyWeek`/`addEmptyDay`, opens Manage Program and calls `uploadLifter()` when signed in as a
-  coach. Weight class: `cleanClass()`/`setClass()` in the Lifter & program card. Each Lifters-page row has a ⋯
+  coach. Weight class: `cleanClass()`/`setClass()` in the Lifter & program card. The Lifters page is one card per person (`lifterGroups()`: same `lifterMeta.userId`, else same display name, the grouping `programsOf` uses); a card opens `openPrograms(key)`; ⋯ (`moreButton`) is on each Programs-page row and on single-program cards. That ⋯
   (`lifterMenu()`) for `deleteProgramFlow()` (clears to an empty Week 1; synced by the normal program/log diff)
   and `deleteLifterFlow()` (sets `lifters.deleted_at`; also behind Sharing's *Delete lifter for everyone*).
 - Reactions ("Reactions" section): `REACT` (`spotter.reactions.v1`, by lifter id) keyed `lid|type|target|uid`

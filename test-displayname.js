@@ -91,7 +91,7 @@ const TOM_PEAK = csv("Tom", "Peak", [[1, 1, "Squat", 190, 2, 2, 8, ""], [1, 2, "
   check("each profile keeps its shown name beside its key", profs.Tom.dname === "Tom" && profs["Tom (2)"].dname === "Tom" && profs["Tom (2)"].name === "Tom (2)");
   check("the stored program doesn't carry the shown name (it is the server's name column)", (await rows("select program from public.lifters")).every(r => !("dname" in r.program) && !("name" in r.program)));
   O.nav("Lifters"); await tick(100);
-  check("the Lifters page lists Tom twice, no number", O.listed().join() === "Tom,Tom", O.listed().join());
+  check("the Lifters page has one card, Tom (one lifter: the same name, nobody signed in yet), with no number", O.listed().join() === "Tom" && /2 programs/.test(O.$("liftersBody").textContent), O.listed().join());
   O.pick("Tom (2)"); await tick(100);
   check("the Current Program page is headed Tom", O.$("ovName").textContent === "Tom", O.$("ovName").textContent);
   O.nav("Manage program"); await tick(150);

@@ -336,7 +336,9 @@ straight away. Add their sign-in email under Sharing.
 
 **Left menu:** swipe right on Home, the Overview or Analytics to open it; swipe left on the open menu (or on the dimmed page beside it) to close it.
 
-**Deleting:** each lifter on the Lifters page has a **⋯** (coaches who can edit them). **Delete program** clears every
+**The Lifters page** has one card per lifter: everyone signed in is one card whatever number of programs they have (it says *2 programs · 1 open*), and a program nobody has signed in to is its own lifter by its name. Tapping a card opens that lifter's **Programs** page to choose which program to open. Only the owner sees the online dot.
+
+**Deleting:** each program on a lifter's Programs page has a **⋯** (coaches who can edit it), and so does a Lifters-page card with a single program. **Delete program** clears every
 week, day, tick and note (on every device) and leaves an empty Week 1; the lifter stays, with their maxes, class,
 messages, trophies and payments. **Delete lifter** removes the lifter altogether (the same as *Delete lifter for
 everyone* under Sharing). Both ask first; neither can be undone, so save progress (JSON) first for a copy.

@@ -108,7 +108,9 @@ async function boot(wd, storage = {}) {
   check("the list has its own Home button", A.active() === "viewHome");
   A.btn("All lifters", A.$("homeLifters")).click(); await tick(50);
   [...A.doc.querySelectorAll("#liftersBody .msg-thread")].find(r => /Sam/.test(r.textContent)).click(); await tick(150);
-  check("tapping a lifter opens their program as it always did", A.active() === "viewOverview" && A.$("ovName").textContent === "Sam", A.active() + " " + A.$("ovName").textContent);
+  check("tapping a lifter opens their Programs page to choose one", A.active() === "viewPrograms" && A.doc.querySelectorAll("#progsList .msg-thread").length === 1, A.active());
+  A.doc.querySelector("#progsList .msg-thread").click(); await tick(150);
+  check("...and choosing it opens it as it always did", A.active() === "viewOverview" && A.$("ovName").textContent === "Sam", A.active() + " " + A.$("ovName").textContent);
   check("...with the usual sidebar: Overview, Analytics, Messages…, the weeks", ["Current Program", "Lifter’s Analytics", "Trophies"].every(l => A.navs().includes(l)) && A.navs().some(l => /^Week 1/.test(l)), A.navs().join());
   check("...and Home is still in it", A.navs().includes("Home"));
   check("the lifter's page has a Home button of its own", !A.$("ovHome").hidden);
@@ -117,6 +119,7 @@ async function boot(wd, storage = {}) {
   check("Home works from any lifter screen", A.active() === "viewHome");
   A.btn("All lifters", A.$("homeLifters")).click(); await tick(50);
   [...A.doc.querySelectorAll("#liftersBody .msg-thread")].find(r => /Tom/.test(r.textContent)).click(); await tick(100);
+  A.doc.querySelector("#progsList .msg-thread").click(); await tick(100);
   A.$("ovHome").click(); await tick(50);
   check("...and from the Home button on the Overview", A.active() === "viewHome");
 
@@ -148,7 +151,10 @@ async function boot(wd, storage = {}) {
   const more = nm => A.doc.querySelector('#liftersBody [data-more="' + nm + '"]');
   const stored = () => JSON.parse(A.w.localStorage.getItem("spotter.profiles.v1"));
   A.nav("Lifters"); await tick(50);
-  check("each lifter in the list has a ⋯ for coaches", rowsNow().length >= 3 && rowsNow().every(r => !!r.parentElement.querySelector(".ll-more")));
+  // One card per lifter: the two Toms (neither signed in) are one card with two programs, whose ⋯ are on their Programs page.
+  const tomCard = rowsNow().find(r => /^Tom/.test(r.querySelector(".msg-mid b").textContent));
+  check("one card per lifter: the two programs called Tom are one card, without a ⋯", !!tomCard && tomCard.getAttribute("data-programs") === "2" && !tomCard.parentElement.querySelector(".ll-more") && /2 programs/.test(tomCard.textContent));
+  check("each lifter with a single program has a ⋯ for coaches", rowsNow().filter(r => r.getAttribute("data-programs") === "1").length >= 2 && rowsNow().filter(r => r.getAttribute("data-programs") === "1").every(r => !!r.parentElement.querySelector(".ll-more")));
   A.$("addLifterBtn").click(); await tick(50);
   A.$("nlName").value = "Zed"; A.$("nlBlock").value = "Temp block"; A.$("nlSquat").value = "100";
   A.btn("Create", A.$("troFormBody")).click(); await tick(200);
@@ -171,7 +177,7 @@ async function boot(wd, storage = {}) {
   check("deleting a lifter asks first", A.$("confirmScrim").classList.contains("show") && /Delete Zed/.test(A.$("confirmTitle").textContent));
   A.$("confirmYes").click(); await tick(150);
   check("the lifter is gone from the list and the device", !more("Zed") && !stored().Zed && A.active() === "viewLifters");
-  check("...and the others are untouched", !!more("Tom") && !!more("Sam"));
+  check("...and the others are untouched", !!more("Sam") && rowsNow().some(r => /^Tom/.test(r.querySelector(".msg-mid b").textContent)));
 
   console.log("\nSwipe gestures");
   const sw = (a, el, x0, y0, x1, y1) => {

@@ -162,7 +162,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   O.$("nlName").value = "Tom";
   O.btn("Create", O.$("troFormScrim")).click(); await tick(300);
   const created = O.store("spotter.profiles.v1");
-  check("a name that is taken is accepted: the new lifter is Tom (3), not a refusal", Object.keys(created).includes("Tom (3)") && /Tom \(3\) added \(there was already a Tom\)/.test(O.toast()), Object.keys(created).join() + " / " + O.toast());
+  check("a name that is taken is accepted: the new lifter is Tom (3), not a refusal", Object.keys(created).includes("Tom (3)") && /Tom added \(there was already a Tom\)/.test(O.toast()), Object.keys(created).join() + " / " + O.toast());
   check("...with an ID that becomes its cloud ID", await until(async () => (await lifters()).length === 3) && (await lifters()).some(r => r.id === created["Tom (3)"].lid));
 
   console.log("\nSigning in on a device that has its own Tom");

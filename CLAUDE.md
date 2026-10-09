@@ -71,7 +71,8 @@ Everything lives in `localStorage` under versioned keys (`STORE_*` near the
 top of the `<script>` in app.html, e.g. `spotter.profiles.v1`). Bump
 the `.vN` suffix if you ever change a stored shape incompatibly.
 
-- Lifter IDs: every profile has `p.lid` (a UUID: `ensureLids()` at boot gives older ones theirs, `ingestText`/`ingestJSON`/`createLifter` make one, `profileFromCloud` sets it to the row id). It is the cloud id on upload (`uploadLifter` inserts `id: p.lid`, then `cloudId = lid`) and is left out of the stored program (`programForCloud`). Local stores are still keyed by NAME, so two lifters with one name get distinct keys: `freeName(name)` (Tom, Tom (2)) for new ones, `localNameFor()` for downloaded ones. **A loaded file never replaces a lifter**: `ingestText`/`ingestJSON` always add a new one (`was` = the taken name, reported by `finishLoad`); `filesBlocked()` stops a signed-in non-coach with assigned programs. Signing in merges a local-only lifter into a cloud one only when it is the same program (`sameProgram`), else they stay apart. One sign-in with several programs is just several `lifters` rows with the same `lifter_email`. test-lifterids.js covers it.
+- Display Name: `p.dname` is the name people see; `p.name` stays the unique KEY this device files the lifter under (so two lifters can both show "Tom"). Every place that shows a lifter's name goes through `dn(key)` (the key itself is never shown); `nameOfLifter(id)` does the same for cloud ids. The server's `lifters.name` IS the display name (`uploadLifter` sends `dn(name)`; `profileFromCloud(program, key, id, display)` and `pullAll` set `dname = row.name`, so a rename on another device just updates `dname`; `programForCloud` leaves `dname` out). Manage Program's Name field and `renameLifter()` edit `dname` only (no key move, any name allowed). `ingestText`/`ingestJSON`/`createLifter` set it to the typed/exported name. Exports (`#Name`, filenames, JSON `lifter`) use it. When you add UI that shows a lifter's name, use `dn()`.
+- Lifter IDs: every profile has `p.lid` (a UUID: `ensureLids()` at boot gives older ones theirs, `ingestText`/`ingestJSON`/`createLifter` make one, `profileFromCloud` sets it to the row id). It is the cloud id on upload (`uploadLifter` inserts `id: p.lid`, then `cloudId = lid`) and is left out of the stored program (`programForCloud`). Local stores are still keyed by NAME, so two lifters with one name get distinct keys: `freeName(name)` (Tom, Tom (2)) for new ones, `localNameFor()` for downloaded ones (these are the keys; the display stays Tom). **A loaded file never replaces a lifter**: `ingestText`/`ingestJSON` always add a new one (`was` = the taken name, reported by `finishLoad`); `filesBlocked()` stops a signed-in non-coach with assigned programs. Signing in merges a local-only lifter into a cloud one only when it is the same program (`sameProgram`), else they stay apart. One sign-in with several programs is just several `lifters` rows with the same `lifter_email`. test-lifterids.js covers it.
 - `PROFILES`: `name -> { name, lid, block, classWt, maxes:{}, weeks:[{week, days:[{day, rows:[...]}]}] }`
   — one profile per lifter, built by `buildProfile()` from an imported
   `#Name`-header CSV or a Power Logs JSON export.
@@ -338,6 +339,7 @@ node test-taper.js      # Taper builder: each lifter type's last heavy days, lig
 node test-lifterorder.js # Rearrange lifters: sheet, dropdown entry, persistence, reload, unload
 node test-dmnotes.js    # Manage Program Notes: coach-only, editor, links, backups, Weekly notes regression
 node test-reimport.js   # Loading a file with an existing name is a separate lifter; the original and its training maxes are untouched
+node test-displayname.js # Display Name: identical shown names, renaming shows everywhere, lifter's device follows, files keep it
 node test-lifterids.js  # Lifter IDs: duplicate names, files never overwrite, IDs = cloud ids, one sign-in with several programs
 node test-trainingmax.js # Training maxes: 90% default, 100-80% buttons, typed numbers win, Hub + backups
 node test-managelayout.js # Manage tab: section order + every action from its new place
@@ -368,7 +370,7 @@ node test-reactions.js  # Reactions on messages, coach-only on notes and days
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all thirty-six. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all thirty-seven. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of app.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

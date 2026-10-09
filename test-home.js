@@ -130,7 +130,7 @@ async function boot(wd, storage = {}) {
   check("a name is required", A.$("troFormScrim").classList.contains("show") && /name/.test(A.$("toastMsg").textContent));
   A.$("nlName").value = "Tom";
   A.btn("Create", A.$("troFormBody")).click(); await tick(200);
-  check("...a name that is already taken is fine: the new lifter is Tom (2), with an ID of its own", !A.$("troFormScrim").classList.contains("show") && !!JSON.parse(A.w.localStorage.getItem("spotter.profiles.v1"))["Tom (2)"] && /Tom \(2\) added \(there was already a Tom\)/.test(A.$("toastMsg").textContent), A.$("toastMsg").textContent);
+  check("...a name that is already taken is fine: the new lifter is Tom (2), with an ID of its own", !A.$("troFormScrim").classList.contains("show") && !!JSON.parse(A.w.localStorage.getItem("spotter.profiles.v1"))["Tom (2)"] && /Tom added \(there was already a Tom\)/.test(A.$("toastMsg").textContent), A.$("toastMsg").textContent);
   A.nav("Lifters"); await tick(50);
   A.$("addLifterBtn").click(); await tick(50);
   A.$("nlName").value = "  Jo   Reyes "; A.$("nlBlock").value = "Off-season"; A.$("nlCls").value = "63kg";

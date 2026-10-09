@@ -95,7 +95,7 @@ const pickRearrange = app => {
   check("a newly loaded lifter goes to the end", options(app).slice(0, 4).join(",") === "Cal,Ben,Ava,Dee", options(app).join(","));
   await load(app, "Ben", "Block 3 Nats");
   check("a second Ben is a separate lifter at the end, Ben (2); the first keeps its place", options(app).slice(0, 5).join(",") === "Cal,Ben,Ava,Dee,Ben (2)", options(app).join(","));
-  check("...and each shows its own block", app.$("lifterSelect").options[1].textContent === "Ben · Block 3" && app.$("lifterSelect").options[4].textContent === "Ben (2) · Block 3 Nats", app.$("lifterSelect").options[1].textContent + " / " + app.$("lifterSelect").options[4].textContent);
+  check("...and each shows its own block", app.$("lifterSelect").options[1].textContent === "Ben · Block 3" && app.$("lifterSelect").options[4].textContent === "Ben · Block 3 Nats" && app.$("lifterSelect").options[4].value === "Ben (2)", app.$("lifterSelect").options[1].textContent + " / " + app.$("lifterSelect").options[4].textContent);
 
   console.log("\nEscape");
   pickRearrange(app);

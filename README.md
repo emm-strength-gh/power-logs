@@ -39,6 +39,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-lifterorder.js` | Rearranging lifters: the sheet, the dropdown entry, saving and reloading the order — `node test-lifterorder.js`. |
 | `test-dmnotes.js` | Manage Program's Notes card: coach-only, editing, links, backups, and that Weekly notes still work — `node test-dmnotes.js`. |
 | `test-reimport.js` | Loading a file with a lifter's name again (CSV or JSON backup) makes a separate lifter and leaves the original, training maxes included, untouched — `node test-reimport.js`. |
+| `test-displayname.js` | Display Name: two lifters showing the same name, renaming shows it everywhere, the lifter's device follows, files keep the shown name — `node test-displayname.js`. |
 | `test-lifterids.js` | Lifter IDs: two lifters with one name, files never overwrite, IDs become cloud ids, one sign-in with several programs — `node test-lifterids.js`. |
 | `test-trainingmax.js` | Training maxes: 90% of the 1-rep maxes by default, the 100/95/90/85/80% buttons, typed numbers winning, undo, the Hub and backups — `node test-trainingmax.js`. |
 | `test-hubanalytics.js` | Program Hub analytics: charts for each program, controls, and the same numbers as Power Logs' Analytics for the same CSV — `node test-hubanalytics.js`. |
@@ -219,11 +220,13 @@ On **Coach Settings** (the person icon > **Coach Settings**), each approved coac
 - The database enforces it (`accounts.lifter_limit`, a trigger on `lifter_coaches`, RPC `set_lifter_limit` for the owner only); the app also stops at the same number before anything is made, counting lifters only on the device too, and says "Ask the owner for more".
 - Lowering a limit below what a coach already has doesn't remove any lifters; they just can't add more. The coach sees "Lifters: 3 of 4 (set by the owner)" in their account sheet.
 
-## Lifter IDs: two lifters can share a name
+## Lifter IDs and Display Names: two lifters can show the same name
 
 Every program has a **lifter ID** of its own (a UUID, shown at the top of Manage Program under the lifter's name). It is made when the program is created, loaded from a file or downloaded, and it never changes: it is also the id the lifter gets in the cloud when it is uploaded. The name is only a label.
 
-- **Loading a CSV or JSON backup always adds a new lifter** with a new ID. It never replaces another lifter, even one with the same `#Name` and whatever the block title. If the name is taken here the new lifter is numbered (**Tom**, **Tom (2)**, **Tom (3)**) and the message says so; rename it in Manage Program if you like. Creating a lifter by hand (Add new lifter / program) does the same.
+Each lifter also has a **Display Name**: the name everyone sees (the dropdown, the page headings, the Lifters list, Messages, Home, Payments, Trophies, notices, exports, and the push notifications, which use the name stored in the cloud). It is what the **Name** field in Manage Program's *Lifter & program* card shows and edits, and the labels in the app still just say "Name". Behind it the device keeps a unique internal name for each lifter, which nobody sees, so two lifters can both show exactly **Tom**; the dropdown tells them apart by their block title. Renaming changes only the Display Name (for a synced lifter on the server too, so their phone and every coach follow), never the lifter ID, and any name is allowed, even one another lifter has.
+
+- **Loading a CSV or JSON backup always adds a new lifter** with a new ID. It never replaces another lifter, even one with the same `#Name` and whatever the block title. If the name is taken here the new lifter still shows the name from the file (**Tom**, **Tom**) and the message says it is a separate lifter. Creating a lifter by hand (Add new lifter / program) does the same.
 - To change an existing program, edit it in Manage Program (or bring in weeks and days with its Replace and Merge), or load the file as a new lifter and delete the old one. A JSON backup restores into a new lifter too, with the ticks and notes it holds.
 - **One sign-in can have several programs**: put the same sign-in email on each lifter (Sharing) and that person sees every one of them, whatever they are called, each with its own ticks, notes, messages and trophies.
 - Signing in on a device that has its own Tom: if it is the very same program as the account's Tom, they are the same lifter and join; a different program keeps its own entry beside it, so nothing is overwritten.

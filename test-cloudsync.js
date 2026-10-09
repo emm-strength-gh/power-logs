@@ -20,6 +20,8 @@ const check = (name, cond, extra = "") => {
   console.log(`${cond ? "  ok  " : " FAIL "} ${name}${extra && !cond ? " — " + extra : ""}`);
 };
 const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
+// The owner's Coach Settings page (opened from the account sheet): requests, lifter limits, invites, removing coaches.
+const openCS = async X => { X.$("acctBtn").click(); await tick(); X.$("acctCoachSet").click(); await tick(100); };
 async function until(fn, ms = 8000) {
   const end = Date.now() + ms;
   while (Date.now() < end) { try { if (await fn()) return true; } catch (e) {} await tick(50); }
@@ -228,30 +230,32 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   A.sync(); await A.settle();
   check("the owner sees a badge", A.$("acctBadge").textContent === "1" && !A.$("acctBadge").hidden);
   A.$("acctBtn").click(); await tick();
-  check("and the request under Coaches", /Coach Casey[\s\S]*Asking to be a coach/.test(A.$("acctBody").textContent));
-  A.btn("Approve", A.$("acctBody")).click();
+  check("the account sheet points to Coach Settings and says one request is waiting", !!A.$("acctCoachSet") && /1 request waiting/.test(A.$("acctBody").textContent) && !/Asking to be a coach/.test(A.$("acctBody").textContent));
+  A.$("acctCoachSet").click(); await tick(100);
+  check("Coach Settings opens in the main window with the request under Coach requests", A.$("viewCoachSet").classList.contains("active") && !A.$("acctScrim").classList.contains("show") && /Coach requests[\s\S]*Coach Casey[\s\S]*Asking to be a coach/.test(A.$("csBody").textContent));
+  A.btn("Approve", A.$("csBody")).click();
   check("approving takes effect", await until(async () =>
     (await server.sql("select coach_status from public.accounts where email = 'coach@test.invalid'"))[0].coach_status === "approved"));
-  await A.settle(); A.close(); await tick(100);
+  await A.settle(); await tick(100);
   check("badge cleared", A.$("acctBadge").hidden);
 
   console.log("\nThe owner's invite list (sign-up is invite-only)");
-  A.$("acctBtn").click(); await tick();
-  check("the owner's account sheet has Invites", /Invites[\s\S]*Only invited emails/.test(A.$("acctBody").textContent) && !!A.$("acctInvite"));
-  check("...with the list loaded", await until(() => !/Loading the invite list/.test(A.$("acctBody").textContent)));
+  check("Coach Settings has the Invites", /Invites[\s\S]*Only invited emails/.test(A.$("csBody").textContent) && !!A.$("acctInvite") && !/Only invited emails/.test(A.$("acctBody").textContent));
+  check("...with the list loaded", await until(() => !/Loading the invite list/.test(A.$("csBody").textContent)));
   A.$("acctInvite").value = "Newbie@Test.invalid"; A.$("acctInviteCoach").checked = true;
-  A.btn("Invite", A.$("acctBody")).click();
+  A.btn("Invite", A.$("csBody")).click();
   check("inviting adds it, lower-cased, as a coach", await until(async () => {
     const r = await server.sql("select email, coach from public.invites");
     return r.length === 1 && r[0].email === "newbie@test.invalid" && r[0].coach === true;
   }));
-  check("...and lists it as not signed up yet", await until(() => /newbie@test\.invalid\s*Coach · Not signed up yet/.test(A.$("acctBody").textContent)), A.$("acctBody").textContent.slice(-300));
+  check("...and lists it as not signed up yet", await until(() => /newbie@test\.invalid\s*Coach · Not signed up yet/.test(A.$("csBody").textContent)), A.$("csBody").textContent.slice(-300));
   A.$("acctInvite").value = "coach@test.invalid";
-  A.btn("Invite", A.$("acctBody")).click(); await tick(100);
+  A.btn("Invite", A.$("csBody")).click(); await tick(100);
   check("an email that already has an account isn't invited", (await server.sql("select count(*)::int n from public.invites"))[0].n === 1);
-  A.btn("Remove", [...A.$("acctBody").querySelectorAll(".acct-person")].find(r => /newbie@/.test(r.textContent))).click();
+  A.btn("Remove", [...A.$("csBody").querySelectorAll(".acct-person")].find(r => /newbie@/.test(r.textContent))).click();
   check("Remove takes the invite back", await until(async () => (await server.sql("select count(*)::int n from public.invites"))[0].n === 0));
-  A.close(); await tick(100);
+  A.$("csBack").click(); await tick(100);
+  check("Back returns to Home", A.$("viewHome").classList.contains("active"));
   C.$("acctBtn").click(); await tick();
   check("a coach's sheet has no invite list (they invite lifters through Sharing)", !A.real().length && !C.$("acctInvite") && !/Only invited emails/.test(C.$("acctBody").textContent));
   C.close(); await tick(100);
@@ -268,8 +272,8 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   console.log("\nThe owner caps how many lifters the coach has");
   const limitOf = async () => (await server.sql("select lifter_limit from public.accounts where email = 'coach@test.invalid'"))[0].lifter_limit;
   A.sync(); await A.settle();
-  A.$("acctBtn").click(); await tick();
-  const caseyRow = () => [...A.$("acctBody").querySelectorAll(".acct-person")].find(r => /Coach Casey/.test(r.textContent));
+  await openCS(A);
+  const caseyRow = () => [...A.$("csBody").querySelectorAll(".cs-card")].find(r => /Coach Casey/.test(r.textContent));
   check("each approved coach shows their lifter count and a Max lifters box, empty = no limit",
     !!caseyRow() && /1 lifter(?!s)/.test(caseyRow().textContent) && !!caseyRow().querySelector(".acct-limit-input") && caseyRow().querySelector(".acct-limit-input").value === "",
     caseyRow() && caseyRow().textContent);
@@ -278,7 +282,7 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   check("it takes whole numbers only", (await limitOf()) === null && box.value === "");
   box.value = "1"; box.dispatchEvent(new A.w.Event("blur"));
   check("typing 1 sets a limit of one lifter", await until(async () => (await limitOf()) === 1));
-  await A.settle(); A.close(); await tick(100);
+  await A.settle(); A.$("csBack").click(); await tick(100);
   C.sync(); await C.settle();
   C.$("acctBtn").click(); await tick();
   check("the coach sees it in their account", /Lifters: 1 of 1 \(set by the owner\)/.test(C.$("acctBody").textContent));
@@ -288,12 +292,12 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   C.nav("Lifters"); await tick(50);
   C.$("addLifterBtn").click(); await tick(50);
   check("...nor can a new lifter be created", !C.$("troFormScrim").classList.contains("show") && /up to 1 lifter\b/.test(C.$("toastMsg").textContent), C.$("toastMsg").textContent);
-  A.$("acctBtn").click(); await tick();
+  await openCS(A);
   box = caseyRow().querySelector(".acct-limit-input");
   check("the owner's box shows the limit", box.value === "1");
   box.value = ""; box.dispatchEvent(new A.w.Event("blur"));
   check("emptying it removes the limit", await until(async () => (await limitOf()) === null));
-  await A.settle(); A.close(); await tick(100);
+  await A.settle(); A.$("csBack").click(); await tick(100);
   C.sync(); await C.settle();
 
   console.log("\nThe coach gives Tom his own login");
@@ -380,14 +384,14 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   console.log("\nThe owner removes the coach");
   A.sync(); await A.settle();
   check("the owner sees Tom too", A.names().includes("Tom"));
-  A.$("acctBtn").click(); await tick();
-  A.btn("Remove", A.$("acctBody")).click(); await tick();
+  await openCS(A);
+  A.btn("Remove", A.$("csBody")).click(); await tick();
   A.$("confirmYes").click();
   check("revoked", await until(async () =>
     (await server.sql("select coach_status from public.accounts where email = 'coach@test.invalid'"))[0].coach_status === "revoked"));
-  const delBtn = () => A.btn("Delete request", A.$("acctBody"));
+  const delBtn = () => A.btn("Delete request", A.$("csBody"));
   check("the owner gets Delete request on a removed coach", await until(() => !!delBtn()));
-  A.close();
+  A.$("csBack").click();
   C.sync(); await C.settle();
   check("the coach loses file loading with it", !C.files());
   check("the coach loses Tom and Manage program at once", !C.names().includes("Tom") && !C.navs().includes("Manage program"), C.names().join());
@@ -402,7 +406,7 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
 
   console.log("\nThe owner deletes the removed coach's request");
   const coachStatus = async () => (await server.sql("select coach_status from public.accounts where email = 'coach@test.invalid'"))[0].coach_status;
-  A.$("acctBtn").click(); await tick();
+  await openCS(A);
   await until(() => !!delBtn());
   delBtn().click(); await tick();
   check("it asks first, saying they become an ordinary account", A.$("confirmScrim").classList.contains("show") && /ordinary account/.test(A.$("confirmBody").textContent), A.$("confirmBody").textContent);
@@ -411,8 +415,8 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   delBtn().click(); await tick();
   A.$("confirmYes").click();
   check("confirmed: an ordinary account again", await until(async () => (await coachStatus()) === "none"));
-  check("...gone from the owner's Coaches list", await until(() => !/coach@test\.invalid/.test(A.$("acctBody").textContent)), A.$("acctBody").textContent.slice(0, 200));
-  A.close();
+  check("...gone from the owner's Coaches list", await until(() => !/coach@test\.invalid/.test(A.$("csBody").textContent.replace(/Invites[\s\S]*$/, ""))), A.$("csBody").textContent.slice(0, 200));
+  A.$("csBack").click();
   C.sync(); await C.settle();
   C.$("acctBtn").click(); await tick();
   check("the person can ask to be a coach again", await until(() => !!C.btn("I’m a coach: request access", C.$("acctBody"))));

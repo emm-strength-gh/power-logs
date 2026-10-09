@@ -203,9 +203,10 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   J.closeSheet();
   C.sync(); await C.settle();
   C.$("acctBtn").click(); await tick();
-  C.btn("Approve", C.$("acctBody")).click();
+  C.$("acctCoachSet").click(); await tick(100);
+  C.btn("Approve", C.$("csBody")).click();
   await until(async () => (await server.sql("select coach_status from public.accounts where email = 'jordan@test.invalid'"))[0].coach_status === "approved");
-  C.closeSheet();
+  C.$("csBack").click();
   // Messages so far are older than Jordan's join: make that true in time too.
   await server.sql("update public.messages set created_at = created_at - interval '1 hour'");
   C.nav("Manage program"); await tick(100);

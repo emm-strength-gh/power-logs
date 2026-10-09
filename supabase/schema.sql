@@ -1351,6 +1351,30 @@ revoke execute on function private.coach_lifter_count(uuid), private.lifter_coac
 revoke execute on function public.set_lifter_limit(uuid, integer) from public, anon;
 grant execute on function public.set_lifter_limit(uuid, integer) to authenticated;
 
+---------------------------------------------------------------- what a coach sees in Coach's Analytics
+-- The owner can hide cards of the Coach's Analytics page from an individual coach (Coach Settings, one set of
+-- switches per coach). accounts.coach_cards_off holds the cards switched off: 'e1rm' (Estimated 1RM), 'weekly'
+-- (Weekly e1RM), 'charts' (the program charts) and 'load' (Progression and load). Only the owner changes it (the
+-- coach reads their own row, like lifter_limit); the app hides the cards on that coach's devices. The owner
+-- always sees everything.
+alter table public.accounts add column if not exists coach_cards_off text[] not null default '{}';
+
+create or replace function public.set_coach_cards(p_user uuid, p_off text[]) returns void
+language plpgsql security definer set search_path = '' as $$
+declare bad text;
+begin
+  if not private.is_owner() then raise exception 'only the owner chooses what coaches see'; end if;
+  if not exists (select 1 from public.accounts where user_id = p_user and role <> 'owner') then
+    raise exception 'that account is not a coach you can change';
+  end if;
+  select x into bad from unnest(coalesce(p_off, '{}'::text[])) x where x not in ('e1rm', 'weekly', 'charts', 'load') limit 1;
+  if bad is not null then raise exception 'unknown card: %', bad; end if;
+  update public.accounts set coach_cards_off = coalesce((select array_agg(distinct x order by x) from unnest(coalesce(p_off, '{}'::text[])) x), '{}'::text[])
+   where user_id = p_user;
+end $$;
+revoke execute on function public.set_coach_cards(uuid, text[]) from public, anon;
+grant execute on function public.set_coach_cards(uuid, text[]) to authenticated;
+
 ---------------------------------------------------------------- what a lifter sees in Analytics
 -- A coach can switch parts of Analytics off for a lifter, or the whole page. lifter_settings.analytics_off holds
 -- the parts switched off: 'all' (the page), 'maxes', 'tonnage', 'nl', 'top'. Only the lifter's coaches change it

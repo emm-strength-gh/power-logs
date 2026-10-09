@@ -139,7 +139,7 @@ private script kept outside it (`private.settings`).
 - Invite-only sign-up: Supabase's "Before User Created" hook (enabled in the dashboard) calls
   `public.hook_before_user_created` -> `private.invited(email)`: an `invites` row (owner-only table; `coach` = approved
   on sign-up by `private.on_auth_user`, only from 'none'), a live `lifters.lifter_email`, or the owner's email. The app's
-  owner UI is `buildInvitesSection()` (`loadInvites`/`addInvite`/`removeInvite`) in the account sheet. test-cloudfake's
+  owner UI is `buildInvitesSection()` (`loadInvites`/`addInvite`/`removeInvite`) on the Coach Settings page. test-cloudfake's
   `pgServer({ inviteOnly: true })` runs the hook on sign-up; the other tests leave it off.
 - Colour themes: `ACCENTS` (sage default, ocean, purple, amber, charcoal), `applyAccent(id)` sets/removes `html[data-accent]` (stored in `spotter.accent`, per device); the CSS only overrides `--pine`, `--pine-dark`, `--bg`, `--bg-glass` and, in dark mode, the bar variables per `[data-accent]`. Picker: `openAccent()`/`#accentScrim`, from the ⋯ menu item `data-for="accentBtn"`. The status-bar tint is the theme's `bg` (`applyTheme`). New accent-aware CSS should use `var(--pine)` etc., never a literal.
 - Who is online (owner only): `user_presence` table (no policies), RPCs `touch_presence` (every device, `PRESENCE_EVERY` ms while visible), `leave_presence` (sign-out) and `presence_online` (owner-only, server-side freshness). `presenceRefresh()`/`presenceWatch()` run only for `isOwner()` on the Lifters page (`renderLifters()` draws `.pres-dot`, `lifterOnline(name)` via `CLOUD.lifterMeta[id].userId`). Coaches never call it (test-themes.js spies on the RPC names).
@@ -158,10 +158,11 @@ private script kept outside it (`private.settings`).
   `toolHiddenEverywhere()`, and `syncNow()` skips downloading it. The coach's switches are `buildAccessSection()`. It hides derived numbers and
   tools, not the logged sets. (The Overview page is called "Current Program" to users; ids/functions still say overview.)
 - Lifter limits: `accounts.lifter_limit` (null = none; owner exempt), set by the owner's RPC `set_lifter_limit` from the
-  Max lifters box in Account > Coaches (`buildLimitBox`). The `lifter_limit` trigger on `lifter_coaches` refuses a new link once
+  Max lifters box on the Coach Settings page (`buildLimitBox`). The `lifter_limit` trigger on `lifter_coaches` refuses a new link once
   `private.coach_lifter_count` (live linked lifters) reaches it, which covers creating, uploading and sharing. The app checks first
   with `roomForLifters()` (managed lifters incl. device-only) in `openNewLifter`, `ingestText`/`ingestJSON` (reason "limit"), and
   `pushAll` skips auto-uploads past `syncedLifterCount()`.
+- Coach Settings (owner only; `#viewCoachSet`, `inCoachSet`, `openCoachSettings()`/`renderCoachSettings()`/`closeCoachSettings()`, opened by the account sheet's `#acctCoachSet` button, which also says how many requests wait): coach requests (Approve/Decline via `decideCoach`), a `.cs-card` per approved coach (`buildCoachCard`: lifter limit, Remove, and the `CS_CARDS` switches `e1rm`/`weekly`/`charts`/`load` calling RPC `set_coach_cards`), past requests and the invites. `accounts.coach_cards_off text[]` rides `pullAll` into `CLOUD.account`; `cardOff(key)` (never true for the owner) gates `renderCoachAnalytics()`/`renderDMAnalytics()` and `coachAnAvailable()` the Manage Program button, `openCoachAnalytics()` and a redraw that closes the page. `ownerRedraw()` redraws the sheet and the page. test-coachsettings.js covers it.
 - Roles: owner (sees all, approves coaches via the `decide_coach` RPC, which on
   revoke/decline also clears the `lifter_email`s that coach entered,
   `lifters.lifter_email_by`), coach
@@ -348,6 +349,7 @@ node test-trophysync.js # Trophies across devices on the real rules, plus their 
 node test-notices.js    # In-app notice banner: kinds, who wrote it, x, stacking
 node test-hubprivate.js # The Program Hub's private copy: owner download, offline, sign-out delete
 node test-vbtprivate.js # The Velocity Tracker's private copy: any signed-in account, offline, sign-out delete
+node test-coachsettings.js # Coach Settings: owner-only page, requests, per-coach Coach's Analytics cards, limits, invites
 node test-themes.js     # Colour themes (picker in the ⋯ menu, default Sage, persistence, dark) + the owner-only who-is-online dots
 node test-tabbar.js     # The floating tab bar: its five buttons, what they open, lit state, red dots, where it hides, Lifter access
 node test-coachweekly.js # Coach’s Analytics Weekly e1RM card: rows, changes, Best, Completed/Programmed, formula
@@ -364,7 +366,7 @@ node test-reactions.js  # Reactions on messages, coach-only on notes and days
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all thirty-four. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all thirty-five. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of app.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

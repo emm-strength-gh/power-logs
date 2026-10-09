@@ -107,8 +107,8 @@ is enforced by the database's row-level security rules (`supabase/schema.sql`), 
 by the app, so a modified copy of the page can't get around them.
 
 - **Owner** (set by a private SQL script, so the email isn't in this public repo):
-  sees every lifter and approves coaches under **Coaches** in the account sheet (the
-  person icon shows a badge for requests); can remove a coach at any time.
+  sees every lifter and approves coaches on the **Coach Settings** page (a button in the account
+  sheet; the person icon shows a badge for requests); can remove a coach at any time.
   Removing (or declining) a coach also clears the sign-in emails that coach entered,
   so those lifters lose access; the programs stay with the owner and other coaches.
 - **Coach**: signs in, taps **I'm a coach: request access**, and once approved gets
@@ -177,7 +177,7 @@ Six edits, all additive except the icon swap:
 Nobody can make an account unless their email is invited. Supabase asks the database before it creates any user (Authentication > Auth Hooks > **Before User Created**, Postgres function `public.hook_before_user_created`, turned on in the dashboard). It lets in:
 
 - an email a coach put on a lifter (Manage Program > Sharing > the lifter's email): that is how a coach invites a lifter;
-- an email the owner added under **Account > Invites** (tick *As a coach* and they are a coach the moment they sign in, no approval step);
+- an email the owner added under **Coach Settings > Invites** (tick *As a coach* and they are a coach the moment they sign in, no approval step);
 - the owner's own email.
 
 Anyone else gets "This email hasn't been invited to Power Logs yet. Ask your coach to add it, then try again." on the sign-in page, and no email is sent. Accounts that already exist are not affected (the check only runs when an account would be created), and taking an invite back doesn't remove an account. The list is the `invites` table: only the owner reads or changes it. To turn this off, disable the hook in the dashboard.
@@ -212,11 +212,22 @@ Switch one off and it disappears from that lifter's own devices. Switching the L
 
 ## Lifter limits for coaches
 
-In **Account > Coaches** (the person icon), each approved coach shows how many lifters they have and a **Max lifters** box. Type a whole number (say 4) and press Enter or tap away: that coach can then have at most 4 lifters. Leave it empty for no limit. The owner is never limited.
+On **Coach Settings** (the person icon > **Coach Settings**), each approved coach's card shows how many lifters they have and a **Max lifters** box. Type a whole number (say 4) and press Enter or tap away: that coach can then have at most 4 lifters. Leave it empty for no limit. The owner is never limited.
 
 - It counts every way of getting a lifter: creating one, importing a CSV or JSON, uploading lifters that were only on their device, and being shared one by another coach.
 - The database enforces it (`accounts.lifter_limit`, a trigger on `lifter_coaches`, RPC `set_lifter_limit` for the owner only); the app also stops at the same number before anything is made, counting lifters only on the device too, and says "Ask the owner for more".
 - Lowering a limit below what a coach already has doesn't remove any lifters; they just can't add more. The coach sees "Lifters: 3 of 4 (set by the owner)" in their account sheet.
+
+## Coach Settings (owner only)
+
+The owner's account sheet has a **Coach Settings** button. It opens a page in the main window (Back returns to Home) with everything about coaches in one place; coaches never see it:
+
+- **Coach requests**: who is asking to be a coach, with Approve and Decline (the sheet only says how many are waiting).
+- **Coaches**: one card per approved coach with their lifter count, the **Max lifters** box, **Remove**, and four switches for **Coach's Analytics**: *Estimated 1RM*, *Weekly e1RM*, *Program charts* and *Progression and load*. Switched off, that card is hidden from that coach only (another coach can still have it); with all four off, the coach has no Coach's Analytics button in Manage Program at all. The owner always sees every card.
+- **Past requests**: declined or removed coaches, to approve again or delete.
+- **Invites**: as before.
+
+The switches are stored on the coach's account (`accounts.coach_cards_off`, RPC `set_coach_cards`, owner only; the coach can read their own row but not write it) and reach their devices with the normal sync. This hides the cards, not the lifters' data.
 
 ## Messages and notifications
 

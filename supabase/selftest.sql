@@ -677,6 +677,25 @@ begin
   perform pg_temp.act(o, format($q$select public.set_lifter_limit(%L, null)$q$, o));
   perform pg_temp.ok('...and clearing it means no limit', (select count(*) from public.accounts where user_id in (o, c1, c2) and lifter_limit is not null) = 0);
 
+  -- Coach's Analytics cards: the owner hides some from one coach, not another
+  r := pg_temp.act(c1, format($q$select public.set_coach_cards(%L, '{e1rm}')$q$, c1));
+  perform pg_temp.ok('a coach cannot hide cards from themselves (or anyone)', r like 'refused%', r);
+  r := pg_temp.act(l, format($q$select public.set_coach_cards(%L, '{e1rm}')$q$, c1));
+  perform pg_temp.ok('...nor can a lifter', r like 'refused%', r);
+  r := pg_temp.act(c1, format($q$update public.accounts set coach_cards_off = '{}' where user_id = %L$q$, c1));
+  perform pg_temp.ok('...nor write the column directly', r like 'refused%' or r = 'ok 0', r);
+  r := pg_temp.act(o, format($q$select public.set_coach_cards(%L, '{e1rm,load,e1rm}')$q$, c1));
+  perform pg_temp.ok('the owner hides cards from one coach (duplicates collapse)', r like 'ok%' and (select coach_cards_off from public.accounts where user_id = c1) = '{e1rm,load}', r);
+  perform pg_temp.ok('...the other coach still sees everything', (select coach_cards_off from public.accounts where user_id = c2) = '{}');
+  v := pg_temp.val(c1, format($q$select coach_cards_off::text from public.accounts where user_id = %L$q$, c1));
+  perform pg_temp.ok('...and the coach can read their own switches', v = '{e1rm,load}', v);
+  r := pg_temp.act(o, format($q$select public.set_coach_cards(%L, '{secret}')$q$, c1));
+  perform pg_temp.ok('an unknown card is refused', r like 'refused%unknown card%', r);
+  r := pg_temp.act(o, format($q$select public.set_coach_cards(%L, '{e1rm}')$q$, o));
+  perform pg_temp.ok('the owner has nothing to hide from themselves', r like 'refused%', r);
+  perform pg_temp.act(o, format($q$select public.set_coach_cards(%L, '{}')$q$, c1));
+  perform pg_temp.ok('...and an empty list shows everything again', (select coach_cards_off from public.accounts where user_id = c1) = '{}');
+
   -- Invite-only sign-up: what Supabase Auth asks before it creates an account
   perform pg_temp.ok('sign-up: an email nobody invited is refused',
     public.hook_before_user_created('{"user":{"email":"nobody@selftest.invalid"}}') ? 'error');

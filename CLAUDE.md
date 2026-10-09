@@ -141,7 +141,9 @@ private script kept outside it (`private.settings`).
   on sign-up by `private.on_auth_user`, only from 'none'), a live `lifters.lifter_email`, or the owner's email. The app's
   owner UI is `buildInvitesSection()` (`loadInvites`/`addInvite`/`removeInvite`) in the account sheet. test-cloudfake's
   `pgServer({ inviteOnly: true })` runs the hook on sign-up; the other tests leave it off.
-- The floating tab bar styling is the block pill's own variables (`var(--gold-soft)` fill, `var(--border)`, `var(--gold)` icons, so both themes follow); `.acct-btn` is hidden in the same media query. The left menu has no Rearrange button (the lifter dropdown's entry opens that sheet).
+- Colour themes: `ACCENTS` (sage default, ocean, purple, amber, charcoal), `applyAccent(id)` sets/removes `html[data-accent]` (stored in `spotter.accent`, per device); the CSS only overrides `--pine`, `--pine-dark`, `--bg`, `--bg-glass` and, in dark mode, the bar variables per `[data-accent]`. Picker: `openAccent()`/`#accentScrim`, from the ⋯ menu item `data-for="accentBtn"`. The status-bar tint is the theme's `bg` (`applyTheme`). New accent-aware CSS should use `var(--pine)` etc., never a literal.
+- Who is online (owner only): `user_presence` table (no policies), RPCs `touch_presence` (every device, `PRESENCE_EVERY` ms while visible), `leave_presence` (sign-out) and `presence_online` (owner-only, server-side freshness). `presenceRefresh()`/`presenceWatch()` run only for `isOwner()` on the Lifters page (`renderLifters()` draws `.pres-dot`, `lifterOnline(name)` via `CLOUD.lifterMeta[id].userId`). Coaches never call it (test-themes.js spies on the RPC names).
+- The floating tab bar uses the theme's bar variables (`--bar-bg` fill, `--bar-ink` icons, `--bar-line` outline, `--bar-active` for the current page; the dark theme sets them per accent); `.acct-btn` is hidden in the same media query. The left menu has no Rearrange button (the lifter dropdown's entry opens that sheet).
 - The floating tab bar (`#tabBar`, `renderTabBar()`, called from `renderSidebar()`, `updateMsgBadges()` and `setCloudStatus()`): Home, Current Program,
   Messages (the Inbox for a coach), Lifter’s Analytics (not when `accessOffFor(current).all`) and Account, with `.tb-dot` red dots for unread / pending coach requests. Shown by CSS only at
   `(max-width: 1024px), (pointer: coarse) and (hover: none) and (max-width: 1400px)` (`.tabbar` is `display: none` otherwise: computers keep only the left menu); the JS always builds
@@ -346,6 +348,7 @@ node test-trophysync.js # Trophies across devices on the real rules, plus their 
 node test-notices.js    # In-app notice banner: kinds, who wrote it, x, stacking
 node test-hubprivate.js # The Program Hub's private copy: owner download, offline, sign-out delete
 node test-vbtprivate.js # The Velocity Tracker's private copy: any signed-in account, offline, sign-out delete
+node test-themes.js     # Colour themes (picker in the ⋯ menu, default Sage, persistence, dark) + the owner-only who-is-online dots
 node test-tabbar.js     # The floating tab bar: its five buttons, what they open, lit state, red dots, where it hides, Lifter access
 node test-coachweekly.js # Coach’s Analytics Weekly e1RM card: rows, changes, Best, Completed/Programmed, formula
 node test-lifteraccess.js # A coach hides parts of Analytics (or the page) and the two tools from a lifter: the dialog, the rules, the lifter's device
@@ -361,7 +364,7 @@ node test-reactions.js  # Reactions on messages, coach-only on notes and days
 node test-vbt.js        # Velocity Tracker smoke test
 ```
 
-`npm test` runs all thirty-three. The Program Hub's analytics (`renderHubAnalytics()`) is a
+`npm test` runs all thirty-four. The Program Hub's analytics (`renderHubAnalytics()`) is a
 port of app.html's Analytics view: keep `AN_LIFTS`/`AN_EXCLUDED` and the
 tonnage/NL/top-set maths identical in both files, as test-hubanalytics.js checks.
 Its tests stub `window.Chart` (needs `static defaults = { font: {} }` for power-logs). Tests that need Manage Program boot the page signed in as a coach:

@@ -612,6 +612,30 @@ begin
   v := pg_temp.val(c1, format($q$select public.set_analytics_off(%L, '{}')$q$, m));
   perform pg_temp.ok('switching everything back on clears it', v = '{}' and pg_temp.val(l, format($q$select analytics_off::text from public.lifter_settings where lifter_id = %L$q$, m)) = '{}', v);
 
+  -- Who is online: everyone reports in, only the owner can look
+  perform pg_temp.act(l, $q$select public.touch_presence()$q$);
+  perform pg_temp.act(c1, $q$select public.touch_presence()$q$);
+  v := pg_temp.val(o, $q$select presence_online::text from public.presence_online()$q$);
+  perform pg_temp.ok('the owner sees who has reported in (a lifter and a coach)', v like '%5e1f7e57-0000-4000-8000-000000000005%' and v like '%5e1f7e57-0000-4000-8000-000000000002%', v);
+  perform pg_temp.ok('...and not someone who hasn''t', v not like '%5e1f7e57-0000-4000-8000-000000000006%', v);
+  v := pg_temp.val(c1, $q$select presence_online::text from public.presence_online()$q$);
+  perform pg_temp.ok('a coach cannot see who is online', v like 'refused%', v);
+  v := pg_temp.val(l, $q$select presence_online::text from public.presence_online()$q$);
+  perform pg_temp.ok('...nor a lifter', v like 'refused%', v);
+  r := pg_temp.act(null, $q$select public.touch_presence()$q$);
+  perform pg_temp.ok('...nor anyone signed out', r like 'refused%', r);
+  r := pg_temp.act(c1, $q$select * from public.user_presence$q$);
+  perform pg_temp.ok('nobody can read the table itself', r like 'refused%', r);
+  r := pg_temp.act(l, format($q$insert into public.user_presence (user_id) values (%L)$q$, x));
+  perform pg_temp.ok('...nor write to it, only report in as themselves', r like 'refused%', r);
+  update public.user_presence set seen_at = now() - interval '5 minutes' where user_id = l;
+  v := pg_temp.val(o, $q$select presence_online::text from public.presence_online()$q$);
+  perform pg_temp.ok('someone who reported in five minutes ago is not online now', v not like '%5e1f7e57-0000-4000-8000-000000000005%', v);
+  perform pg_temp.ok('...unless you ask for a longer window', pg_temp.val(o, $q$select presence_online::text from public.presence_online(600)$q$) like '%5e1f7e57-0000-4000-8000-000000000005%');
+  perform pg_temp.act(c1, $q$select public.leave_presence()$q$);
+  perform pg_temp.ok('signing out takes you off the list', pg_temp.val(o, $q$select presence_online::text from public.presence_online()$q$) not like '%5e1f7e57-0000-4000-8000-000000000002%');
+  delete from public.user_presence where user_id::text like '5e1f7e57-%';
+
   -- Tools a lifter sees: a coach switches the Velocity Tracker / RPE Calculator off
   v := pg_temp.val(c1, format($q$select public.set_tools_off(%L, '{rpe,vbt,rpe}')$q$, m));
   perform pg_temp.ok('a coach switches tools off for their lifter (duplicates folded)', v = '{rpe,vbt}', v);

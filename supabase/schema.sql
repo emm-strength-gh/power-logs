@@ -1393,3 +1393,39 @@ begin
 end $$;
 revoke execute on function public.set_tools_off(uuid, text[]) from public, anon;
 grant execute on function public.set_tools_off(uuid, text[]) to authenticated;
+
+---------------------------------------------------------------- who is online (the owner's view)
+-- Every signed-in device says "still here" every so often while the app is open (touch_presence). Only the
+-- owner can ask who has said so lately (presence_online); the table itself has no policies, so nobody reads
+-- it directly, and a coach can't see it at all.
+create table if not exists public.user_presence (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  seen_at timestamptz not null default now()
+);
+alter table public.user_presence enable row level security;
+revoke all on public.user_presence from public, anon, authenticated;
+
+create or replace function public.touch_presence() returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null then return; end if;
+  insert into public.user_presence (user_id, seen_at) values (auth.uid(), now())
+  on conflict (user_id) do update set seen_at = now();
+end $$;
+
+create or replace function public.leave_presence() returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  delete from public.user_presence where user_id = auth.uid();
+end $$;
+
+-- The accounts that said so within the last p_within seconds (10 to 600), by the server's clock.
+create or replace function public.presence_online(p_within integer default 100) returns uuid[]
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not private.is_owner() then raise exception 'only the owner can see who is online'; end if;
+  return coalesce((select array_agg(user_id) from public.user_presence
+                    where seen_at > now() - make_interval(secs => greatest(10, least(coalesce(p_within, 100), 600)))), '{}'::uuid[]);
+end $$;
+revoke execute on function public.touch_presence(), public.leave_presence(), public.presence_online(integer) from public, anon;
+grant execute on function public.touch_presence(), public.leave_presence(), public.presence_online(integer) to authenticated;

@@ -184,11 +184,19 @@ Anyone else gets "This email hasn't been invited to Power Logs yet. Ask your coa
 
 ## The floating bar (phones and tablets)
 
-It wears the colours of the block title pill at the top of the left menu: the pill's cream fill and thin outline, with the icons drawn in the pill's gold (the dark theme's own pill colours in dark mode). Where it shows, the person icon in the header is hidden (the bar's Account button is the same thing); computers have no bar, so they keep the header icon.
+It wears the colour theme (see below): a solid bar in the theme's accent with white icons and a lighter pill behind the page you're on (in dark mode a deep tint of the accent with accent-coloured icons). Where it shows, the person icon in the header is hidden (the bar's Account button is the same thing); computers have no bar, so they keep the header icon.
 
 On phones and tablets a see-through, blurred pill floats at the bottom of the screen with five buttons: **Home**, **Current Program**, **Messages** (a coach's is the **Inbox** of every lifter), **Analytics** and **Account**. The one you're on is lit, and a red dot marks unread messages (and, for the owner, a coach request waiting). Analytics drops out for a lifter whose coach has hidden it. It steps aside on a conversation (so it can't cover the message box), on the Velocity Tracker and RPE Calculator, and while you're typing. The floating chat button, pop-up messages and the Payments + sit above it.
 
 "Tablet" means a window up to 1024 px wide, or a touch screen without a mouse up to 1400 px (iPad Pro landscape). **Computers don't get it**: they keep only the left menu. The left menu stays on every device (a drawer behind the menu button on phones and narrow tablets, always open on wide ones, where the bar centres itself over the page beside it).
+
+## Colour themes
+
+The **⋯** menu (and, on computers, a palette button in the header) has **Color theme**. Pick one of five: **Sage Green** (Fresh & Calm, the default), **Ocean Blue** (Trust & Focus), **Purple Clean** (Modern & Energetic), **Amber Warm** (Friendly & Inviting) or **Charcoal Mode** (Sleek & Professional). The accent colours the icon tiles, buttons, section captions and the floating bar, and the page gets a faint matching tint; dark mode works with every theme. The choice is per device (`localStorage` `spotter.accent`); nothing is synced.
+
+## Who is online (owner only)
+
+Every signed-in device tells the server it is still there about every 45 seconds while the app is open and showing (RPC `touch_presence`; sign-out removes it with `leave_presence`). Only the **owner** can read that list (RPC `presence_online`, which refuses everyone else; the `user_presence` table has no policies at all), and only the owner's **Lifters** page asks: a green dot and the word *Online* beside each lifter who has signed in and was seen in the last ~100 seconds, a grey dot for one who isn't, and an "N online" count under the heading. Coaches see none of it and their devices never make the request. Lifters who haven't signed in yet (no linked account) get no dot.
 
 ## What a lifter sees: Lifter access
 

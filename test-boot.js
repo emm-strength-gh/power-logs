@@ -132,8 +132,8 @@ if (btn && btn.onclick) {
 console.log("\nHeader ⋯ menu and About");
 const $ = id => doc.getElementById(id);
 const src = fs.readFileSync(path.join(__dirname, "app.html"), "utf8");
-check("at 820px and under, load/save/tools/theme/About fold away and ⋯ shows",
-  /@media \(max-width: 820px\)[\s\S]*?#loadBtn, #saveBtn, #toolsBtn, #themeBtn, #aboutBtn \{ display: none; \}\s*\.more-btn \{ display: grid; \}/.test(src));
+check("at 820px and under, load/save/tools/theme/Color theme/About fold away and ⋯ shows",
+  /@media \(max-width: 820px\)[\s\S]*?#loadBtn, #saveBtn, #toolsBtn, #themeBtn, #accentBtn, #aboutBtn \{ display: none; \}\s*\.more-btn \{ display: grid; \}/.test(src));
 check("the account button stays out of the menu", !$("moreMenu").querySelector('[data-for="acctBtn"]'));
 check("menu starts closed", $("moreMenu").hidden && $("moreBtn").getAttribute("aria-expanded") === "false");
 $("moreBtn").click();

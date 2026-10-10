@@ -96,6 +96,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   await until(async () => (await rows("select count(*)::int n from public.lifters"))[0].n === 1);
   await C.settle();
   const tomId = (await rows("select id from public.lifters where name = 'Tom'"))[0].id;
+  let tomUser = null;
   C.nav("Manage program"); await tick(100);
   C.$("dmShareBtn").click(); await tick(50);
   const em = C.$("dmShare").querySelector('input[type="email"]');
@@ -107,9 +108,10 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   await tick(200);
   await L.signIn("tom@test.invalid");
   C.sync(); await C.settle();
+  tomUser = (await rows("select user_id from public.accounts where email = 'tom@test.invalid'"))[0].user_id;
   const active = a => [...a.doc.querySelectorAll(".view.active")].map(v => v.id).join();
   const homeBtn = (a, title) => [...a.doc.querySelectorAll("#viewHome .analytics-btn")].find(b => b.querySelector(".ab-title").textContent === title);
-  const payRows = async () => rows("select month, paid, removed, paid_on::text, amount::float8 amount, currency, a.email from public.lifter_payments p left join public.accounts a on a.user_id = p.updated_by order by month");
+  const payRows = async () => rows("select month, paid, removed, paid_on::text, amount::float8 amount, currency, a.email from public.user_payments p left join public.accounts a on a.user_id = p.updated_by order by month");
   const now = new Date(), MK = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
   const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1), PK = prev.getFullYear() + "-" + String(prev.getMonth() + 1).padStart(2, "0");
   const month = (a, k) => a.doc.querySelector('#payMonths [data-month="' + k + '"]');
@@ -123,7 +125,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   homeBtn(C, "Payments").click(); await tick(100);
   check("it opens the Payments page", active(C) === "viewPayments");
   check("listing the lifters this coach created, unpaid by default", /Tom/.test(C.$("payList").textContent) && /Unpaid/.test(C.$("payList").textContent));
-  C.$("payList").querySelector('[data-lifter="Tom"]').click(); await tick(100);
+  C.$("payList").querySelector('[data-lifter]').click(); await tick(100);
   check("a lifter shows the last twelve months, newest first", C.$("payMonths").querySelectorAll("[data-month]").length === 12 && C.$("payMonths").querySelector("[data-month]").getAttribute("data-month") === MK);
   check("...every one unpaid until marked", [...C.$("payMonths").querySelectorAll(".pay-pill")].every(p => p.textContent === "Unpaid"));
   check("the coach chooses the currency: pesos, pounds or dollars", [...C.$("payBody").querySelectorAll(".pay-cur [data-cur]")].map(b => b.getAttribute("data-cur")).join() === "PHP,GBP,USD");
@@ -182,7 +184,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   const rd = (await payRows()).find(r => r.month === MK);
   check("...and the database marks it removed", rd && rd.removed === true && rd.paid === false && rd.amount === null && rd.paid_on === null, JSON.stringify(rd));
   check("Home no longer counts it as paid", (C.nav("Home"), await tick(50), /: 0 of 1 paid/.test(homeBtn(C, "Payments").textContent)));
-  homeBtn(C, "Payments").click(); await tick(100); C.$("payList").querySelector('[data-lifter="Tom"]').click(); await tick(100);
+  homeBtn(C, "Payments").click(); await tick(100); C.$("payList").querySelector('[data-lifter]').click(); await tick(100);
   C.$("toastUndoBtn").click(); await tick(100);
   check("Undo brings the month back with its payment", /Paid/.test(month(C, MK).textContent) && /£45\.50/.test(month(C, MK).textContent) && listed(C).length === 12, month(C, MK) && month(C, MK).textContent);
   await C.settle();
@@ -230,7 +232,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   await C.settle();
   C.nav("Home"); await tick(50);
   check("Home still counts this month", /: 1 of 1 paid/.test(homeBtn(C, "Payments").textContent));
-  homeBtn(C, "Payments").click(); await tick(100); C.$("payList").querySelector('[data-lifter="Tom"]').click(); await tick(100);
+  homeBtn(C, "Payments").click(); await tick(100); C.$("payList").querySelector('[data-lifter]').click(); await tick(100);
 
   /* ------------------------------------------------------------ the lifter */
   console.log("\nThe lifter's Home");
@@ -249,7 +251,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   month(L, MK).click(); await tick(50);
   check("...and tapping a month opens nothing", !L.$("troFormScrim").classList.contains("show"));
   let refused = null;
-  try { await L.dev.upsert("lifter_payments", [{ lifter_id: tomId, month: MK, paid: false }], "lifter_id,month"); } catch (e) { refused = e.message; }
+  try { await L.dev.upsert("user_payments", [{ user_id: tomUser, month: MK, paid: false }], "user_id,month"); } catch (e) { refused = e.message; }
   check("even going round the app, the database won't let him change it", /row-level security|permission|violates/i.test(refused || "") && (await payRows()).find(r => r.month === MK).paid === true, refused);
   L.$("payBack").click(); await tick(50);
   check("Payments has a Home button", active(L) === "viewHome");
@@ -284,8 +286,50 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   J.sync(); await tick(1500); await J.settle();
   J.nav("Home"); await tick(100);
   homeBtn(J, "Payments").click(); await tick(100);
-  check("a co-coach sees Tom's program but not in their Payments", !J.$("payList") && /Lifters you create or load appear here/.test(J.$("payBody").textContent), J.$("payBody").textContent);
-  check("...nor his payment records", (await J.dev.fetch("lifter_payments", {})).length === 0);
+  check("a co-coach sees Tom in their Payments too", !!J.$("payList") && /Tom/.test(J.$("payList").textContent), J.$("payBody").textContent);
+  J.$("payList").querySelector('[data-lifter]').click(); await tick(100);
+  check("...his months as the creating coach marked them, read-only", /£45\.50/.test(month(J, MK).textContent) && !J.$("payBody").querySelector(".pay-cur") && !J.$("payAdd"), month(J, MK) && month(J, MK).textContent);
+  let refusedJ = null;
+  try { await J.dev.upsert("user_payments", [{ user_id: tomUser, month: MK, paid: false }], "user_id,month"); } catch (e) { refusedJ = e.message; }
+  check("...and the database won't let them change it", /row-level security|permission|violates/i.test(refusedJ || "") && (await payRows()).find(r => r.month === MK).paid === true, refusedJ);
+
+  console.log("\nA coach can't delete a lifter who has signed in: they remove them from their list");
+  J.nav("Lifters"); await tick(150);
+  const tomCard = () => [...J.doc.querySelectorAll("#liftersBody .ll-item")].find(r => /Tom/.test(r.textContent));
+  check("Jordan has Tom on their Lifters page", !!tomCard());
+  tomCard().querySelector(".msg-thread").click(); await tick(150);
+  J.doc.querySelector("#progsList .ll-more").click(); await tick(100);
+  check("the ⋯ offers Remove from my lifters, not Delete lifter", !!J.btn("Remove from my lifters", J.$("troFormBody")) && !J.btn("Delete lifter", J.$("troFormBody")));
+  J.btn("Remove from my lifters", J.$("troFormBody")).click(); await tick(100);
+  check("it asks first, saying the lifter keeps their program", J.$("confirmScrim").classList.contains("show") && /keeps their program/.test(J.$("confirmBody").textContent), J.$("confirmBody").textContent);
+  J.$("confirmYes").click(); await tick(300);
+  await J.settle();
+  J.nav("Lifters"); await tick(150);
+  check("Tom is off Jordan's list...", !tomCard() && !J.store("spotter.profiles.v1").Tom, Object.keys(J.store("spotter.profiles.v1") || {}).join());
+  check("...but not deleted: still in the database, still coached by the owner", (await rows("select deleted_at from public.lifters where id = $1", [tomId]))[0].deleted_at === null && (await rows("select count(*)::int n from public.lifter_coaches where lifter_id = $1", [tomId]))[0].n === 1);
+  let refusedDel = null;
+  try { await J.dev.update("lifters", tomId, { deleted_at: new Date().toISOString() }); } catch (e) { refusedDel = e.message; }
+  check("and even going round the app a coach can't delete him", refusedDel !== null || (await rows("select deleted_at from public.lifters where id = $1", [tomId]))[0].deleted_at === null, refusedDel);
+
+  console.log("\nA lifter with no program still has payments");
+  C.nav("Lifters"); await tick(150);
+  [...C.doc.querySelectorAll("#liftersBody .ll-item")].find(r => /Tom/.test(r.textContent)).querySelector(".msg-thread").click(); await tick(150);
+  C.doc.querySelector("#progsList .ll-more").click(); await tick(100);
+  check("the owner still gets Delete lifter", !!C.btn("Delete lifter", C.$("troFormBody")));
+  C.btn("Delete lifter", C.$("troFormBody")).click(); await tick(100);
+  C.$("confirmYes").click(); await tick(300);
+  await C.settle();
+  check("Tom is deleted for real", (await rows("select deleted_at from public.lifters where id = $1", [tomId]))[0].deleted_at !== null);
+  C.nav("Home"); await tick(100);
+  homeBtn(C, "Payments").click(); await tick(100);
+  check("his payments are still in the coach's Payments list, with no program", !!C.$("payList") && /Tom/.test(C.$("payList").textContent), C.$("payBody").textContent);
+  C.$("payList").querySelector('[data-lifter]').click(); await tick(100);
+  check("...and can still be edited", /£45\.50/.test(month(C, MK).textContent) && !!C.$("payAdd"));
+  L.sync(); await L.settle();
+  L.nav("Home"); await tick(150);
+  check("Tom, with no program now, still has his Payments card", !!L.$("homePay").querySelector(".pay-pill") && !L.$("homePay").closest(".home-card").hidden, L.$("homePay").textContent);
+  homeBtn(L, "View payments").click(); await tick(100);
+  check("...and his months", active(L) === "viewPayments" && /£45\.50/.test(month(L, MK).textContent));
 
   const bad = [C, L, J].reduce((a, x) => a.concat(x.real()), []);
   check("no script errors on any device", bad.length === 0, bad.join(" | ").slice(0, 400));

@@ -236,7 +236,9 @@ begin
     pg_temp.cnt(l, 'select * from public.lifters') = 0
     and pg_temp.act(l, format($q$insert into public.lifter_marks (lifter_id, rid, state) values (%L, 'r9', 'done')$q$, a)) like 'refused%');
   r := pg_temp.act(c1, format('update public.lifters set deleted_at = now() where id = %L', b));
-  perform pg_temp.ok('the coach deletes a lifter', r = 'ok 1', r);
+  perform pg_temp.ok('a coach cannot delete a lifter who has signed in (only the owner)', r like 'refused%only the owner%', r);
+  r := pg_temp.act(o, format('update public.lifters set deleted_at = now() where id = %L', b));
+  perform pg_temp.ok('the owner deletes one', r = 'ok 1', r);
   perform pg_temp.ok('...their devices still see it, to learn it''s gone', pg_temp.cnt(u, 'select * from public.lifters where deleted_at is not null') = 1);
   perform pg_temp.ok('...but nobody can log on it any more',
     pg_temp.act(u, format($q$insert into public.lifter_marks (lifter_id, rid, state) values (%L, 'r1', 'done')$q$, b)) like 'refused%'
@@ -448,6 +450,46 @@ begin
   perform pg_temp.ok('only pesos, pounds or dollars', r like 'refused%', r);
   r := pg_temp.act(c1, format($q$insert into public.lifter_payments (lifter_id, month, paid) values (%L, '2026-13', true)$q$, m));
   perform pg_temp.ok('...and only real months', r like 'refused%', r);
+
+  -- Payments per signed-in account (user_payments): the lifter's account has one list whatever their programs
+  -- A coach removes a lifter from their own list instead of deleting them
+  r := pg_temp.act(c2, format($q$select public.leave_lifter(%L)$q$, m));
+  perform pg_temp.ok('a coach can remove a lifter from their own list', r = 'ok 1' and not exists (select 1 from public.lifter_coaches where lifter_id = m and coach_id = c2), r);
+  perform pg_temp.ok('...the lifter and their program stay', exists (select 1 from public.lifters where id = m and deleted_at is null));
+  r := pg_temp.act(c2, format($q$select public.leave_lifter(%L)$q$, m));
+  perform pg_temp.ok('...and it needs the lifter to be on their list', r like 'refused%', r);
+  r := pg_temp.act(x, format($q$select public.leave_lifter(%L)$q$, m));
+  perform pg_temp.ok('a stranger cannot', r like 'refused%', r);
+  insert into public.lifter_coaches (lifter_id, coach_id) values (m, c2) on conflict do nothing;
+
+  update public.lifters set lifter_user_id = l where id = m;
+  r := pg_temp.act(c1, format($q$insert into public.user_payments (user_id, month, paid, paid_on, amount, currency, created_by, label) values (%L, '2026-10', true, '2026-10-03', 2500, 'PHP', %L, 'Tom')$q$, l, c2));
+  perform pg_temp.ok('the coach who created the lifter marks a month paid on their account', r = 'ok 1', r);
+  perform pg_temp.ok('...stamped as theirs, whatever the app claims',
+    (select created_by from public.user_payments where user_id = l and month = '2026-10') = c1
+    and (select updated_by from public.user_payments where user_id = l and month = '2026-10') = c1);
+  perform pg_temp.ok('the lifter sees their own payments', pg_temp.cnt(l, 'select * from public.user_payments') = 1);
+  r := pg_temp.act(l, format($q$update public.user_payments set paid = false where user_id = %L$q$, l));
+  perform pg_temp.ok('...but cannot change them', r = 'ok 0' or r like 'refused%', r);
+  r := pg_temp.act(l, format($q$insert into public.user_payments (user_id, month, paid) values (%L, '2026-11', true)$q$, l));
+  perform pg_temp.ok('...or add one', r like 'refused%', r);
+  perform pg_temp.ok('another coach of the lifter sees them', pg_temp.cnt(c2, 'select * from public.user_payments') = 1);
+  r := pg_temp.act(c2, format($q$insert into public.user_payments (user_id, month, paid) values (%L, '2026-09', true)$q$, l));
+  perform pg_temp.ok('...but cannot write them', r like 'refused%', r);
+  perform pg_temp.ok('a stranger sees none', pg_temp.cnt(x, 'select * from public.user_payments') = 0);
+  r := pg_temp.act(c1, format($q$insert into public.user_payments (user_id, month, paid, currency) values (%L, '2026-08', true, 'EUR')$q$, l));
+  perform pg_temp.ok('only pesos, pounds or dollars', r like 'refused%', r);
+  update public.lifters set deleted_at = now() where id = m;
+  perform pg_temp.ok('with the lifter deleted (no program), the coach who keeps their payments still sees and writes them',
+    pg_temp.cnt(c1, 'select * from public.user_payments') = 1
+    and pg_temp.act(c1, format($q$insert into public.user_payments (user_id, month, paid) values (%L, '2026-07', true)$q$, l)) = 'ok 1');
+  perform pg_temp.ok('...the other coach no longer does, and the lifter still sees theirs', pg_temp.cnt(c2, 'select * from public.user_payments') = 0 and pg_temp.cnt(l, 'select * from public.user_payments') = 2);
+  update public.lifters set deleted_at = null where id = m;
+  insert into public.lifter_payments (lifter_id, month, paid) values (m, '2026-01', true);
+  perform private.copy_lifter_payments(m);
+  perform pg_temp.ok('old per-program payments of a signed-in lifter are copied to the account', (select paid from public.user_payments where user_id = l and month = '2026-01') is true);
+  delete from public.user_payments where user_id = l;
+  delete from public.lifter_payments where lifter_id = m and month = '2026-01';
 
   -- Vid Review: the lifter and their coaches add and watch, only coaches delete
   declare vn text := m::text || '/' || gen_random_uuid()::text || '.mp4';

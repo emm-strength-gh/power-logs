@@ -345,6 +345,8 @@ week, day, tick and note (on every device) and leaves an empty Week 1; the lifte
 messages, trophies and payments. **Delete lifter** removes the lifter altogether (the same as *Delete lifter for
 everyone* under Sharing). Both ask first; neither can be undone, so save progress (JSON) first for a copy.
 
+**A lifter who has signed in can only be deleted by the owner.** For a coach the button reads **Remove from my lifters** instead: it takes the lifter off that coach's list only (`leave_lifter`), and the program, the account and the lifter's other coaches are untouched. The database refuses a coach's delete of a signed-in lifter (`private.lifters_delete_guard`). A lifter nobody has signed in to can still be deleted by their coach.
+
 **Weight class** is editable in Manage Program's *Lifter & program/block title* card (IPF classes
 are offered; "74kg" is saved as 74, open classes keep their +).
 
@@ -374,12 +376,11 @@ arrives while it's minimised is counted, not marked read, until you open it. A l
 
 ## Payments
 
-For a coach to track each month's payment from the lifters they created or loaded.
+For a coach to track each month's payment from their lifters.
 
-- **Who:** only the coach who created the lifter (`lifters.created_by`) sees and edits them; the
-  lifter sees their own, read-only. Other coaches sharing the lifter don't see them. The database
-  enforces this (`lifter_payments`, row-level security; `private.made_lifter()`).
-- **How:** Home → Payments lists your lifters with this month's status. Open one to see the last
+- **They belong to the signed-in account**, not to a program: one list for the person however many programs they have, and a lifter with no program (deleted, never made) still has them. A lifter nobody has signed in to has none until they do (payments already marked for them are copied across when they sign in).
+- **Who:** the lifter sees their own, read-only, whatever program they're on; every coach of theirs sees them too (read-only); only the coach who created the lifter (or who created those payments, so they stay theirs after a lifter is deleted) edits them. The database enforces this (`user_payments`, row-level security; `private.pays_user()`, `private.reads_pay()`).
+- **How:** Home → Payments lists your lifters who have signed in (and anyone whose payments you keep, even with no program) with this month's status. Open one to see the last
   twelve months, newest first, each **Unpaid** until marked. Tap a month: **Paid / Unpaid**, the
   **day** it was paid (today for the current month, otherwise the 1st, changeable), and the
   **amount** (optional) in **₱ PHP, £ GBP or $ USD**. The next month offers the last amount used.
@@ -390,9 +391,8 @@ For a coach to track each month's payment from the lifters they created or loade
   one), unpaid. Lifters get neither. A deleted month is kept in the database as a row with
   `removed = true`, so the lifter's and the coach's other devices drop it too.
 - **Lifters** see the same months and amounts, and can't change anything.
-- Stored on the device in `spotter.payments.v1` (by lifter name) and synced after Trophies in
-  `syncNow()`; a problem there never holds up the training log. Lifters only on the coach's device
-  are tracked on that device until they're uploaded.
+- Stored on the device in `spotter.payments.v1` (by account id) and synced after Trophies in
+  `syncNow()`; a problem there never holds up the training log.
 
 ## Who sees the Program Hub
 

@@ -1490,3 +1490,123 @@ drop trigger if exists coach_default_cards on public.accounts;
 create trigger coach_default_cards before update on public.accounts
   for each row execute function private.coach_default_cards();
 revoke execute on function private.coach_default_cards() from public, anon, authenticated;
+
+---------------------------------------------------------------- payments belong to the signed-in account
+-- Payments are kept per signed-in account (user_id), not per program: one list however many programs the lifter has,
+-- and a lifter with no program still has them. Who reads them: the account itself, and the coaches of its lifters.
+-- Who writes them: a coach who created a lifter that account is signed in as, or who created these rows (so they
+-- stay manageable after a lifter is deleted). A lifter nobody has signed in to has none until they do (their old
+-- per-program rows in lifter_payments are copied across when they sign in; lifter_payments is no longer used).
+-- 'label' is the lifter's name when the coach last wrote a month, so the coach can find the person with no program.
+create table if not exists public.user_payments (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  month      text not null check (month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'),
+  paid       boolean not null default false,
+  paid_on    date,
+  amount     numeric(12, 2) check (amount is null or (amount >= 0 and amount < 10000000)),
+  currency   text not null default 'PHP' check (currency in ('PHP', 'GBP', 'USD')),
+  removed    boolean not null default false,
+  label      text not null default '',
+  created_by uuid,
+  updated_at timestamptz not null default now(),
+  updated_by uuid,
+  primary key (user_id, month)
+);
+create index if not exists user_payments_updated_idx on public.user_payments (updated_at);
+
+create or replace function private.pays_user(uid uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select private.is_coach() and (
+    exists (select 1 from public.lifters l where l.lifter_user_id = uid and l.created_by = auth.uid())
+    or exists (select 1 from public.user_payments p where p.user_id = uid and p.created_by = auth.uid()));
+$$;
+create or replace function private.reads_pay(uid uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select uid = auth.uid() or private.pays_user(uid)
+      or exists (select 1 from public.lifters l where l.lifter_user_id = uid and l.deleted_at is null and private.coaches(l.id));
+$$;
+create or replace function private.user_payments_guard() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if tg_op = 'INSERT' then new.created_by := coalesce(auth.uid(), new.created_by); else new.created_by := old.created_by; end if;
+  new.updated_by := auth.uid();
+  new.updated_at := now();
+  return new;
+end $$;
+drop trigger if exists user_payments_guard on public.user_payments;
+create trigger user_payments_guard before insert or update on public.user_payments
+  for each row execute function private.user_payments_guard();
+
+alter table public.user_payments enable row level security;
+revoke all on public.user_payments from public, anon, authenticated;
+grant select, insert, update on public.user_payments to authenticated;
+drop policy if exists read on public.user_payments;
+create policy read on public.user_payments for select to authenticated using (private.reads_pay(user_id));
+drop policy if exists add on public.user_payments;
+create policy add on public.user_payments for insert to authenticated with check (private.pays_user(user_id));
+drop policy if exists edit on public.user_payments;
+create policy edit on public.user_payments for update to authenticated
+  using (private.pays_user(user_id)) with check (private.pays_user(user_id));
+revoke execute on function private.pays_user(uuid), private.reads_pay(uuid), private.user_payments_guard() from public, anon;
+grant execute on function private.pays_user(uuid), private.reads_pay(uuid) to authenticated;
+
+-- Copy the old per-program payments of lifters who have signed in (a month paid on any of their programs is paid).
+create or replace function private.copy_lifter_payments(only_lifter uuid) returns void
+language sql security definer set search_path = '' as $$
+  insert into public.user_payments (user_id, month, paid, paid_on, amount, currency, removed, label, created_by)
+  select distinct on (l.lifter_user_id, p.month) l.lifter_user_id, p.month, p.paid, p.paid_on, p.amount, p.currency, p.removed, l.name, l.created_by
+    from public.lifter_payments p join public.lifters l on l.id = p.lifter_id
+   where l.lifter_user_id is not null and (only_lifter is null or l.id = only_lifter)
+   order by l.lifter_user_id, p.month, (p.paid and not p.removed) desc, p.paid_on desc nulls last, p.updated_at desc
+  on conflict do nothing;
+$$;
+create or replace function private.lifter_signed_in_payments() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.lifter_user_id is not null and new.lifter_user_id is distinct from old.lifter_user_id then
+    perform private.copy_lifter_payments(new.id);
+  end if;
+  return new;
+end $$;
+drop trigger if exists lifter_signed_in_payments on public.lifters;
+create trigger lifter_signed_in_payments after update of lifter_user_id on public.lifters
+  for each row execute function private.lifter_signed_in_payments();
+revoke execute on function private.copy_lifter_payments(uuid), private.lifter_signed_in_payments() from public, anon, authenticated;
+select private.copy_lifter_payments(null);
+
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (select 1 from pg_publication_tables
+                     where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'user_payments') then
+    alter publication supabase_realtime add table public.user_payments;
+  end if;
+end $$;
+
+---------------------------------------------------------------- deleting a lifter who has signed in
+-- A lifter who has signed in (lifter_user_id) is a person with an account: only the owner can delete them (set
+-- deleted_at). A coach "removes them from their list" instead (leave_lifter drops the coach's own link); the program and
+-- the lifter stay with the owner and any other coaches. Lifters nobody has signed in to can still be deleted by their coaches.
+create or replace function private.lifters_delete_guard() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is not null and new.deleted_at is not null and old.deleted_at is null
+     and old.lifter_user_id is not null and not private.is_owner() then
+    raise exception 'only the owner can delete a lifter who has signed in; remove them from your list instead';
+  end if;
+  return new;
+end $$;
+drop trigger if exists lifters_delete_guard on public.lifters;
+create trigger lifters_delete_guard before update on public.lifters
+  for each row execute function private.lifters_delete_guard();
+
+create or replace function public.leave_lifter(p_lifter uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not private.is_coach() then raise exception 'only coaches have lifters'; end if;
+  delete from public.lifter_coaches where lifter_id = p_lifter and coach_id = auth.uid();
+  if not found then raise exception 'you don''t have this lifter in your list'; end if;
+end $$;
+revoke execute on function private.lifters_delete_guard() from public, anon, authenticated;
+revoke execute on function public.leave_lifter(uuid) from public, anon;
+grant execute on function public.leave_lifter(uuid) to authenticated;

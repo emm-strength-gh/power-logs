@@ -151,7 +151,7 @@ const SAM = csv("Sam", "Base", [[1, 1, "Squat", 120, 5, 5, 7, ""]]);
   check("an unassigned program has no Messages (nobody to message)", !O.navs().includes("Messages") && !O.tabs().includes("Messages"), O.navs().join());
   O.nav("Manage program"); await tick(150);
   O.$("dmShareBtn").click(); await tick(80);
-  check("Sharing says only you and the owner can open it, with no way to add a coach", /Only you and the owner can open this program/.test(O.$("dmShare").textContent) && O.$("dmShare").querySelector(".dm-share-block").hidden);
+  check("Sharing says only you can open it, with no way to add a coach", /Other coaches can be added once the lifter has signed in/.test(O.$("dmShare").textContent) && O.$("dmShare").querySelector(".dm-share-block").hidden);
   O.$("shareClose").click(); await tick(50);
 
   console.log("\nAnother coach and the rules");

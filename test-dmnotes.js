@@ -149,6 +149,18 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   check("an empty note is removed", !(NAME in stored()) && !card().querySelector(".dmn-text") && card().querySelector(".dmn-edit").textContent === "Add notes");
   card().querySelector(".dmn-edit").click();
   type("Back again");
+  // The keyboard: a phone's visual viewport shrinks while it is up; the open sheet must follow it (jsdom has none, so fake one).
+  const vvl = {};
+  w.visualViewport = { height: 420, offsetTop: 0, addEventListener: (t, f) => { vvl[t] = f; } };
+  w.dispatchEvent(new w.Event("resize"));
+  const scrim = $("wkNoteScrim");
+  const fit = () => { Object.values(vvl).forEach(f => f()); };
+  Object.defineProperty(w, "innerHeight", { value: 800, configurable: true });
+  w.visualViewport.height = 420; w.visualViewport.offsetTop = 0;
+  doc.dispatchEvent(new w.FocusEvent("focusin", { bubbles: true })); await tick(500);
+  check("keyboard up: the notes sheet is fitted to the area above it", scrim.classList.contains("kb") && scrim.style.height === "420px" && scrim.style.top === "0px" && scrim.style.bottom === "auto", scrim.className + " " + scrim.style.cssText);
+  w.visualViewport.height = 800; doc.dispatchEvent(new w.FocusEvent("focusout", { bubbles: true })); await tick(300);
+  check("keyboard down: back to the full-screen backdrop", !scrim.classList.contains("kb") && scrim.style.height === "" && scrim.style.top === "", scrim.style.cssText);
   $("wkNoteDone").click();
   $("maxesClose").click();
   check("signed in, that button signs out instead", $("unloadLabel").textContent === "Sign out & clear device");

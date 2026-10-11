@@ -214,6 +214,21 @@ leg press, @8, 3x15, this must be a single leg each set`;
   $("confirmYes").click(); await tick(150);
   check("...Leave drops the changes", active() === "viewDayMgr" && JSON.stringify(week(1, "Sam")) === beforeBad);
 
+  console.log("\nThe header's Manage Program button");
+  const hb = () => ({ strip: $("hdrManage"), btn: $("hdrManageBtn"), space: $("hdrManageSpace") });
+  navTo("Current Program"); await tick(100);
+  check("it shows across the foot of the header on Current Program", !hb().strip.hidden && hb().btn.textContent === "Manage Program" && hb().strip.parentElement.tagName === "HEADER" && !hb().space.hidden);
+  navTo("Week 1"); await tick(100);
+  check("...on a week", active() === "viewWeek" && !hb().strip.hidden);
+  navTo("Lifter\u2019s Analytics"); await tick(150);
+  check("...and on Lifter's Analytics", active() === "viewAnalytics" && !hb().strip.hidden);
+  hb().btn.click(); await tick(150);
+  check("pressing it opens Manage Program", active() === "viewDayMgr");
+  check("...where it isn't needed, so it is gone (and its space)", hb().strip.hidden && hb().space.hidden);
+  navTo("Lifters"); await tick(100);
+  check("it isn't on other pages either", hb().strip.hidden);
+  check("the header is sticky, and the strip hangs from it so it floats with it", /header\.bar \{[^}]*position: sticky/.test(html) && /\.hdr-manage \{ position: absolute; left: 0; right: 0; top: 100%/.test(html));
+
   check("no script errors", real().length === 0, real().join(" | ").slice(0, 300));
   console.log(`\n${checks} checks · ${failures === 0 ? "ALL PASSED" : failures + " FAILED"}\n`);
   process.exit(failures === 0 ? 0 : 1);

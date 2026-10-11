@@ -567,6 +567,7 @@ That's why the dropdown opens a sheet instead.
    and the lifter's Trophies bodyweight follows an edit here), **Export CSV**, **Compare two programs** and **Edit program notes** (the card on the
    Overview: type to add or change it, clear the text to erase it; a line like `== Heading ==`
    becomes a heading).
+   - **Manage Program button in the header:** a coach of the lifter on screen sees a full-width **Manage Program** button at the foot of the header on Current Program, on a week and on Lifter's Analytics. It floats with the header when you scroll.
 2. **Edit a day:** pick the week and day (Undo on the right).
    - **Edit Week**, a big button right under the heading, opens a page of its own for the week picked below it: a lined
      notepad, titled *Edit Week 2* (say), with **Back to Manage Program** at the top and **Insert to current week** at the

@@ -568,10 +568,10 @@ That's why the dropdown opens a sheet instead.
    Overview: type to add or change it, clear the text to erase it; a line like `== Heading ==`
    becomes a heading).
 2. **Edit a day:** pick the week and day (Undo on the right).
-   - **Edit Week**, a big button right under the heading, opens a page of its own for the week picked below it: a blank,
-     lined notepad, titled *Edit Week 2* (say), with **Back to Manage Program** at the top and **Insert to current week**
-     at the bottom. Write days and exercises in this format (an example, not a template; *How to write it* on the page
-     shows it), one line each:
+   - **Edit Week**, a big button right under the heading, opens a page of its own for the week picked below it: a lined
+     notepad, titled *Edit Week 2* (say), with **Back to Manage Program** at the top and **Insert to current week** at the
+     bottom. A week that has exercises opens written out in the format below, to edit, delete or add to; an empty week
+     opens blank (no template: *How to write it* on the page shows the format). One line each:
 
      ```
      day 1,
@@ -585,10 +585,11 @@ That's why the dropdown opens a sheet instead.
      then notes, each part followed by a comma. RPE has an `@` in front (`@8`) and goes after the exercise (in place of a
      weight) or after the sets and reps; `130 2x5 @8` in one part works too. Everything after the sets and reps is the
      notes (commas allowed). Lines that don't fit are pointed out under the editor (with their line number) and nothing is
-     inserted until they're fixed; the editor also counts the days and exercises as you type. Inserting **adds** what's
-     written to the week: each day's exercises go after that day's existing ones (a day the week doesn't have yet is
-     made), and nothing already there changes. One **Undo** takes the whole insert back out. Leaving with something
-     written but not inserted asks first; the page is blank again each time it opens.
+     inserted until they're fixed; the editor also counts the days and exercises as you type. Inserting makes the week
+     **what's written**: a line whose day and place still hold the same exercise keeps its row, ticks and notes (so
+     changing a weight keeps the tick); other lines become new rows; lines and days deleted from the text are removed
+     (erasing everything asks first). On a page that started blank, the week's empty days you didn't write are left
+     alone. One **Undo** puts the week back as it was. Leaving with changes not inserted asks first.
    - **+ Add exercise** sits at the foot of the day's list and opens the form in place.
    - **Days & weeks** (add a day or week, delete the day or week) sits right under it.
    - With a program imported, its day shows beside yours (stacked on a phone).

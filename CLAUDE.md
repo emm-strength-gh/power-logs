@@ -345,7 +345,7 @@ node test-taper.js      # Taper builder: each lifter type's last heavy days, lig
 node test-lifterorder.js # Rearrange lifters: sheet, dropdown entry, persistence, reload, unload
 node test-dmnotes.js    # Manage Program Notes: coach-only, editor, links, backups, Weekly notes regression
 node test-reimport.js   # Loading a file with an existing name is a separate lifter; the original and its training maxes are untouched
-node test-weekedit.js   # Manage Program's Edit Week: the week as text, the format, Insert to current week, ticks kept, Undo, mistakes
+node test-weekedit.js   # Manage Program's Edit Week: the week as text, the format, Save Week, ticks kept, Undo, mistakes
 node test-programs.js   # Program Open/Closed status, the Programs page (All Programs), opening the app with nothing selected
 node test-sharedchat.js # One chat per lifter across their programs; Inbox one row; fatigue chart in Progression and load
 node test-displayname.js # Display Name: identical shown names, renaming shows everywhere, lifter's device follows, files keep it

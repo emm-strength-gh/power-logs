@@ -1,5 +1,5 @@
 /* Manage Program's Edit Week: the week as text on a notepad page (written out when it has exercises, blank when it
- * has none), made into the week with Insert to current week.
+ * has none), made into the week with Save Week.
  * Run: node test-weekedit.js
  *
  * Manage Program is for signed-in coaches; the page boots signed in as the
@@ -82,7 +82,7 @@ leg press, @8, 3x15, this must be a single leg each set`;
   btn.click(); await tick(100);
   check("it opens its own page", active() === "viewWeekEdit");
   check("titled with the week", $("weTitle").textContent === "Edit Week 1" && /Week 1/.test($("weSub").textContent) && /Tom/.test($("weSub").textContent), $("weTitle").textContent);
-  check("a notepad-style editor, a Back button and Insert to current week", $("weText").tagName === "TEXTAREA" && $("weText").classList.contains("we-pad") && /Back to Manage Program/.test($("weBack").textContent) && $("weInsert").textContent === "Insert to current week");
+  check("a notepad-style editor, a Back button and Save Week", $("weText").tagName === "TEXTAREA" && $("weText").classList.contains("we-pad") && /Back to Manage Program/.test($("weBack").textContent) && $("weInsert").textContent === "Save Week");
   check("the week is in the text, in the format, ready to edit", $("weText").value === "day 1,\nSquat, 100, 3x5, @7,\nBench, 80, 3x5, paused", JSON.stringify($("weText").value));
   check("...and counted", /1 day · 2 exercises/.test($("weStatus").textContent), $("weStatus").textContent);
   check("how to write it is there, folded away", !!doc.querySelector("#viewWeekEdit details.we-help") && !doc.querySelector("#viewWeekEdit details.we-help").open);
@@ -94,7 +94,7 @@ leg press, @8, 3x15, this must be a single leg each set`;
   $("dmWeekEditBtn").click(); await tick(100);
   type("day 1,\nSquat, 100, 3x5, @7,\nBench, 85, 3x5, paused\nrow, 60, 3x10,\n\nday 2,\nsquat, @8, 1x1,\nleg press, @8, 3x15, single leg");
   $("weInsert").click(); await tick(150);
-  check("Insert to current week goes back to Manage Program", active() === "viewDayMgr");
+  check("Save Week goes back to Manage Program", active() === "viewDayMgr");
   let d1 = week(1).days[0].rows;
   check("day 1 is what's written: the edit and the added line", d1.map(f).join(" / ") === "Squat|100|3|5|7| / Bench|85|3|5||paused / row|60|3|10||", d1.map(f).join(" / "));
   check("lines still holding the same exercise keep their rows, so the tick stays", d1[0].rid === squatRid && d1[1].rid === benchRid && done()[squatRid] === true);

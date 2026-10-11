@@ -570,7 +570,7 @@ That's why the dropdown opens a sheet instead.
    - **Manage Program button in the header:** a coach of the lifter on screen sees a full-width **Manage Program** button at the foot of the header on Current Program, on a week and on Lifter's Analytics. It floats with the header when you scroll.
 2. **Edit a day:** pick the week and day (Undo on the right).
    - **Edit Week**, a big button right under the heading, opens a page of its own for the week picked below it: a lined
-     notepad, titled *Edit Week 2* (say), with **Back to Manage Program** at the top and **Insert to current week** at the
+     notepad, titled *Edit Week 2* (say), with **Back to Manage Program** at the top and **Save Week** at the
      bottom. A week that has exercises opens written out in the format below, to edit, delete or add to; an empty week
      opens blank (no template: *How to write it* on the page shows the format). One line each:
 

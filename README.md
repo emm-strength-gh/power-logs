@@ -583,7 +583,9 @@ That's why the dropdown opens a sheet instead.
 
      A day starts with its own line (`day 1,`). Each exercise line is exercise, weight, sets x reps (`2x3` = 2 sets of 3),
      then notes, each part followed by a comma. RPE has an `@` in front (`@8`) and goes after the exercise (in place of a
-     weight) or after the sets and reps; `130 2x5 @8` in one part works too. Everything after the sets and reps is the
+     weight) or after the sets and reps; `130 2x5 @8` in one part works too. The main lifts are written plainly:
+     `squat`, `squats`, `comp squat(s)` become **Squat**; `bench`, `bench press`, `benchpress`, `comp bench` become **Bench**;
+     `deadlift(s)`, `comp deadlift(s)` become **Deadlift** (any case), and a variation goes in the notes (*How to write it* says so). Everything after the sets and reps is the
      notes (commas allowed). Lines that don't fit are pointed out under the editor (with their line number) and nothing is
      inserted until they're fixed; the editor also counts the days and exercises as you type. Inserting makes the week
      **what's written**: a line whose day and place still hold the same exercise keeps its row, ticks and notes (so

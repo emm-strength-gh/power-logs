@@ -585,7 +585,7 @@ That's why the dropdown opens a sheet instead.
      then notes, each part followed by a comma. RPE has an `@` in front (`@8`) and goes after the exercise (in place of a
      weight) or after the sets and reps; `130 2x5 @8` in one part works too. The main lifts are written plainly:
      `squat`, `squats`, `comp squat(s)` become **Squat**; `bench`, `bench press`, `benchpress`, `comp bench` become **Bench**;
-     `deadlift(s)`, `comp deadlift(s)` become **Deadlift** (any case), and a variation goes in the notes (*How to write it* says so). Everything after the sets and reps is the
+     `deadlift(s)`, `comp deadlift(s)` become **Deadlift** (any case), and a variation goes in the notes (*How to write it* says so). Small quick buttons under *How to write it* add **Squat**, **Bench** and **Deadlift** (on a new line at the cursor) and **D1**-**D5** (`day N,` after a blank line); a day button is disabled while that day is already in the text. Everything after the sets and reps is the
      notes (commas allowed). Lines that don't fit are pointed out under the editor (with their line number) and nothing is
      inserted until they're fixed; the editor also counts the days and exercises as you type. Inserting makes the week
      **what's written**: a line whose day and place still hold the same exercise keeps its row, ticks and notes (so

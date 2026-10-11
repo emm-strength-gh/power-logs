@@ -172,7 +172,33 @@ leg press, @8, 3x15, this must be a single leg each set`;
   check("How to write it tells the coach: main lifts plain, variations in the notes", /main lifts are written plainly/.test($("viewWeekEdit").querySelector(".we-help").textContent) && /variation in the notes/.test($("viewWeekEdit").querySelector(".we-help").textContent));
   $("dmWeekEditBtn").click(); await tick(100);
 
+  console.log("\nQuick buttons");
+  type("");
+  const q = k => doc.querySelector('#weQuick [data-' + (/^\d$/.test(k) ? 'day' : 'lift') + '="' + k + '"]');
+  check("under How to write it: Squat, Bench, Deadlift, D1 to D5", [...$("weQuick").querySelectorAll("button")].map(b => b.textContent).join() === "Squat,Bench,Deadlift,D1,D2,D3,D4,D5" && !!(doc.querySelector("#viewWeekEdit details.we-help").compareDocumentPosition($("weQuick")) & w.Node.DOCUMENT_POSITION_FOLLOWING));
+  check("all enabled on an empty page", [...$("weQuick").querySelectorAll("button")].every(b => !b.disabled));
+  q("1").click();
+  check("D1 writes day 1, and is then disabled", $("weText").value === "day 1,\n" && q("1").disabled && !q("2").disabled, JSON.stringify($("weText").value));
+  q("Squat").click();
+  check("Squat adds a Squat line under it", $("weText").value === "day 1,\nSquat, ", JSON.stringify($("weText").value));
+  $("weText").value += "130, 2x5,"; $("weText").dispatchEvent(new w.Event("input"));
+  q("Bench").click();
+  check("the next lift starts its own line", $("weText").value === "day 1,\nSquat, 130, 2x5,\nBench, ", JSON.stringify($("weText").value));
+  q("3").click();
+  check("D3 adds day 3 after a blank line, and D1 and D3 are off", $("weText").value.endsWith("\n\nday 3,\n") && q("1").disabled && q("3").disabled && !q("2").disabled && !q("4").disabled && !q("5").disabled, JSON.stringify($("weText").value));
+  q("1").click();
+  check("a disabled day button does nothing", ($("weText").value.match(/day 1,/g) || []).length === 1);
+  type("day 2,\nsquat, 100, 3x5,\n\nDay 4");
+  check("any day already written (even \u201cDay 4\u201d with no comma) turns its button off", q("2").disabled && q("4").disabled && !q("1").disabled && !q("3").disabled && !q("5").disabled);
+  type("day 2,\nsquat, 100, 3x5,");
+  check("deleting a day line turns its button back on", !q("4").disabled && q("2").disabled);
+  const ta = $("weText"); ta.setSelectionRange(3, 3);   // in the middle of "day 2,"
+  q("Deadlift").click();
+  check("a lift button pressed mid-line goes on a line after it", ta.value === "day 2,\nDeadlift, \nsquat, 100, 3x5,", JSON.stringify(ta.value));
+  $("weBack").click(); await tick(50); $("confirmYes").click(); await tick(150);
+
   console.log("\nMistakes");
+  $("dmWeekEditBtn").click(); await tick(100);
   const beforeBad = JSON.stringify(week(1, "Sam"));
   type("squat, 100, 3x5,");
   check("a line before any day line is pointed out", $("weStatus").classList.contains("bad") && /Line 1: start with a day line/.test($("weStatus").textContent), $("weStatus").textContent);

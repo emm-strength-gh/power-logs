@@ -355,6 +355,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   L.dev.state.offline = false;
   await tick(300);
   L2.sync(); await L2.settle();
+  if (!L2.$("lifterSelect").value) { L2.$("lifterSelect").value = "Tom"; L2.$("lifterSelect").dispatchEvent(new L2.w.Event("change")); await tick(); }   // it opens with nothing chosen
   L2.nav("Messages"); await tick();
   if (!L2.$("msgList")) { [...L2.doc.querySelectorAll("#msgBody .msg-thread")].find(b => /Jordan/.test(b.textContent)).click(); await tick(); }
   check("reopened later, the queued message goes and shows as sent",

@@ -174,7 +174,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
 
   console.log("\nA coach doesn't get the indicator");
   K.nav("Lifters"); await tick(300);
-  check("the coach's Lifters page lists their lifters", K.lifterRows().length >= 2, String(K.lifterRows().length));
+  check("the coach's Lifters page lists their lifter (Tom; Sam has no sign-in and isn't Kay's own, so Kay can't see him)", K.lifterRows().length === 1 && /Tom/.test(K.lifterRows()[0].textContent), String(K.lifterRows().length));
   check("...with no dots, no Online word and no count", K.doc.querySelectorAll("#liftersBody .pres-dot").length === 0 && !/online/i.test(K.$("liftersBody").textContent) && !/online/i.test(K.$("liftersSub").textContent), K.$("liftersSub").textContent);
   check("...and the coach's device never even asks", !K.rpcs.includes("presence_online"), K.rpcs.join());
   check("the lifter's device doesn't ask either", !T.rpcs.includes("presence_online"));

@@ -285,13 +285,20 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   await A.settle(); A.$("csBack").click(); await tick(100);
   C.sync(); await C.settle();
   C.$("acctBtn").click(); await tick();
-  check("the coach sees it in their account", /Lifters: 1 of 1 \(set by the owner\)/.test(C.$("acctBody").textContent));
+  check("the coach sees it in their account (Tom hasn't signed in, so he isn't a lifter yet)", /Lifters: 0 of 1 \(set by the owner\)/.test(C.$("acctBody").textContent), C.$("acctBody").textContent);
   C.close(); await tick(100);
   await C.load(csv("Zed", "B", [[1, 1, "Squat", 100, 3, 5, 7, ""]]), "zed.csv");
-  check("at the limit, a file for a new lifter isn't added", !C.names().includes("Zed") && /Ask the owner for more/.test(C.$("toastMsg").textContent), C.$("toastMsg").textContent);
+  check("a file still makes a program: with no sign-in it takes no room", C.names().includes("Zed") && !/Ask the owner for more/.test(C.$("toastMsg").textContent), C.$("toastMsg").textContent);
   C.nav("Lifters"); await tick(50);
   C.$("addLifterBtn").click(); await tick(50);
-  check("...nor can a new lifter be created", !C.$("troFormScrim").classList.contains("show") && /up to 1 lifter\b/.test(C.$("toastMsg").textContent), C.$("toastMsg").textContent);
+  check("...and New program still opens", C.$("troFormScrim").classList.contains("show"));
+  C.$("troFormClose").click(); await tick(50);
+  C.$("unassignedBtn").click(); await tick(100);
+  C.doc.querySelector('#progsBody [data-more="Zed"]').click(); await tick(50);
+  C.btn("Delete program", C.$("troFormBody")).click(); await tick(50);
+  C.$("confirmYes").click();
+  check("...and its coach can delete it", await until(() => !C.names().includes("Zed")));
+  C.pick("Tom"); await tick(100);
   await openCS(A);
   box = caseyRow().querySelector(".acct-limit-input");
   check("the owner's box shows the limit", box.value === "1");
@@ -432,6 +439,10 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   check("and Tom's phone loses it", !D.names().includes("Tom"), D.names().join());
 
   console.log("\nThe owner deletes just Sam's program, from the Lifters page");
+  // Sam signs in, so he is a lifter (a program nobody has signed in to can only be deleted whole)
+  const S = boot("sam"); await tick(200); await S.signIn("sam@test.invalid");
+  await server.sql("update public.lifters set lifter_email = 'sam@test.invalid' where name = 'Sam'");
+  A.sync(); await A.settle();
   A.nav("Lifters"); await tick(100);
   A.doc.querySelector('#liftersBody [data-more="Sam"]').click(); await tick(50);
   A.btn("Delete program", A.$("troFormBody")).click(); await tick(50);

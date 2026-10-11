@@ -208,6 +208,30 @@ begin
     and pg_temp.cnt(c1, 'select * from public.accounts') = 2
     and pg_temp.cnt(o, $q$select * from public.accounts where email like '%@selftest.invalid'$q$) = 7);
 
+  -- A program nobody has signed in to is private to the coach who made it (and the owner); only a lifter who has signed in is shared
+  perform pg_temp.act(c1, format($q$insert into public.lifters (id, name) values (%L, 'SELFTEST U')$q$, gen_random_uuid()));
+  perform pg_temp.ok('a program with no sign-in is reachable by its creator and the owner',
+    pg_temp.cnt(c1, $q$select * from public.lifters where name = 'SELFTEST U'$q$) = 1
+    and pg_temp.cnt(o, $q$select * from public.lifters where name = 'SELFTEST U'$q$) = 1);
+  perform pg_temp.ok('...and no other coach, nor a stranger or lifter', pg_temp.cnt(c2, $q$select * from public.lifters where name = 'SELFTEST U'$q$) = 0
+    and pg_temp.cnt(x, $q$select * from public.lifters where name = 'SELFTEST U'$q$) = 0
+    and pg_temp.cnt(l, $q$select * from public.lifters where name = 'SELFTEST U'$q$) = 0);
+  v := pg_temp.val(c1, $q$select public.share_lifter((select id from public.lifters where name = 'SELFTEST U'), 'c2@selftest.invalid')$q$);
+  perform pg_temp.ok('...it cannot be shared with another coach', v = 'not-signed-in', v);
+  insert into public.lifter_coaches (lifter_id, coach_id) select id, c2 from public.lifters where name = 'SELFTEST U';
+  perform pg_temp.ok('...and a stray link for another coach gives them nothing',
+    pg_temp.cnt(c2, $q$select * from public.lifters where name = 'SELFTEST U'$q$) = 0
+    and pg_temp.act(c2, $q$update public.lifters set name = 'SELFTEST hacked' where name = 'SELFTEST U'$q$) = 'ok 0'
+    and pg_temp.cnt(c2, $q$select * from public.lifter_marks where lifter_id in (select id from public.lifters where name = 'SELFTEST U')$q$) = 0);
+  delete from public.lifter_coaches where coach_id = c2 and lifter_id in (select id from public.lifters where name = 'SELFTEST U');
+  perform pg_temp.act(c1, $q$update public.lifters set lifter_email = 'lifter@selftest.invalid' where name = 'SELFTEST U'$q$);
+  perform pg_temp.ok('once the email belongs to an account that has signed in, it is that lifter''s program',
+    (select lifter_user_id from public.lifters where name = 'SELFTEST U') = l);
+  v := pg_temp.val(c1, $q$select public.share_lifter((select id from public.lifters where name = 'SELFTEST U'), 'c2@selftest.invalid')$q$);
+  perform pg_temp.ok('...and then it can be shared like any lifter', v = 'shared'
+    and pg_temp.cnt(c2, $q$select * from public.lifters where name = 'SELFTEST U'$q$) = 1, v);
+  delete from public.lifters where name = 'SELFTEST U';
+
   -- Revoking a coach
   perform pg_temp.act(o, format($q$select public.decide_coach(%L, 'revoked')$q$, c2));
   perform pg_temp.ok('a revoked coach loses every lifter at once',
@@ -709,22 +733,32 @@ begin
   v := pg_temp.val(c1, format($q$select public.set_tools_off(%L, '{}')$q$, m));
   perform pg_temp.ok('switching them back on clears it', v = '{}', v);
 
-  -- Lifter limits: the owner caps how many lifters a coach has
+  -- Lifter limits: the owner caps how many lifters (signed-in accounts) a coach has; programs nobody has signed in to take no room
   r := pg_temp.act(c1, format($q$select public.set_lifter_limit(%L, 99)$q$, c1));
   perform pg_temp.ok('a coach cannot set their own lifter limit', r like 'refused%', r);
   v := (select private.coach_lifter_count(c1))::text;
   r := pg_temp.act(o, format($q$select public.set_lifter_limit(%L, %s)$q$, c1, v));
   perform pg_temp.ok('the owner sets a coach''s lifter limit', r like 'ok%' and (select lifter_limit from public.accounts where user_id = c1) = v::int, r);
   r := pg_temp.act(c1, format($q$insert into public.lifters (id, name) values (%L, 'SELFTEST over')$q$, gen_random_uuid()));
-  perform pg_temp.ok('...at the limit, a coach cannot add another lifter', r like 'refused%lifter limit%', r);
+  perform pg_temp.ok('...at the limit, a coach can still make a program nobody has signed in to', r = 'ok 1', r);
+  r := pg_temp.act(c1, format($q$insert into public.lifters (id, name, lifter_email) values (%L, 'SELFTEST over L', 'x@selftest.invalid')$q$, gen_random_uuid()));
+  perform pg_temp.ok('...but not one for an account that has signed in (a lifter)', r like 'refused%lifter limit%', r);
+  r := pg_temp.act(c1, format($q$insert into public.lifters (id, name) values (%L, 'SELFTEST later')$q$, gen_random_uuid()));
+  r := pg_temp.act(c1, $q$update public.lifters set lifter_email = 'x@selftest.invalid' where name = 'SELFTEST later'$q$);
+  perform pg_temp.ok('...nor link an existing program to one', r like 'refused%lifter limit%', r);
+  r := pg_temp.act(c1, $q$update public.lifters set lifter_email = 'nobody.yet@selftest.invalid' where name = 'SELFTEST later'$q$);
+  perform pg_temp.ok('...an email nobody has signed in with takes no room', r = 'ok 1', r);
   r := pg_temp.act(o, format($q$select public.set_lifter_limit(%L, %s)$q$, c1, v::int + 1));
-  r := pg_temp.act(c1, format($q$insert into public.lifters (id, name) values (%L, 'SELFTEST over')$q$, gen_random_uuid()));
-  perform pg_temp.ok('...raise it by one and one more fits', r = 'ok 1', r);
-  r := pg_temp.act(c1, format($q$insert into public.lifters (id, name) values (%L, 'SELFTEST over 2')$q$, gen_random_uuid()));
+  r := pg_temp.act(c1, format($q$insert into public.lifters (id, name, lifter_email) values (%L, 'SELFTEST over L', 'x@selftest.invalid')$q$, gen_random_uuid()));
+  perform pg_temp.ok('...raise it by one and one more lifter fits', r = 'ok 1', r);
+  r := pg_temp.act(c1, format($q$insert into public.lifters (id, name, lifter_email) values (%L, 'SELFTEST over 2', 'p@selftest.invalid')$q$, gen_random_uuid()));
   perform pg_temp.ok('...and then no more', r like 'refused%lifter limit%', r);
-  r := pg_temp.act(o, format($q$insert into public.lifters (id, name) values (%L, 'SELFTEST share')$q$, gen_random_uuid()));
+  r := pg_temp.act(o, format($q$insert into public.lifters (id, name, lifter_email) values (%L, 'SELFTEST share', 'late@selftest.invalid')$q$, gen_random_uuid()));
   v := pg_temp.val(o, $q$select public.share_lifter((select id from public.lifters where name = 'SELFTEST share'), 'c1@selftest.invalid')$q$);
   perform pg_temp.ok('...sharing a lifter with a coach at the limit is refused too', v like 'refused%lifter limit%', v);
+  update public.lifters set lifter_email = 'x@selftest.invalid' where name = 'SELFTEST later';   -- the account itself signing in (no coach)
+  perform pg_temp.ok('...and a lifter signing in themselves is never refused (the coach just has one more)',
+    (select lifter_user_id from public.lifters where name = 'SELFTEST later') = x);
   r := pg_temp.act(o, format($q$select public.set_lifter_limit(%L, 0)$q$, o));
   r := pg_temp.act(o, format($q$insert into public.lifters (id, name) values (%L, 'SELFTEST owner')$q$, gen_random_uuid()));
   perform pg_temp.ok('the owner is never limited', r = 'ok 1', r);

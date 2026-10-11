@@ -117,6 +117,8 @@ by the app, so a modified copy of the page can't get around them.
   Manage Program for the lifters they upload or that another coach shares with them.
   Manage Program → the **Sharing** button opens a dialog with the lifter's own sign-in
   email, the list of coaches (share by email, remove), and **Delete lifter for everyone**.
+  A **lifter is a signed-in account**. A program a coach makes before the lifter has signed in is
+  just a program (see *Lifters and unassigned programs*): only that coach and the owner can open it.
 - **Lifter**: signs in with the email their coach entered. Sees only their own program
   (Current Program, weeks, Lifter’s Analytics, 1-rep maxes, RPE Calculator, Velocity Tracker) and logs
   it; no Manage Program, and no loading or saving files (Load CSV/JSON, Save
@@ -218,8 +220,8 @@ Switch one off and it disappears from that lifter's own devices. Switching the L
 
 On **Coach Settings** (the person icon > **Coach Settings**), each approved coach's card shows how many lifters they have and a **Max lifters** box. Type a whole number (say 4) and press Enter or tap away: that coach can then have at most 4 lifters. Leave it empty for no limit. The owner is never limited.
 
-- It counts every way of getting a lifter: creating one, importing a CSV or JSON, uploading lifters that were only on their device, and being shared one by another coach.
-- The database enforces it (`accounts.lifter_limit`, a trigger on `lifter_coaches`, RPC `set_lifter_limit` for the owner only); the app also stops at the same number before anything is made, counting lifters only on the device too, and says "Ask the owner for more".
+- It counts **lifters, which means signed-in accounts**. Programs nobody has signed in to (unassigned programs) take no room, so a coach at the limit can still make, load and upload programs. The limit is checked when a coach is shared a lifter who has signed in, or links an email that belongs to someone who has (when a program becomes a lifter).
+- The database enforces it (`accounts.lifter_limit`, a trigger on `lifter_coaches`, a trigger on `lifters` for the linking case, RPC `set_lifter_limit` for the owner only) and says "Ask the owner for more"; the app counts the same way. A lifter signing up themselves is never refused.
 - Lowering a limit below what a coach already has doesn't remove any lifters; they just can't add more. The coach sees "Lifters: 3 of 4 (set by the owner)" in their account sheet.
 
 ## Lifter IDs and Display Names: two lifters can show the same name
@@ -228,9 +230,9 @@ Every program has a **lifter ID** of its own (a UUID, shown at the top of Manage
 
 Each lifter also has a **Display Name**: the name everyone sees (the dropdown, the page headings, the Lifters list, Messages, Home, Payments, Trophies, notices, exports, and the push notifications, which use the name stored in the cloud). It is what the **Name** field in Manage Program's *Lifter & program* card shows and edits, and the labels in the app still just say "Name". Behind it the device keeps a unique internal name for each lifter, which nobody sees, so two lifters can both show exactly **Tom**; the dropdown tells them apart by their block title. Renaming changes only the Display Name (for a synced lifter on the server too, so their phone and every coach follow), never the lifter ID, and any name is allowed, even one another lifter has.
 
-- **Loading a CSV or JSON backup always adds a new lifter** with a new ID. It never replaces another lifter, even one with the same `#Name` and whatever the block title. If the name is taken here the new lifter still shows the name from the file (**Tom**, **Tom**) and the message says it is a separate lifter. Creating a lifter by hand (Add new lifter / program) does the same.
+- **Loading a CSV or JSON backup always adds a new lifter** with a new ID. It never replaces another lifter, even one with the same `#Name` and whatever the block title. If the name is taken here the new lifter still shows the name from the file (**Tom**, **Tom**) and the message says it is a separate lifter. Creating a program by hand (**+ New program**) does the same.
 - To change an existing program, edit it in Manage Program (or bring in weeks and days with its Replace and Merge), or load the file as a new lifter and delete the old one. A JSON backup restores into a new lifter too, with the ticks and notes it holds.
-- **One sign-in can have several programs**: put the same sign-in email on each lifter (Sharing) and that person sees every one of them, whatever they are called, each with its own ticks, notes, messages and trophies.
+- **One sign-in can have several programs**: put the same sign-in email on each program (Sharing) and that person sees every one of them, whatever they are called, each with its own ticks, notes, messages and trophies.
 - Signing in on a device that has its own Tom: if it is the very same program as the account's Tom, they are the same lifter and join; a different program keeps its own entry beside it, so nothing is overwritten.
 - Programs saved before lifter IDs get one the next time the app starts (a synced lifter's ID is its cloud id). Only coaches can load files; a lifter whose coach gave them a program can't add lifters from files.
 
@@ -331,21 +333,23 @@ program and profile as before), **Messages** (*Inbox*) and **Payments**.
 then **Notifications**, **Programs** (every program assigned to them; tap one to open it),
 **Messages** and **Payments** (this month's status, and *View payments*).
 
-**Adding a lifter:** the Lifters page has **+ Add new lifter / program**: name (required), program /
-block title, weight class and optional 1-rep maxes (there's no bodyweight question: it starts as the weight class, 120 for 120+, and a coach changes it later in the lifter's Trophies). It creates an empty program (Week 1,
+**Adding a program:** the Lifters page has **+ New program**: name (who it's for, required), program /
+block title, weight class, optional 1-rep maxes and the lifter's **sign-in email** (optional; there's no bodyweight question: it starts as the weight class, 120 for 120+, and a coach changes it later in the lifter's Trophies). It creates an empty program (Week 1,
 Day 1), opens it in Manage Program to build as usual, and, signed in, uploads it to your account
-straight away. Add their sign-in email under Sharing.
+straight away. You can add the email later under Sharing.
+
+**Lifters and unassigned programs:** a **lifter is a signed-in account** (it has a sign-in id); you cannot make one by hand. A program with no sign-in behind it is an **unassigned program**: it appears under **Unassigned programs** (a row at the bottom of the Lifters page, or Current Program's *All Programs* while one is open), never as a lifter card. Only the coach who created it and the owner can open it (the database enforces this: `private.coaches` ignores any other coach's link until `lifter_user_id` is set); it cannot be shared with another coach (`share_lifter` answers `not-signed-in`, and Sharing says so), has no messages, payments or online dot, and takes no room under the lifter limit. When the email on it belongs to someone who has signed in (or does once they do), it becomes one of that lifter's programs: they see it, it joins their card, and the usual coach rules apply, including sharing it. Programs that were shared between coaches before this rule keep only their creator (and the owner).
 
 **Left menu:** swipe right on Home, the Overview or Analytics to open it; swipe left on the open menu (or on the dimmed page beside it) to close it.
 
-**The Lifters page** has one card per lifter: everyone signed in is one card whatever number of programs they have (it says *2 programs · 1 open*), and a program nobody has signed in to is its own lifter by its name. Tapping a card opens that lifter's **Programs** page to choose which program to open. Only the owner sees the online dot.
+**The Lifters page** has one card per signed-in lifter, whatever number of programs they have (it says *2 programs · 1 open*). Tapping a card opens that lifter's **Programs** page to choose which program to open. Programs nobody has signed in to are not cards: they are listed under **Unassigned programs** (each shows the email it is waiting for, if any). Only the owner sees the online dot.
 
 **Deleting:** each program on a lifter's Programs page has a **⋯** (coaches who can edit it), and so does a Lifters-page card with a single program. **Delete program** clears every
 week, day, tick and note (on every device) and leaves an empty Week 1; the lifter stays, with their maxes, class,
 messages, trophies and payments. **Delete lifter** removes the lifter altogether (the same as *Delete lifter for
 everyone* under Sharing). Both ask first; neither can be undone, so save progress (JSON) first for a copy.
 
-**A lifter who has signed in can only be deleted by the owner.** For a coach the button reads **Remove from my lifters** instead: it takes the lifter off that coach's list only (`leave_lifter`), and the program, the account and the lifter's other coaches are untouched. The database refuses a coach's delete of a signed-in lifter (`private.lifters_delete_guard`). A lifter nobody has signed in to can still be deleted by their coach.
+**A lifter who has signed in can only be deleted by the owner.** For a coach the button reads **Remove from my lifters** instead: it takes the lifter off that coach's list only (`leave_lifter`), and the program, the account and the lifter's other coaches are untouched. The database refuses a coach's delete of a signed-in lifter (`private.lifters_delete_guard`). An unassigned program can be deleted by the coach who made it (its ⋯ has just **Delete program**, which removes it).
 
 **Weight class** is editable in Manage Program's *Lifter & program/block title* card (IPF classes
 are offered; "74kg" is saved as 74, open classes keep their +).

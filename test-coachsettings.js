@@ -85,6 +85,9 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   const uid = async email => (await rows("select user_id from public.accounts where email = $1", [email]))[0].user_id;
   const kayId = await uid("kay@test.invalid"), leeId = await uid("lee@test.invalid");
   const tomLifter = (await rows("select id from public.lifters where name = 'Tom'"))[0].id;
+  // Tom signs in (only a lifter who has signed in can have other coaches)
+  const T = boot("tom"); await tick(200); await T.signIn("tom@test.invalid");
+  await rows("update public.lifters set lifter_email = 'tom@test.invalid' where id = $1", [tomLifter]);
   await rows("update public.accounts set coach_status = 'approved', display_name = 'Coach Kay' where user_id = $1", [kayId]);
   await rows("update public.accounts set coach_status = 'approved', display_name = 'Coach Lee' where user_id = $1", [leeId]);
   await rows("update public.accounts set coach_status = 'pending', display_name = 'Pat' where email = 'pat@test.invalid'");

@@ -93,7 +93,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   const prof = () => D.store("spotter.profiles.v1");
   check("the first Tom is untouched: same program, block and tick", JSON.stringify(prof().Tom) === tomBefore && prof().Tom.block === "Prep" && JSON.stringify(D.store("spotter.done.v1").Tom) === doneBefore);
   check("the new one is the Peak program with no ticks", prof()["Tom (2)"].block === "Peak" && prof()["Tom (2)"].weeks.length === 2 && !Object.keys(D.store("spotter.done.v1")["Tom (2)"] || {}).length);
-  check("it says so", /Tom was already here, so this is a separate lifter/.test(D.toast()), D.toast());
+  check("it says so", /Tom was already here, so this is a separate program/.test(D.toast()), D.toast());
   check("the new lifter is the one on screen", D.$("lifterSelect").value === "Tom (2)", D.$("lifterSelect").value);
   check("every program has a lifter ID of its own", UUID.test(prof().Tom.lid) && UUID.test(prof()["Tom (2)"].lid) && prof().Tom.lid !== prof()["Tom (2)"].lid);
   await D.load(TOM_PEAK, "tom-peak.csv");

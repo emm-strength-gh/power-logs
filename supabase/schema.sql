@@ -148,11 +148,14 @@ language sql stable security definer set search_path = '' as $$
                    and (a.role = 'owner' or a.coach_status = 'approved'));
 $$;
 
+-- A program nobody has signed in to (lifter_user_id null) belongs to the coach who created it, and the owner: a link
+-- row for any other coach does not count (a lifter is a signed-in account; only they can be coached together).
 create or replace function private.coaches(lid uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
   select private.is_owner()
-      or (private.is_coach() and exists (select 1 from public.lifter_coaches c
-                                         where c.lifter_id = lid and c.coach_id = auth.uid()));
+      or (private.is_coach() and exists (select 1 from public.lifter_coaches c join public.lifters l on l.id = c.lifter_id
+                                         where c.lifter_id = lid and c.coach_id = auth.uid()
+                                           and (l.lifter_user_id is not null or l.created_by = c.coach_id)));
 $$;
 
 create or replace function private.can_see(lid uuid) returns boolean
@@ -368,6 +371,8 @@ language plpgsql security definer set search_path = '' as $$
 declare c uuid;
 begin
   if not private.can_coach_live(p_lifter) then raise exception 'not your lifter'; end if;
+  -- Only a lifter who has signed in is shared; a program with no sign-in stays with its creator (and the owner).
+  if not exists (select 1 from public.lifters where id = p_lifter and lifter_user_id is not null) then return 'not-signed-in'; end if;
   select a.user_id into c from public.accounts a
    where a.email = lower(btrim(p_email)) and (a.role = 'owner' or a.coach_status = 'approved');
   if c is null then return 'not-a-coach'; end if;
@@ -1329,7 +1334,7 @@ alter table public.accounts add constraint accounts_lifter_limit_check check (li
 create or replace function private.coach_lifter_count(p_coach uuid) returns integer
 language sql stable security definer set search_path = '' as $$
   select count(*)::int from public.lifter_coaches lc join public.lifters l on l.id = lc.lifter_id
-   where lc.coach_id = p_coach and l.deleted_at is null
+   where lc.coach_id = p_coach and l.deleted_at is null and l.lifter_user_id is not null   -- lifters = signed-in accounts
 $$;
 
 create or replace function private.lifter_coaches_limit() returns trigger
@@ -1338,6 +1343,8 @@ declare lim integer;
 begin
   -- Already linked (sharing again): nothing is added.
   if exists (select 1 from public.lifter_coaches where lifter_id = new.lifter_id and coach_id = new.coach_id) then return new; end if;
+  -- A program nobody has signed in to is not a lifter yet, so it takes no room.
+  if not exists (select 1 from public.lifters l where l.id = new.lifter_id and l.lifter_user_id is not null) then return new; end if;
   select a.lifter_limit into lim from public.accounts a where a.user_id = new.coach_id and a.role <> 'owner';
   if lim is not null and private.coach_lifter_count(new.coach_id) >= lim then
     raise exception 'lifter limit reached: % lifter% at most for this coach', lim, case when lim = 1 then '' else 's' end;
@@ -1610,3 +1617,30 @@ end $$;
 revoke execute on function private.lifters_delete_guard() from public, anon, authenticated;
 revoke execute on function public.leave_lifter(uuid) from public, anon;
 grant execute on function public.leave_lifter(uuid) to authenticated;
+
+---------------------------------------------------------------- lifters are signed-in accounts; programs without one are private
+-- A lifter is a person who has signed in. A program a coach made before that (no lifter_user_id) is just a program: only
+-- the coach who created it and the owner reach it (private.coaches, above); share_lifter refuses it; it takes no room
+-- under the lifter limit. When the email entered on it belongs to an account that has signed in, it becomes that lifter's
+-- program (lifters_guard links it) and the usual coach rules apply. The limit is checked at that moment for a coach
+-- who links it (a lifter signing up themselves is never refused).
+delete from public.lifter_coaches lc using public.lifters l
+ where l.id = lc.lifter_id and l.lifter_user_id is null and l.created_by is not null and lc.coach_id <> l.created_by;
+
+create or replace function private.lifters_link_limit() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare lim integer;
+begin
+  if new.lifter_user_id is not null and old.lifter_user_id is null and new.deleted_at is null
+     and auth.uid() is not null and private.is_coach() and not private.is_owner() then
+    select a.lifter_limit into lim from public.accounts a where a.user_id = auth.uid();
+    if lim is not null and private.coach_lifter_count(auth.uid()) >= lim then
+      raise exception 'lifter limit reached: % lifter% at most for this coach', lim, case when lim = 1 then '' else 's' end;
+    end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists lifters_link_limit on public.lifters;
+create trigger lifters_link_limit before update on public.lifters
+  for each row execute function private.lifters_link_limit();
+revoke execute on function private.lifters_link_limit() from public, anon, authenticated;

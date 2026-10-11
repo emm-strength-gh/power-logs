@@ -93,13 +93,16 @@ async function boot(wd, storage = {}) {
   check("the next card starts with Inbox", !!A.btn("Inbox", A.$("homeComms")));
   check("the sidebar leads with Home and Lifters", A.navs().slice(0, 2).join() === "Home,Lifters", A.navs().join());
   check("...and Home is the one marked", A.doc.querySelector("#sideNav .nav-item.active .nav-label").textContent === "Home");
-  check("the count of lifters is under the title", A.$("homeSub").textContent === "2 lifters", A.$("homeSub").textContent);
+  check("the count of lifters is under the title, with the programs nobody has signed in to", A.$("homeSub").textContent === "No lifters yet · 2 unassigned programs", A.$("homeSub").textContent);
 
   console.log("\nAll lifters");
   A.btn("All lifters", A.$("homeLifters")).click(); await tick(100);
   check("the button opens a list", A.active() === "viewLifters");
-  const rows = [...A.doc.querySelectorAll("#liftersBody .msg-thread")];
-  check("every lifter is on it, with their block and progress", rows.length === 2 && /Tom/.test(rows[0].textContent) && /Prep/.test(rows[0].textContent) && /83 kg/.test(rows[0].textContent) && /2 weeks/.test(rows[0].textContent) && /0% done/.test(rows[0].textContent), rows.map(r => r.textContent).join(" | "));
+  check("programs nobody has signed in to are not lifters: one Unassigned programs row", A.doc.querySelectorAll("#liftersBody .ll-item").length === 0 && !!A.$("unassignedBtn") && /2 programs/.test(A.$("unassignedBtn").textContent));
+  A.$("unassignedBtn").click(); await tick(100);
+  const rows = [...A.doc.querySelectorAll("#progsList .msg-thread")];
+  check("it lists every program, with its name and progress", rows.length === 2 && /Prep/.test(rows[0].textContent) && /Tom/.test(rows[0].textContent) && /2 weeks/.test(rows[0].textContent) && /0% done/.test(rows[0].textContent), rows.map(r => r.textContent).join(" | "));
+  A.nav("Lifters"); await tick(50);
   A.nav("Home"); await tick(50);
   check("Home in the sidebar goes back", A.active() === "viewHome");
   A.nav("Lifters"); await tick(50);
@@ -107,9 +110,9 @@ async function boot(wd, storage = {}) {
   A.$("liftersBack").click(); await tick(50);
   check("the list has its own Home button", A.active() === "viewHome");
   A.btn("All lifters", A.$("homeLifters")).click(); await tick(50);
-  [...A.doc.querySelectorAll("#liftersBody .msg-thread")].find(r => /Sam/.test(r.textContent)).click(); await tick(150);
-  check("tapping a lifter opens their Programs page to choose one", A.active() === "viewPrograms" && A.doc.querySelectorAll("#progsList .msg-thread").length === 1, A.active());
-  A.doc.querySelector("#progsList .msg-thread").click(); await tick(150);
+  A.$("unassignedBtn").click(); await tick(150);
+  check("tapping it opens the Programs page to choose one", A.active() === "viewPrograms" && A.doc.querySelectorAll("#progsList .msg-thread").length === 2, A.active());
+  [...A.doc.querySelectorAll("#progsList .msg-thread")].find(r => /Sam/.test(r.textContent)).click(); await tick(150);
   check("...and choosing it opens it as it always did", A.active() === "viewOverview" && A.$("ovName").textContent === "Sam", A.active() + " " + A.$("ovName").textContent);
   check("...with the usual sidebar: Overview, Analytics, Messages…, the weeks", ["Current Program", "Lifter’s Analytics", "Trophies"].every(l => A.navs().includes(l)) && A.navs().some(l => /^Week 1/.test(l)), A.navs().join());
   check("...and Home is still in it", A.navs().includes("Home"));
@@ -118,16 +121,16 @@ async function boot(wd, storage = {}) {
   A.nav("Home"); await tick(50);
   check("Home works from any lifter screen", A.active() === "viewHome");
   A.btn("All lifters", A.$("homeLifters")).click(); await tick(50);
-  [...A.doc.querySelectorAll("#liftersBody .msg-thread")].find(r => /Tom/.test(r.textContent)).click(); await tick(100);
-  A.doc.querySelector("#progsList .msg-thread").click(); await tick(100);
+  A.$("unassignedBtn").click(); await tick(100);
+  [...A.doc.querySelectorAll("#progsList .msg-thread")].find(r => /Tom/.test(r.textContent)).click(); await tick(100);
   A.$("ovHome").click(); await tick(50);
   check("...and from the Home button on the Overview", A.active() === "viewHome");
 
-  console.log("\nAdd new lifter / program");
+  console.log("\nNew program");
   A.nav("Lifters"); await tick(50);
-  check("the Lifters page has an Add button", !!A.$("addLifterBtn") && /Add new lifter \/ program/.test(A.$("addLifterBtn").textContent));
+  check("the Lifters page has a New program button", !!A.$("addLifterBtn") && /New program/.test(A.$("addLifterBtn").textContent));
   A.$("addLifterBtn").click(); await tick(50);
-  check("it opens a form for the lifter's profile", A.$("troFormScrim").classList.contains("show") && ["nlName", "nlBlock", "nlCls", "nlSquat", "nlBench", "nlDeadlift"].every(id => !!A.$(id)) && !A.$("nlBw"));
+  check("it opens a form for the program and who it's for, with an optional sign-in email", A.$("troFormScrim").classList.contains("show") && ["nlName", "nlBlock", "nlCls", "nlSquat", "nlBench", "nlDeadlift", "nlEmail"].every(id => !!A.$(id)) && !A.$("nlBw"));
   check("...with a weight class but no bodyweight question", !!A.$("nlCls") && !/Bodyweight \(kg/.test(A.$("troFormBody").textContent));
   A.btn("Create", A.$("troFormBody")).click(); await tick(50);
   check("a name is required", A.$("troFormScrim").classList.contains("show") && /name/.test(A.$("toastMsg").textContent));
@@ -143,41 +146,32 @@ async function boot(wd, storage = {}) {
   check("the lifter is created with their profile", !!jo && jo.block === "Off-season" && jo.classWt === "63" && jo.bodyweight === "63" && jo.maxes.Squat === "120" && jo.maxes.Deadlift === "150" && !jo.maxes.Bench, JSON.stringify(jo && { b: jo.block, c: jo.classWt, bw: jo.bodyweight, m: jo.maxes }));
   check("...with an empty program: Week 1, Day 1, no exercises", jo.weeks.length === 1 && jo.weeks[0].week === "1" && jo.weeks[0].days.length === 1 && jo.weeks[0].days[0].rows.length === 0);
   check("...and it opens in Manage Program to be built", A.active() === "viewDayMgr" && A.$("dmBody").querySelector(".dm-progcard input[aria-label='Lifter name']").value === "Jo Reyes");
-  check("...and appears in the list of lifters", (A.nav("Lifters"), [...A.doc.querySelectorAll("#liftersBody .msg-thread")].some(r => /Jo Reyes/.test(r.textContent))));
+  check("...and appears under Unassigned programs (nobody has signed in to it)", (A.nav("Lifters"), A.$("unassignedBtn").click(), [...A.doc.querySelectorAll("#progsList .msg-thread")].some(r => /Jo Reyes/.test(r.textContent))));
   check("signed in as a coach, it's uploaded to the account", WD.inserted && WD.inserted.some(r => r.name === "Jo Reyes"), JSON.stringify(WD.inserted || []).slice(0, 200));
 
-  console.log("\nDelete a lifter or just their program");
-  const rowsNow = () => [...A.doc.querySelectorAll("#liftersBody .msg-thread")];
-  const more = nm => A.doc.querySelector('#liftersBody [data-more="' + nm + '"]');
+  console.log("\nDeleting an unassigned program");
+  const loose = async () => { A.nav("Lifters"); await tick(50); A.$("unassignedBtn").click(); await tick(80); };
+  const more = nm => A.doc.querySelector('#progsBody [data-more="' + nm + '"]');
   const stored = () => JSON.parse(A.w.localStorage.getItem("spotter.profiles.v1"));
   A.nav("Lifters"); await tick(50);
-  // One card per lifter: the two Toms (neither signed in) are one card with two programs, whose ⋯ are on their Programs page.
-  const tomCard = rowsNow().find(r => /^Tom/.test(r.querySelector(".msg-mid b").textContent));
-  check("one card per lifter: the two programs called Tom are one card, without a ⋯", !!tomCard && tomCard.getAttribute("data-programs") === "2" && !tomCard.parentElement.querySelector(".ll-more") && /2 programs/.test(tomCard.textContent));
-  check("each lifter with a single program has a ⋯ for coaches", rowsNow().filter(r => r.getAttribute("data-programs") === "1").length >= 2 && rowsNow().filter(r => r.getAttribute("data-programs") === "1").every(r => !!r.parentElement.querySelector(".ll-more")));
   A.$("addLifterBtn").click(); await tick(50);
   A.$("nlName").value = "Zed"; A.$("nlBlock").value = "Temp block"; A.$("nlSquat").value = "100";
   A.btn("Create", A.$("troFormBody")).click(); await tick(200);
-  A.nav("Lifters"); await tick(50);
-  check("a new lifter is listed", !!more("Zed"));
+  await loose();
+  check("a new program is listed, with a ⋯", !!more("Zed"));
+  check("every unassigned program has a ⋯ for its coach", [...A.doc.querySelectorAll("#progsList .ll-item")].every(r => !!r.querySelector(".ll-more")));
   more("Zed").click(); await tick(50);
-  check("the ⋯ offers Delete program and Delete lifter", A.$("troFormScrim").classList.contains("show") && !!A.btn("Delete program", A.$("troFormBody")) && !!A.btn("Delete lifter", A.$("troFormBody")));
+  check("the ⋯ offers Delete program only (there is no lifter to delete)", A.$("troFormScrim").classList.contains("show") && !!A.btn("Delete program", A.$("troFormBody")) && !A.btn("Delete lifter", A.$("troFormBody")));
   A.btn("Delete program", A.$("troFormBody")).click(); await tick(50);
   check("deleting a program asks first", A.$("confirmScrim").classList.contains("show") && /program/.test(A.$("confirmTitle").textContent));
   A.$("confirmNo").click(); await tick(50);
   check("Cancel changes nothing", stored().Zed.block === "Temp block");
   more("Zed").click(); await tick(50);
   A.btn("Delete program", A.$("troFormBody")).click(); await tick(50);
-  A.$("confirmYes").click(); await tick(100);
-  const z = stored().Zed;
-  check("the program is cleared to an empty Week 1, Day 1", z.weeks.length === 1 && z.weeks[0].days.length === 1 && z.weeks[0].days[0].rows.length === 0 && z.block === "", JSON.stringify(z.weeks).slice(0, 120));
-  check("...but the lifter stays, with their maxes", !!more("Zed") && z.maxes.Squat === "100");
-  more("Zed").click(); await tick(50);
-  A.btn("Delete lifter", A.$("troFormBody")).click(); await tick(50);
-  check("deleting a lifter asks first", A.$("confirmScrim").classList.contains("show") && /Delete Zed/.test(A.$("confirmTitle").textContent));
   A.$("confirmYes").click(); await tick(150);
-  check("the lifter is gone from the list and the device", !more("Zed") && !stored().Zed && A.active() === "viewLifters");
-  check("...and the others are untouched", !!more("Sam") && rowsNow().some(r => /^Tom/.test(r.querySelector(".msg-mid b").textContent)));
+  await loose();
+  check("the program is gone from the list and the device", !more("Zed") && !stored().Zed);
+  check("...and the others are untouched", !!more("Sam") && !!more("Tom"));
 
   console.log("\nSwipe gestures");
   const sw = (a, el, x0, y0, x1, y1) => {
@@ -202,7 +196,8 @@ async function boot(wd, storage = {}) {
   Object.defineProperty(A.w, "pageYOffset", { value: 0, configurable: true });
   A.$("layout").classList.remove("nav-open");
   A.nav("Lifters"); await tick(30);
-  [...A.doc.querySelectorAll("#liftersBody .msg-thread")].find(r => /Tom/.test(r.textContent)).click(); await tick(150);
+  A.$("unassignedBtn").click(); await tick(80);
+  [...A.doc.querySelectorAll("#progsList .msg-thread")].find(r => /Tom/.test(r.textContent)).click(); await tick(150);
   sw(A, A.$("viewOverview"), 60, 200, 220, 210);
   check("swiping right on the Overview opens the left navigation", A.$("layout").classList.contains("nav-open"));
   A.$("layout").classList.remove("nav-open");

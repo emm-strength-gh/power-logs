@@ -91,7 +91,9 @@ const TOM_PEAK = csv("Tom", "Peak", [[1, 1, "Squat", 190, 2, 2, 8, ""], [1, 2, "
   check("each profile keeps its shown name beside its key", profs.Tom.dname === "Tom" && profs["Tom (2)"].dname === "Tom" && profs["Tom (2)"].name === "Tom (2)");
   check("the stored program doesn't carry the shown name (it is the server's name column)", (await rows("select program from public.lifters")).every(r => !("dname" in r.program) && !("name" in r.program)));
   O.nav("Lifters"); await tick(100);
-  check("the Lifters page has one card, Tom (one lifter: the same name, nobody signed in yet), with no number", O.listed().join() === "Tom" && /2 programs/.test(O.$("liftersBody").textContent), O.listed().join());
+  check("nobody has signed in yet, so the Lifters page has no lifter cards, just Unassigned programs (2)", O.doc.querySelectorAll("#liftersBody .ll-item").length === 0 && /Unassigned programs/.test(O.$("liftersBody").textContent) && /2 programs/.test(O.$("liftersBody").textContent), O.listed().join());
+  O.$("unassignedBtn").click(); await tick(100);
+  check("...which lists both, each showing Tom with no number", (O.$("progsBody").textContent.match(/Tom · /g) || []).length === 2 && !/Tom \(2\)/.test(O.$("progsBody").textContent), O.$("progsBody").textContent);
   O.pick("Tom (2)"); await tick(100);
   check("the Current Program page is headed Tom", O.$("ovName").textContent === "Tom", O.$("ovName").textContent);
   O.nav("Manage program"); await tick(150);
@@ -105,8 +107,8 @@ const TOM_PEAK = csv("Tom", "Peak", [[1, 1, "Squat", 190, 2, 2, 8, ""], [1, 2, "
   await O.settle();
   check("the key doesn't move: no renamed stores, same lifter ID", O.keys().join() === "Tom,Tom (2)" && O.store("spotter.profiles.v1")["Tom (2)"].cloudId === ID2);
   check("the Name field, the dropdown, the page heading and the Lifters list all say Tommy",
-    O.nameField().value === "Tommy" && O.shown().join() === "Tom · Prep,Tommy · Peak" && (O.nav("Current Program"), await tick(80), O.$("ovName").textContent === "Tommy") && (O.nav("Lifters"), await tick(80), O.listed().join() === "Tom,Tommy"),
-    O.nameField() && O.nameField().value + " | " + O.shown().join() + " | " + O.listed().join());
+    O.nameField().value === "Tommy" && O.shown().join() === "Tom · Prep,Tommy · Peak" && (O.nav("Current Program"), await tick(80), O.$("ovName").textContent === "Tommy") && (O.nav("Lifters"), await tick(80), O.$("unassignedBtn").click(), await tick(80), /Tommy · /.test(O.$("progsBody").textContent) && (O.$("progsBody").textContent.match(/Tom · /g) || []).length === 1),
+    O.nameField() && O.nameField().value + " | " + O.shown().join() + " | " + O.$("progsBody").textContent);
   check("it says so", /Renamed .Tom. to .Tommy./.test(O.toast()), O.toast());
   O.pick("Tom (2)"); await tick(100);
   let blob = null;
@@ -144,7 +146,7 @@ const TOM_PEAK = csv("Tom", "Peak", [[1, 1, "Squat", 190, 2, 2, 8, ""], [1, 2, "
   await D.load(TOM_PREP, "tom.csv");
   await D.load(TOM_PEAK, "tom2.csv");
   check("two CSVs called Tom show Tom twice", D.keys().join() === "Tom,Tom (2)" && D.shown().join() === "Tom · Prep,Tom · Peak", D.shown().join());
-  check("the message names it without a number", /Loaded Tom · Tom was already here, so this is a separate lifter/.test(D.toast()), D.toast());
+  check("the message names it without a number", /Loaded Tom · Tom was already here, so this is a separate program/.test(D.toast()), D.toast());
   await D.load(JSON.stringify(backup), "backup.json");
   check("a JSON backup comes back under its shown name, Tommy", D.shown().slice(-1)[0] === "Tommy · Peak" && D.keys().slice(-1)[0] === "Tommy", D.shown().join() + " / " + D.keys().join());
   await D.load(JSON.stringify(backup), "backup.json");

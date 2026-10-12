@@ -839,6 +839,25 @@ begin
       (select notified_at from public.lifter_reactions where lifter_id = m and target_type = 'video') is null);
     perform pg_temp.act(c1, format($q$update public.lifter_reactions set notified_at = now() where lifter_id = %L and target_type = 'video'$q$, m));
     perform pg_temp.ok('...the app cannot mark it announced', (select notified_at from public.lifter_reactions where lifter_id = m and target_type = 'video') is null);
+    -- the lifter reacts to the coach's feedback, only while there is feedback
+    r := pg_temp.act(l, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) values (%L, 'feedback', %L, 'heart')$q$, m, vid::text));
+    perform pg_temp.ok('no feedback on the video: the lifter cannot react to it', r like 'refused%', r);
+    perform pg_temp.act(c1, format($q$select public.set_video_feedback(%L, 'Nice depth')$q$, vid));
+    r := pg_temp.act(l, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) values (%L, 'feedback', %L, 'fire')$q$, m, vid::text));
+    perform pg_temp.ok('with feedback on it, the lifter reacts to it', r = 'ok 1', r);
+    perform pg_temp.ok('...their coach sees it', pg_temp.cnt(c1, format($q$select * from public.lifter_reactions where lifter_id = %L and target_type = 'feedback'$q$, m)) = 1);
+    r := pg_temp.act(c1, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) values (%L, 'feedback', %L, 'heart')$q$, m, vid::text));
+    perform pg_temp.ok('a coach does not react to their own feedback (it is the lifter''s to answer)', r like 'refused%', r);
+    r := pg_temp.act(x, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) values (%L, 'feedback', %L, 'heart')$q$, m, vid::text));
+    perform pg_temp.ok('a stranger cannot', r like 'refused%', r);
+    r := pg_temp.act(l, format($q$update public.lifter_reactions set emoji = 'up' where lifter_id = %L and target_type = 'feedback'$q$, m));
+    perform pg_temp.ok('the lifter changes theirs', r = 'ok 1' and (select emoji from public.lifter_reactions where lifter_id = m and target_type = 'feedback') = 'up', r);
+    perform pg_temp.act(c1, format($q$select public.set_video_feedback(%L, '')$q$, vid));
+    perform pg_temp.ok('deleting the feedback empties the reactions to it (so every device hears)',
+      (select emoji from public.lifter_reactions where lifter_id = m and target_type = 'feedback') is null
+      and (select count(*) from public.lifter_reactions where lifter_id = m and target_type = 'feedback') = 1);
+    r := pg_temp.act(l, format($q$update public.lifter_reactions set emoji = 'fire' where lifter_id = %L and target_type = 'feedback'$q$, m));
+    perform pg_temp.ok('...and they cannot be filled again while there is no feedback', r like 'refused%' or r = 'ok 0', r);
     delete from public.lifter_videos where id = vid;
   end;
 

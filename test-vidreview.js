@@ -541,6 +541,45 @@ const MB = 1048576;
   try { await L.dev.upsert("lifter_reactions", [{ lifter_id: tomId, target_type: "video", target_id: fbId, user_id: tomUid, emoji: "up" }], "lifter_id,target_type,target_id,user_id"); } catch (e) { lifterReact = e.message; }
   check("the database refuses a lifter's reaction to a video", !!lifterReact, String(lifterReact));
 
+  console.log("\nWhere the coach's reaction sits, and the lifter's answer to the feedback");
+  C.cards()[0].click(); await tick(150);
+  check("the coach's reaction is an overlay on the picture (inside the video stage), top right", C.$("vidReact").parentElement === C.$("vidPStage") && /\.vid-react \{ position: absolute; top: 8px; right: 8px/.test(html));
+  check("...and not zoomed or pinched with it (its touches stay its own)", /\["touchstart", "touchmove", "touchend", "wheel", "pointerdown", "mousedown"\][\s\S]{0,120}vidReact/.test(html));
+  check("under the feedback the coach sees no button to react to it (it is the lifter's to answer)", !C.$("vidFbReact").querySelector(".react-add"));
+  C.$("vidPlayClose").click(); await tick(100);
+  L.w.Date.now = () => ln() + 520000;
+  L.nav("Home"); await tick(100);
+  L.sync(); await L.settle();
+  L.nav("Vid Review"); await tick(300);
+  L.cards()[0].click(); await tick(150);
+  check("Tom has a reaction button under the Coach's Feedback", !L.$("vidFb").hidden && !!L.$("vidFbReact").querySelector(".react-add"));
+  L.$("vidFbReact").querySelector(".react-add").click(); await tick(50);
+  L.$("reactPop").querySelector('[data-emoji="fire"]').click(); await tick(100);
+  check("his reaction to the feedback is saved", await until(async () => (await rows("select emoji from public.lifter_reactions where target_type = 'feedback' and target_id = $1", [fbId]))[0].emoji === "fire"));
+  check("...and shows as a chip under the feedback", vchips(L, "#vidFbReact").join() === "\uD83D\uDD25");
+  check("his video overlay has no button for him (the coach's own)", !L.$("vidReact").querySelector(".react-add"));
+  L.$("vidPlayClose").click(); await tick(100);
+  C.nav("Home"); await tick(100);
+  C.sync(); await C.settle();
+  check("the coach gets a notice that Tom reacted to the feedback", await until(() => /reacted .* to your feedback on a video/.test(C.$("homeNotices").textContent)), C.$("homeNotices").textContent);
+  C.nav("Vid Review"); await tick(300);
+  C.cards()[0].click(); await tick(150);
+  check("the coach sees the chip under their feedback, read-only", vchips(C, "#vidFbReact").join() === "\uD83D\uDD25" && !C.$("vidFbReact").querySelector(".react-add") && C.$("vidFbReact").querySelector("button.react-chip") === null);
+  C.$("vidFbDel").click(); await tick(100);
+  C.$("confirmYes").click();
+  check("deleting the feedback empties the reactions to it", await until(async () => (await rows("select emoji from public.lifter_reactions where target_type = 'feedback' and target_id = $1", [fbId]))[0].emoji === null) && await until(() => C.$("vidFb").hidden && vchips(C, "#vidFbReact").length === 0));
+  C.$("vidPlayClose").click(); await tick(100);
+  L.w.Date.now = () => ln() + 640000;
+  L.nav("Home"); await tick(100);
+  L.sync(); await L.settle();
+  L.nav("Vid Review"); await tick(300);
+  L.cards()[0].click(); await tick(150);
+  check("with no feedback, Tom sees none of it and has nothing to react to", L.$("vidFb").hidden && L.$("vidFbReact").children.length === 0 && vchips(L, "#vidFbReact").length === 0);
+  L.$("vidPlayClose").click(); await tick(100);
+  let noFb = null;
+  try { await L.dev.upsert("lifter_reactions", [{ lifter_id: tomId, target_type: "feedback", target_id: fbId, user_id: tomUid, emoji: "up" }], "lifter_id,target_type,target_id,user_id"); } catch (e) { noFb = e.message; }
+  check("the database refuses a reaction to feedback that isn't there", !!noFb, String(noFb));
+
   console.log("\nA coach's reaction to a training day");
   const toms2 = pushesTo("tom-phone").length;
   C.nav("Week 1"); await tick(150);

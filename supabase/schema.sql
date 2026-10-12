@@ -1017,7 +1017,7 @@ end $$;
 create table if not exists public.lifter_reactions (
   id          uuid primary key default gen_random_uuid(),
   lifter_id   uuid not null references public.lifters(id) on delete cascade,
-  target_type text not null check (target_type in ('message', 'note', 'day', 'video')),
+  target_type text not null check (target_type in ('message', 'note', 'day', 'video', 'feedback')),
   target_id   text not null check (length(target_id) between 1 and 64),
   user_id     uuid not null default auth.uid() references auth.users(id) on delete cascade,
   emoji       text check (emoji is null or emoji in ('heart', 'up', '100', 'fire', 'sleep', 'tired', 'devil', 'sad', 'cry', 'happy', 'worried')),
@@ -1031,7 +1031,7 @@ alter table public.lifter_reactions add constraint lifter_reactions_emoji_check
 -- A coach's reaction to a training day or a video is announced to the lifter (the notify function claims notified_at).
 alter table public.lifter_reactions drop constraint if exists lifter_reactions_target_type_check;
 alter table public.lifter_reactions add constraint lifter_reactions_target_type_check
-  check (target_type in ('message', 'note', 'day', 'video'));
+  check (target_type in ('message', 'note', 'day', 'video', 'feedback'));
 alter table public.lifter_reactions add column if not exists notified_at timestamptz;
 create index if not exists lifter_reactions_updated_idx on public.lifter_reactions (updated_at);
 
@@ -1674,6 +1674,10 @@ begin
          feedback_by = case when b is null then null else auth.uid() end,
          feedback_at = case when b is null then null else now() end
    where id = p_video;
+  -- reactions to a feedback that is gone are emptied (not deleted, so other devices hear of it)
+  if b is null then
+    update public.lifter_reactions set emoji = null where lifter_id = lid and target_type = 'feedback' and target_id = p_video::text and emoji is not null;
+  end if;
 end $$;
 revoke execute on function public.set_video_feedback(uuid, text) from public, anon;
 grant execute on function public.set_video_feedback(uuid, text) to authenticated;
@@ -1697,3 +1701,24 @@ create policy add on public.lifter_reactions for insert to authenticated
            select 1 from public.lifter_videos v where v.id::text = target_id and v.lifter_id = lifter_reactions.lifter_id))
       or (target_type = 'message' and private.can_log(lifter_id) and exists (
            select 1 from public.messages m where m.id::text = target_id and m.lifter_id = lifter_reactions.lifter_id))));
+
+-- The lifter reacts to a coach's feedback on a video (there must be feedback); their coaches see it. The coach's own
+-- reaction to the video itself stays the coach's (above). These two policies replace the earlier ones.
+drop policy if exists add on public.lifter_reactions;
+create policy add on public.lifter_reactions for insert to authenticated
+  with check (user_id = (select auth.uid())
+    and ((target_type in ('note', 'day') and private.can_coach_live(lifter_id))
+      or (target_type = 'video' and private.can_coach_live(lifter_id) and exists (
+           select 1 from public.lifter_videos v where v.id::text = target_id and v.lifter_id = lifter_reactions.lifter_id))
+      or (target_type = 'feedback' and private.is_athlete(lifter_id) and private.can_log(lifter_id) and exists (
+           select 1 from public.lifter_videos v where v.id::text = target_id and v.lifter_id = lifter_reactions.lifter_id and v.feedback is not null))
+      or (target_type = 'message' and private.can_log(lifter_id) and exists (
+           select 1 from public.messages m where m.id::text = target_id and m.lifter_id = lifter_reactions.lifter_id))));
+drop policy if exists change on public.lifter_reactions;
+create policy change on public.lifter_reactions for update to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid())
+    and ((target_type in ('note', 'day', 'video') and private.can_coach_live(lifter_id))
+      or (target_type = 'feedback' and private.is_athlete(lifter_id) and private.can_log(lifter_id)
+          and (emoji is null or exists (select 1 from public.lifter_videos v where v.id::text = target_id and v.lifter_id = lifter_reactions.lifter_id and v.feedback is not null)))
+      or (target_type = 'message' and private.can_log(lifter_id))));

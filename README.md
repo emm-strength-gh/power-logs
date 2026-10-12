@@ -470,8 +470,10 @@ own actions.
 Away for days, it stays short: notices stack by lifter and kind, newest first, so a
 week of ticks is one row ("Tom finished 4 days", with the latest underneath), three
 rows show at a time with **Show N more** for the rest, and **Clear all** appears once
-there are two or more. Messages clear themselves once read, trophies once Trophies is
-opened, and the rest once their week is opened. Notices are kept on the device for up
+there are two or more. Messages clear themselves once read (here, or on another device: a read
+marker arriving from your other phone takes its banners away too), trophies once Trophies is
+opened, a lifter's **finished days** once you open that lifter's Current Program or their conversation
+(the Inbox row), or the week itself, and the rest once their week is opened. Notices are kept on the device for up
 to 30 days (`spotter.notices.v1`), are made as a sync brings in something someone else
 did (the first sync on a new device is silent), and are dropped on sign-out.
 

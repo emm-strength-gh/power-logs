@@ -280,7 +280,7 @@ private script kept outside it (`private.settings`).
   old and new program for new weeks/days). `NT.base` flags make the first sync of each
   source silent. `renderNotices()` groups by kind + lifter (+ thread) and is redrawn
   from `setCloudStatus()`; reading clears them (`markRead`, `openTrophies`, `openWeek`).
-  Reset with `MSG` on sign-out / account change. No database change.
+  Reset with `MSG` on sign-out / account change. No database change. `ntSweep()` (from `markRead` and every `pullMessages`) drops a `msg` notice whose thread's read marker (`MSG.reads`) has passed it, so one read on another device goes too; `ntSeenLifter(lid)` (from `openOverview` and `openMessages`) drops that lifter's `session` notices.
 - Trophies and strength levels (the "Trophies and strength levels" section of
   app.html, before Theme): `troDefs()` is the catalogue (every trophy with its
   `test(model)`), `troModel()` the lifter's numbers (best of 1RM, confirmed PR, Epley

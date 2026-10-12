@@ -180,6 +180,26 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("opening that week clears them", !titles(C).some(x => /finished/.test(x)), titles(C).join("|"));
   C.nav("Current Program"); await tick(50);
 
+  console.log("\nNotices go once you have been there, however you got there");
+  await send(L, "Read on my other phone");
+  C.sync(); await tick(1800); await C.settle();
+  check("a new message makes a banner", titles(C).some(x => /Read on my other phone/.test(x)), titles(C).join("|"));
+  const coachUid = (await rows("select user_id from public.accounts where email = $1", [OWNER_EMAIL]))[0].user_id;
+  const lastAt = (await rows("select max(created_at) as t from public.messages where lifter_id = $1 and thread = 'team'", [lifterId]))[0].t;
+  await rows("insert into public.message_reads (user_id, lifter_id, thread, read_at) values ($1, $2, 'team', $3) on conflict (user_id, lifter_id, thread) do update set read_at = excluded.read_at", [coachUid, lifterId, lastAt]);
+  C.sync(); await tick(1800); await C.settle();
+  check("read on another device: the banner here goes too", !titles(C).some(x => /Read on my other phone/.test(x)) && !stored(C).some(n => n.kind === "msg"), titles(C).join("|"));
+  const finish = async (wk, d) => { await L.dev.upsert("lifter_events", [{ lifter_id: lifterId, kind: "session_done", week: wk, day: d }], "lifter_id,kind,week,day", true); C.sync(); await tick(1800); await C.settle(); };
+  await finish("7", "3");
+  check("a finished day makes a banner", titles(C).some(x => /finished/.test(x)), titles(C).join("|"));
+  C.nav("Current Program"); await tick(150);
+  check("opening the lifter's Current Program settles it", !titles(C).some(x => /finished/.test(x)) && !stored(C).some(n => n.kind === "session"), titles(C).join("|"));
+  await finish("7", "4");
+  check("another finished day: a banner again", stored(C).some(n => n.kind === "session"));
+  C.nav("Messages"); await tick(200);
+  check("opening that lifter's conversation (as the Inbox row does) settles it too", !stored(C).some(n => n.kind === "session"));
+  C.nav("Current Program"); await tick(50);
+
   /* ------------------------------------------------------- weekly notes */
   console.log("\nWeekly notes: who wrote it");
   await C.dev.upsert("lifter_week_notes", [{ lifter_id: lifterId, week: "1", body: "Great bar speed this week" }], "lifter_id,week");
@@ -238,7 +258,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("...with a count, and Clear all", /updates/.test(bar(C).textContent) && !!C.btn("Clear all", bar(C)));
   // Make four groups to prove the fold.
   const fake = (k, i, extra) => Object.assign({ id: "x" + k + i, kind: k, lifter: lifterId, who: "x", text: "Fake " + k + " " + i, at: new Date(Date.now() - (i * 86400000 + 3600000)).toISOString() }, extra || {});
-  const seed = { list: [fake("msg", 1, { thread: "team" }), fake("session", 2, { week: "1" }), fake("trophy", 3), fake("program", 4, { week: "3" }), fake("note", 5, { week: "2" })], base: { msgs: true, events: true, notes: true } };
+  const seed = { list: [fake("msg", 1, { thread: "unread-thread" }), fake("session", 2, { week: "1" }), fake("trophy", 3), fake("program", 4, { week: "3" }), fake("note", 5, { week: "2" })], base: { msgs: true, events: true, notes: true } };
   if (C.btn("Clear all", bar(C))) C.btn("Clear all", bar(C)).click(); else if (rowsOf(C).length) rowsOf(C)[0].querySelector(".nt-x").click();
   await tick(100);
   const D = boot("coach again", { dev: C.dev, storage: Object.assign(C.storage(), { "spotter.notices.v1": JSON.stringify(seed) }) });

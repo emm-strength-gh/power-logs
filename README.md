@@ -473,7 +473,9 @@ rows show at a time with **Show N more** for the rest, and **Clear all** appears
 there are two or more. Messages clear themselves once read (here, or on another device: a read
 marker arriving from your other phone takes its banners away too), trophies once Trophies is
 opened, a lifter's **finished days** once you open that lifter's Current Program or their conversation
-(the Inbox row), or the week itself, and the rest once their week is opened. Notices are kept on the device for up
+(the Inbox row), or the week itself, and the rest once their week is opened.
+
+The **Inbox** has its own read state for the same news: a lifter's row shows their latest finished day or trophy ("✓ Finished week 8 · day 3") in green with a small dot until you have been to that lifter (their Current Program, a week or their conversation); then the line turns plain and the dot goes. Rows with something new sort first. It is kept per device (`MSG.evSeen`, by the server's clock), and the first sync after this arrived counts what is already there as seen. Notices are kept on the device for up
 to 30 days (`spotter.notices.v1`), are made as a sync brings in something someone else
 did (the first sync on a new device is silent), and are dropped on sign-out.
 

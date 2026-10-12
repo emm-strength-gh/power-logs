@@ -192,6 +192,15 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   const finish = async (wk, d) => { await L.dev.upsert("lifter_events", [{ lifter_id: lifterId, kind: "session_done", week: wk, day: d }], "lifter_id,kind,week,day", true); C.sync(); await tick(1800); await C.settle(); };
   await finish("7", "3");
   check("a finished day makes a banner", titles(C).some(x => /finished/.test(x)), titles(C).join("|"));
+  C.nav("Inbox"); await tick(200);
+  const inboxRow = () => C.doc.querySelector("#inboxBody .msg-thread");
+  check("the Inbox row for him shows the finished day highlighted, with a dot", !!inboxRow().querySelector(".msg-done") && /Finished week 7 · day 3/.test(inboxRow().textContent) && !!inboxRow().querySelector(".msg-newdot"), inboxRow().innerHTML.slice(0, 300));
+  inboxRow().click(); await tick(300);
+  C.nav("Inbox"); await tick(200);
+  check("once you have been to him, the line is plain and the dot is gone", !inboxRow().querySelector(".msg-done") && !inboxRow().querySelector(".msg-newdot") && /Finished week 7 · day 3/.test(inboxRow().textContent) && !!inboxRow().querySelector(".msg-when"), inboxRow().innerHTML.slice(0, 300));
+  await finish("7", "5");
+  C.nav("Inbox"); await tick(200);
+  check("a new finished day lights it again", !!inboxRow().querySelector(".msg-done") && /day 5/.test(inboxRow().textContent) && !!inboxRow().querySelector(".msg-newdot"));
   C.nav("Current Program"); await tick(150);
   check("opening the lifter's Current Program settles it", !titles(C).some(x => /finished/.test(x)) && !stored(C).some(n => n.kind === "session"), titles(C).join("|"));
   await finish("7", "4");

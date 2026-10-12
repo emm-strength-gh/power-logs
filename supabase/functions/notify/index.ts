@@ -7,7 +7,8 @@
 // tampered app can't send it twice), works out who should hear about it, and
 // sends a Web Push to each of their devices that wants that kind.
 //
-// (A new video is announced the same way, to the lifter's coaches.)
+// (A new video is announced the same way, to the lifter's coaches. A coach's feedback on a video, and a coach's
+// reaction to a training day or a video, are announced to the lifter.)
 // Notification text never contains a message itself, only who or what:
 // banners show on locked screens.
 //
@@ -31,7 +32,7 @@ const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE
   auth: { persistSession: false },
 });
 
-type Note = { to: string[]; pref: "messages" | "sessions" | "weeks" | "trophies" | "videos"; body: string; tag: string; url: string };
+type Note = { to: string[]; pref: "messages" | "sessions" | "weeks" | "trophies" | "videos" | "feedback"; body: string; tag: string; url: string };
 type Account = { user_id: string; role: string; coach_status: string; display_name: string; email: string };
 
 Deno.serve(async (req) => {
@@ -49,6 +50,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const note = body.message_id ? await forMessage(uid, String(body.message_id))
                : (body.event_id || body.event) ? await forEvent(uid, body)
+               : body.reaction ? await forReaction(uid, body.reaction)
                : null;
     return reply({ sent: note ? await deliver(note) : 0 });
   } catch (e) {
@@ -98,6 +100,29 @@ async function forMessage(uid: string, id: string): Promise<Note | null> {
   };
 }
 
+// A coach's reaction to a training day or a video, to the lifter. Announced once per change of emoji: the row's
+// notified_at is cleared by the database whenever the emoji changes, and claimed here. Names only, never the emoji's target.
+async function forReaction(uid: string, r: { lifter_id?: string; target_type?: string; target_id?: string }): Promise<Note | null> {
+  if (!r || (r.target_type !== "day" && r.target_type !== "video")) return null;
+  const { data: row } = await admin.from("lifter_reactions").update({ notified_at: now() })
+    .eq("lifter_id", String(r.lifter_id)).eq("target_type", r.target_type).eq("target_id", String(r.target_id))
+    .eq("user_id", uid).is("notified_at", null).select().maybeSingle();
+  if (!row || !row.emoji) return null;
+  const lifter = await lifterRow(row.lifter_id);
+  if (!lifter || !lifter.lifter_user_id || lifter.lifter_user_id === uid) return null;
+  const giver = (await activeCoaches(row.lifter_id)).find((c) => c.id === uid);
+  if (!giver) return null;
+  const video = row.target_type === "video";
+  const week = String(row.target_id).split("|")[0];
+  return {
+    to: [lifter.lifter_user_id], pref: "feedback",
+    body: `${coachLabel(giver.acc)} reacted to your ${video ? "video" : "training day"}`,
+    tag: `react-${row.lifter_id}-${row.target_type}`,
+    url: video ? `${SITE}power-logs.html?open=videos&lifter=${row.lifter_id}`
+               : `${SITE}power-logs.html?open=week&lifter=${row.lifter_id}&week=${encodeURIComponent(week)}`,
+  };
+}
+
 async function forEvent(uid: string, body: { event_id?: string; event?: Record<string, string> }): Promise<Note | null> {
   let q = admin.from("lifter_events").update({ notified_at: now() }).eq("created_by", uid).is("notified_at", null);
   if (body.event_id) q = q.eq("id", body.event_id);
@@ -124,6 +149,17 @@ async function forEvent(uid: string, body: { event_id?: string; event?: Record<s
     return {
       to: coaches.map((c) => c.id).filter((c) => c !== uid), pref: "videos",
       body: `${from} uploaded a video`, tag: `video-${ev.lifter_id}`,
+      url: `${SITE}power-logs.html?open=videos&lifter=${ev.lifter_id}`,
+    };
+  }
+  if (ev.kind === "videofb") {
+    // Names only, never the feedback: banners show on locked screens.
+    if (!lifter.lifter_user_id || lifter.lifter_user_id === uid) return null;
+    const giver = (await activeCoaches(ev.lifter_id)).find((c) => c.id === uid);
+    if (!giver) return null;
+    return {
+      to: [lifter.lifter_user_id], pref: "feedback",
+      body: `${coachLabel(giver.acc)} left feedback on your video`, tag: `videofb-${ev.lifter_id}`,
       url: `${SITE}power-logs.html?open=videos&lifter=${ev.lifter_id}`,
     };
   }

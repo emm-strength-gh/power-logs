@@ -461,6 +461,104 @@ const MB = 1048576;
   await ping();
   check("switched on again, it is", pushesTo("coach-phone").length === pbefore + 1 && pushesTo("coach-phone").slice(-1)[0].body === "Tom uploaded a video");
 
+  /* ------------------------------------------------------------ Coach's Feedback and reactions */
+  console.log("\nCoach's Feedback on a video");
+  const fbId = C.cards()[0].getAttribute("data-vid");
+  const fbRow = async () => (await rows("select feedback, feedback_by from public.lifter_videos where id = $1", [fbId]))[0];
+  const toms0 = pushesTo("tom-phone").length;
+  C.cards()[0].click(); await tick(150);
+  check("the coach's player has an Add Coach's Feedback button, and no feedback yet", !C.$("vidFbAdd").hidden && C.$("vidFb").hidden && /Coach.s Feedback/.test(C.$("vidFbAdd").textContent));
+  C.$("vidFbAdd").click(); await tick(100);
+  check("it opens the notes editor, titled Coach's Feedback", C.$("wkNoteScrim").classList.contains("show") && /Coach.s Feedback/.test(C.$("wkNoteTitle").textContent), C.$("wkNoteTitle").textContent);
+  C.$("wkNoteArea").value = "Sit back more, brace harder"; C.$("wkNoteArea").dispatchEvent(new C.w.Event("input"));
+  C.$("wkNoteDone").click();
+  check("Done saves it on the video", await until(async () => (await fbRow()).feedback === "Sit back more, brace harder"), JSON.stringify(await fbRow()));
+  check("...and shows it in the player, with Edit and Delete for the coach", await until(() => !C.$("vidFb").hidden && /Sit back more/.test(C.$("vidFbText").textContent)) && !C.$("vidFbEdit").hidden && !C.$("vidFbDel").hidden && C.$("vidFbAdd").hidden);
+  check("Tom's phone got a banner naming the coach, never the feedback", await until(() => pushesTo("tom-phone").length === toms0 + 1) && /left feedback on your video/.test(pushesTo("tom-phone").slice(-1)[0].body) && !/Sit back|brace/.test(JSON.stringify(pushesTo("tom-phone").slice(-1)[0])), JSON.stringify(pushesTo("tom-phone")));
+  check("...tapping it opens Vid Review", /open=videos&lifter=/.test(pushesTo("tom-phone").slice(-1)[0].url));
+  C.$("vidPlayClose").click(); await tick(100);
+  check("the coach's card shows a Coach's Feedback line", await until(() => /Coach.s Feedback: Sit back more/.test(C.cards()[0].textContent)));
+
+  console.log("\nThe lifter sees it, and is told in the app");
+  const ln = L.w.Date.now.bind(L.w.Date);
+  L.w.Date.now = () => ln() + 130000;   // the list is read at most once a minute: move the page's clock on
+  L.nav("Home"); await tick(100);
+  L.sync(); await L.settle();
+  check("a notice on Tom's Home says the coach left feedback on his video", await until(() => /left feedback on your video: \w/.test(L.$("homeNotices").textContent)), L.$("homeNotices").textContent);
+  L.$("homeNotices").querySelector(".nt-main").click(); await tick(300);
+  check("tapping it opens Vid Review, where the card shows the feedback", L.$("viewVidReview").classList.contains("active") && await until(() => /Coach.s Feedback: Sit back more/.test(L.cards()[0].textContent)));
+  L.cards()[0].click(); await tick(150);
+  check("in the player Tom reads it, with no way to change it", !L.$("vidFb").hidden && /Sit back more, brace harder/.test(L.$("vidFbText").textContent) && L.$("vidFbEdit").hidden && L.$("vidFbDel").hidden && L.$("vidFbAdd").hidden);
+  L.$("vidPlayClose").click(); await tick(100);
+
+  console.log("\nThe coach edits and deletes it");
+  C.cards()[0].click(); await tick(150);
+  C.$("vidFbEdit").click(); await tick(100);
+  check("Edit opens it with the text", C.$("wkNoteArea").value === "Sit back more, brace harder");
+  C.$("wkNoteArea").value = "Sit back more"; C.$("wkNoteArea").dispatchEvent(new C.w.Event("input"));
+  C.$("wkNoteDone").click();
+  check("the change is saved", await until(async () => (await fbRow()).feedback === "Sit back more"));
+  check("...without another banner (the lifter was already told)", pushesTo("tom-phone").length === toms0 + 1);
+  C.$("vidFbDel").click(); await tick(100);
+  check("Delete asks first", C.$("confirmScrim").classList.contains("show") && /Delete this feedback/.test(C.$("confirmTitle").textContent));
+  C.$("confirmNo").click(); await tick(100);
+  check("Cancel keeps it", (await fbRow()).feedback === "Sit back more");
+  C.$("vidFbDel").click(); await tick(100);
+  C.$("confirmYes").click();
+  check("Delete removes it", await until(async () => (await fbRow()).feedback === null) && await until(() => C.$("vidFb").hidden && !C.$("vidFbAdd").hidden));
+  C.$("vidFbAdd").click(); await tick(100);
+  C.$("wkNoteArea").value = "Better"; C.$("wkNoteArea").dispatchEvent(new C.w.Event("input"));
+  C.$("wkNoteDone").click();
+  check("written again, no second banner for the same video", await until(async () => (await fbRow()).feedback === "Better") && pushesTo("tom-phone").length === toms0 + 1);
+
+  console.log("\nReactions on a video");
+  const vchips = (a, sel) => [...a.doc.querySelectorAll(sel + " .react-chip")].map(c => c.textContent);
+  check("the coach's player has a reaction button", !!C.$("vidReact").querySelector(".react-add"));
+  C.$("vidReact").querySelector(".react-add").click(); await tick(50);
+  check("it offers the same eleven emoji", C.$("reactPop") && C.$("reactPop").querySelectorAll(".react-opt").length === 11);
+  const toms1 = pushesTo("tom-phone").length;
+  C.$("reactPop").querySelector('[data-emoji="fire"]').click(); await tick(100);
+  check("the reaction is saved for that video", await until(async () => (await rows("select emoji from public.lifter_reactions where target_type = 'video' and target_id = $1", [fbId]))[0].emoji === "fire"));
+  check("...and shows as a chip in the player", vchips(C, "#vidReact").join() === "\uD83D\uDD25");
+  check("Tom's phone got a banner: the coach reacted to his video", await until(() => pushesTo("tom-phone").length === toms1 + 1) && /reacted to your video/.test(pushesTo("tom-phone").slice(-1)[0].body) && !/fire|\uD83D/.test(pushesTo("tom-phone").slice(-1)[0].body), JSON.stringify(pushesTo("tom-phone").slice(-1)));
+  C.$("vidReact").querySelector('[data-emoji="fire"]').click(); await tick(300);
+  check("taking the reaction back sends nothing", await until(async () => (await rows("select emoji from public.lifter_reactions where target_type = 'video' and target_id = $1", [fbId]))[0].emoji === null) && pushesTo("tom-phone").length === toms1 + 1);
+  C.$("vidReact").querySelector(".react-add").click(); await tick(50);
+  C.$("reactPop").querySelector('[data-emoji="heart"]').click(); await tick(100);
+  check("a new reaction is announced again", await until(() => pushesTo("tom-phone").length === toms1 + 2));
+  C.$("vidPlayClose").click(); await tick(100);
+  check("the coach's card shows the chip", await until(() => vchips(C, "#vidGrid .vid-card").join() === "\u2764\uFE0F"));
+  L.w.Date.now = () => ln() + 260000;
+  L.nav("Home"); await tick(100);
+  L.sync(); await L.settle();
+  check("a notice on Tom's Home says the coach reacted to his video", await until(() => /reacted .* to your video/.test(L.$("homeNotices").textContent)), L.$("homeNotices").textContent);
+  L.$("homeNotices").querySelector(".nt-main").click(); await tick(300);
+  check("tapping it opens Vid Review, where the card shows the reaction", L.$("viewVidReview").classList.contains("active") && await until(() => vchips(L, "#vidGrid .vid-card").join() === "\u2764\uFE0F"));
+  L.cards()[0].click(); await tick(150);
+  check("Tom sees it read-only in the player (no button to react)", vchips(L, "#vidReact").join() === "\u2764\uFE0F" && !L.$("vidReact").querySelector(".react-add") && L.$("vidReact").querySelector("button.react-chip") === null);
+  L.$("vidPlayClose").click(); await tick(100);
+  let lifterReact = null;
+  try { await L.dev.upsert("lifter_reactions", [{ lifter_id: tomId, target_type: "video", target_id: fbId, user_id: tomUid, emoji: "up" }], "lifter_id,target_type,target_id,user_id"); } catch (e) { lifterReact = e.message; }
+  check("the database refuses a lifter's reaction to a video", !!lifterReact, String(lifterReact));
+
+  console.log("\nA coach's reaction to a training day");
+  const toms2 = pushesTo("tom-phone").length;
+  C.nav("Week 1"); await tick(150);
+  const dbar = () => [...C.doc.querySelectorAll("#wkList .day-group")][0].querySelector(".react-row");
+  dbar().querySelector(".react-add").click(); await tick(50);
+  C.$("reactPop").querySelector('[data-emoji="up"]').click(); await tick(100);
+  check("Tom's phone got a banner: the coach reacted to his training day", await until(() => pushesTo("tom-phone").length === toms2 + 1) && /reacted to your training day/.test(pushesTo("tom-phone").slice(-1)[0].body), JSON.stringify(pushesTo("tom-phone").slice(-1)));
+  check("...tapping it opens that week", /open=week&lifter=.*&week=1/.test(pushesTo("tom-phone").slice(-1)[0].url));
+  check("...with names only (not the emoji)", !/\uD83D\uDC4D|thumb/.test(JSON.stringify(pushesTo("tom-phone").slice(-1)[0])));
+  dbar().querySelector('[data-emoji="up"]').click(); await tick(300);
+  check("taking the day reaction back sends nothing", await until(async () => (await rows("select emoji from public.lifter_reactions where target_type = 'day'"))[0].emoji === null) && pushesTo("tom-phone").length === toms2 + 1);
+  await rows("update public.push_subscriptions set prefs = '{\"feedback\": false}'::jsonb where endpoint = 'https://push.test/tom-phone'");
+  dbar().querySelector(".react-add").click(); await tick(50);
+  C.$("reactPop").querySelector('[data-emoji="100"]').click(); await tick(500);
+  check("with that kind switched off on Tom's phone, nothing is sent", pushesTo("tom-phone").length === toms2 + 1);
+  await rows("update public.push_subscriptions set prefs = '{}'::jsonb where endpoint = 'https://push.test/tom-phone'");
+  C.nav("Vid Review"); await tick(200);
+
   console.log("\nOnly coaches delete");
   let tried = null;
   try { await L.dev.remove("lifter_videos", "id", v2.id); } catch (e) { tried = e.message; }

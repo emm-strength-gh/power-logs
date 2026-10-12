@@ -801,6 +801,47 @@ begin
   perform pg_temp.ok('...but not when the owner already chose', (select coach_cards_off from public.accounts where user_id = c2) = array['e1rm'], '');
   update public.accounts set coach_cards_off = '{}' where user_id = c2;
 
+  -- Coach's Feedback and reactions on a video, and reactions to a day being announced
+  declare vid uuid := gen_random_uuid();
+  begin
+    insert into public.lifter_videos (id, lifter_id, lift, size_bytes) values (vid, m, 'Squat', 1000);
+    r := pg_temp.act(c1, format($q$select public.set_video_feedback(%L, 'Sit back more')$q$, vid));
+    perform pg_temp.ok('a coach of the lifter writes Coach''s Feedback on a video', r like 'ok%' and (select feedback from public.lifter_videos where id = vid) = 'Sit back more'
+      and (select feedback_by from public.lifter_videos where id = vid) = c1 and (select feedback_at from public.lifter_videos where id = vid) is not null, r);
+    perform pg_temp.ok('...and the lifter reads it', pg_temp.val(l, format($q$select feedback from public.lifter_videos where id = %L$q$, vid)) = 'Sit back more');
+    r := pg_temp.act(l, format($q$select public.set_video_feedback(%L, 'my own')$q$, vid));
+    perform pg_temp.ok('the lifter cannot write it', r like 'refused%', r);
+    r := pg_temp.act(l, format($q$update public.lifter_videos set feedback = 'sneaky' where id = %L$q$, vid));
+    perform pg_temp.ok('...nor change it directly', (r like 'refused%' or r = 'ok 0') and (select feedback from public.lifter_videos where id = vid) = 'Sit back more', r);
+    r := pg_temp.act(x, format($q$select public.set_video_feedback(%L, 'hi')$q$, vid));
+    perform pg_temp.ok('a stranger cannot', r like 'refused%', r);
+    r := pg_temp.act(c1, format($q$select public.set_video_feedback(%L, 'Sit back more, brace harder')$q$, vid));
+    perform pg_temp.ok('a coach changes it', r like 'ok%' and (select feedback from public.lifter_videos where id = vid) = 'Sit back more, brace harder', r);
+    r := pg_temp.act(c1, format($q$select public.set_video_feedback(%L, %L)$q$, vid, repeat('x', 1001)));
+    perform pg_temp.ok('1000 characters is the most', r like 'refused%', r);
+    r := pg_temp.act(c1, format($q$select public.set_video_feedback(%L, '   ')$q$, vid));
+    perform pg_temp.ok('empty text deletes it', r like 'ok%' and (select feedback from public.lifter_videos where id = vid) is null and (select feedback_by from public.lifter_videos where id = vid) is null, r);
+    r := pg_temp.act(c1, format($q$insert into public.lifter_events (lifter_id, kind, week) values (%L, 'videofb', %L)$q$, m, vid::text));
+    perform pg_temp.ok('a coach announces feedback to the lifter', r = 'ok 1', r);
+    r := pg_temp.act(l, format($q$insert into public.lifter_events (lifter_id, kind, week) values (%L, 'videofb', 'x')$q$, m));
+    perform pg_temp.ok('...a lifter cannot', r like 'refused%', r);
+    -- reactions to a video: coaches only, to a video that exists
+    r := pg_temp.act(c1, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) values (%L, 'video', %L, 'fire')$q$, m, vid::text));
+    perform pg_temp.ok('a coach reacts to a video', r = 'ok 1', r);
+    perform pg_temp.ok('the lifter sees it', pg_temp.cnt(l, format($q$select * from public.lifter_reactions where lifter_id = %L and target_type = 'video'$q$, m)) = 1);
+    r := pg_temp.act(l, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) values (%L, 'video', %L, 'heart')$q$, m, vid::text));
+    perform pg_temp.ok('the lifter cannot react to a video', r like 'refused%', r);
+    r := pg_temp.act(c1, format($q$insert into public.lifter_reactions (lifter_id, target_type, target_id, emoji) values (%L, 'video', gen_random_uuid()::text, 'fire')$q$, m));
+    perform pg_temp.ok('a reaction to a video that is not there is refused', r like 'refused%', r);
+    update public.lifter_reactions set notified_at = now() where lifter_id = m and target_type = 'video';
+    perform pg_temp.act(c1, format($q$update public.lifter_reactions set emoji = 'heart' where lifter_id = %L and target_type = 'video'$q$, m));
+    perform pg_temp.ok('a changed emoji is announced again (notified_at clears), by the server only',
+      (select notified_at from public.lifter_reactions where lifter_id = m and target_type = 'video') is null);
+    perform pg_temp.act(c1, format($q$update public.lifter_reactions set notified_at = now() where lifter_id = %L and target_type = 'video'$q$, m));
+    perform pg_temp.ok('...the app cannot mark it announced', (select notified_at from public.lifter_reactions where lifter_id = m and target_type = 'video') is null);
+    delete from public.lifter_videos where id = vid;
+  end;
+
   -- Invite-only sign-up: what Supabase Auth asks before it creates an account
   perform pg_temp.ok('sign-up: an email nobody invited is refused',
     public.hook_before_user_created('{"user":{"email":"nobody@selftest.invalid"}}') ? 'error');

@@ -1017,7 +1017,7 @@ end $$;
 create table if not exists public.lifter_reactions (
   id          uuid primary key default gen_random_uuid(),
   lifter_id   uuid not null references public.lifters(id) on delete cascade,
-  target_type text not null check (target_type in ('message', 'note', 'day')),
+  target_type text not null check (target_type in ('message', 'note', 'day', 'video')),
   target_id   text not null check (length(target_id) between 1 and 64),
   user_id     uuid not null default auth.uid() references auth.users(id) on delete cascade,
   emoji       text check (emoji is null or emoji in ('heart', 'up', '100', 'fire', 'sleep', 'tired', 'devil', 'sad', 'cry', 'happy', 'worried')),
@@ -1028,6 +1028,11 @@ create table if not exists public.lifter_reactions (
 alter table public.lifter_reactions drop constraint if exists lifter_reactions_emoji_check;
 alter table public.lifter_reactions add constraint lifter_reactions_emoji_check
   check (emoji is null or emoji in ('heart', 'up', '100', 'fire', 'sleep', 'tired', 'devil', 'sad', 'cry', 'happy', 'worried'));
+-- A coach's reaction to a training day or a video is announced to the lifter (the notify function claims notified_at).
+alter table public.lifter_reactions drop constraint if exists lifter_reactions_target_type_check;
+alter table public.lifter_reactions add constraint lifter_reactions_target_type_check
+  check (target_type in ('message', 'note', 'day', 'video'));
+alter table public.lifter_reactions add column if not exists notified_at timestamptz;
 create index if not exists lifter_reactions_updated_idx on public.lifter_reactions (updated_at);
 
 create or replace function private.reactions_guard() returns trigger
@@ -1035,9 +1040,12 @@ language plpgsql set search_path = '' as $$
 begin
   if tg_op = 'INSERT' then
     new.user_id := auth.uid();
+    new.notified_at := null;
   else
     new.user_id := old.user_id; new.lifter_id := old.lifter_id;
     new.target_type := old.target_type; new.target_id := old.target_id;
+    -- announced once per change of emoji; the app can't set it
+    new.notified_at := case when new.emoji is distinct from old.emoji then null else old.notified_at end;
   end if;
   new.updated_at := now();
   return new;
@@ -1064,7 +1072,7 @@ drop policy if exists change on public.lifter_reactions;
 create policy change on public.lifter_reactions for update to authenticated
   using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid())
-    and ((target_type in ('note', 'day') and private.can_coach_live(lifter_id))
+    and ((target_type in ('note', 'day', 'video') and private.can_coach_live(lifter_id))
       or (target_type = 'message' and private.can_log(lifter_id))));
 revoke execute on function private.reactions_guard() from public, anon;
 
@@ -1103,6 +1111,12 @@ alter table public.lifter_videos add constraint lifter_videos_notes_check check 
 alter table public.lifter_videos drop constraint if exists lifter_videos_weight_check;
 alter table public.lifter_videos add constraint lifter_videos_weight_check check (weight is null or length(weight) <= 20);
 create index if not exists lifter_videos_lifter_idx on public.lifter_videos (lifter_id, created_at);
+-- Coach's Feedback: one note per video, written, changed and removed only by the lifter's coaches (set_video_feedback).
+alter table public.lifter_videos add column if not exists feedback text;
+alter table public.lifter_videos add column if not exists feedback_by uuid;
+alter table public.lifter_videos add column if not exists feedback_at timestamptz;
+alter table public.lifter_videos drop constraint if exists lifter_videos_feedback_check;
+alter table public.lifter_videos add constraint lifter_videos_feedback_check check (feedback is null or length(feedback) between 1 and 1000);
 
 create or replace function private.videos_guard() returns trigger
 language plpgsql set search_path = '' as $$
@@ -1644,3 +1658,42 @@ drop trigger if exists lifters_link_limit on public.lifters;
 create trigger lifters_link_limit before update on public.lifters
   for each row execute function private.lifters_link_limit();
 revoke execute on function private.lifters_link_limit() from public, anon, authenticated;
+
+-- Coach's Feedback on a video: the lifter's coaches write it, change it and take it away (empty text removes it). The
+-- lifter reads it with the video. A first feedback on a video is announced to the lifter: a lifter_events row of kind
+-- 'videofb' (week = the video's id, so once per video) that the notify function turns into a push.
+create or replace function public.set_video_feedback(p_video uuid, p_body text) returns void
+language plpgsql security definer set search_path = '' as $$
+declare lid uuid; b text := nullif(btrim(coalesce(p_body, '')), '');
+begin
+  select v.lifter_id into lid from public.lifter_videos v where v.id = p_video;
+  if lid is null or not private.can_coach_live(lid) then raise exception 'not your lifter'; end if;
+  if b is not null and length(b) > 1000 then raise exception 'feedback is too long (1000 characters at most)'; end if;
+  update public.lifter_videos
+     set feedback = b,
+         feedback_by = case when b is null then null else auth.uid() end,
+         feedback_at = case when b is null then null else now() end
+   where id = p_video;
+end $$;
+revoke execute on function public.set_video_feedback(uuid, text) from public, anon;
+grant execute on function public.set_video_feedback(uuid, text) to authenticated;
+
+alter table public.lifter_events drop constraint if exists lifter_events_kind_check;
+alter table public.lifter_events add constraint lifter_events_kind_check
+  check (kind in ('session_done', 'new_week', 'trophy', 'video', 'videofb'));
+drop policy if exists add on public.lifter_events;
+create policy add on public.lifter_events for insert to authenticated
+  with check ((kind = 'session_done' and private.is_athlete(lifter_id))
+           or (kind = 'trophy' and (private.is_athlete(lifter_id) or private.can_coach_live(lifter_id)))
+           or (kind = 'video' and private.can_log(lifter_id))
+           or (kind = 'videofb' and private.can_coach_live(lifter_id)));
+
+-- A reaction to a video is a coach's, to a video of that lifter that exists (this comes after lifter_videos is made).
+drop policy if exists add on public.lifter_reactions;
+create policy add on public.lifter_reactions for insert to authenticated
+  with check (user_id = (select auth.uid())
+    and ((target_type in ('note', 'day') and private.can_coach_live(lifter_id))
+      or (target_type = 'video' and private.can_coach_live(lifter_id) and exists (
+           select 1 from public.lifter_videos v where v.id::text = target_id and v.lifter_id = lifter_reactions.lifter_id))
+      or (target_type = 'message' and private.can_log(lifter_id) and exists (
+           select 1 from public.messages m where m.id::text = target_id and m.lifter_id = lifter_reactions.lifter_id))));

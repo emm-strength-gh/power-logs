@@ -154,7 +154,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   check("turning on saves this device", await until(async () => (await server.sql("select count(*)::int n from public.push_subscriptions"))[0].n === 1));
   await until(() => L.$("acctBody").querySelector(".acct-check"));
   const lOpts = [...L.$("acctBody").querySelectorAll(".acct-check span")].map(s => s.textContent);
-  check("a lifter chooses messages, new weeks and trophies", lOpts.join() === "New messages,A new week in my program,A trophy is earned or given to me", lOpts.join());
+  check("a lifter chooses messages, new weeks, coach feedback and trophies", lOpts.join() === "New messages,A new week in my program,A coach reacts to my training day or video, or leaves feedback on a video,A trophy is earned or given to me", lOpts.join());
   L.closeSheet();
   C.$("acctBtn").click(); await tick();
   C.btn("Turn on for this device", C.$("acctBody")).click();

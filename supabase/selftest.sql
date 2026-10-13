@@ -861,6 +861,44 @@ begin
     delete from public.lifter_videos where id = vid;
   end;
 
+  -- Photos in messages: temporary, opened once, unsent by the sender
+  declare ph uuid := gen_random_uuid(); ph2 uuid := gen_random_uuid(); fname text;
+  begin
+    fname := m::text || '/' || ph::text || '.jpg';
+    r := pg_temp.act(x, format($q$insert into storage.objects (bucket_id, name, owner) values ('msg-photos', %L, %L)$q$, fname, x));
+    perform pg_temp.ok('photos: a stranger cannot put a photo on someone''s conversation', r like 'refused%', r);
+    r := pg_temp.act(c1, format($q$insert into storage.objects (bucket_id, name, owner) values ('msg-photos', %L, %L)$q$, fname, c1));
+    perform pg_temp.ok('photos: a coach of the lifter uploads the file', r = 'ok 1', r);
+    r := pg_temp.act(c1, format($q$insert into public.messages (id, lifter_id, thread, body, photo) values (%L, %L, %L, '📷 Photo', true)$q$, ph, m, c1));
+    perform pg_temp.ok('...sends the photo message (their own thread with the lifter)', r = 'ok 1', r);
+    r := pg_temp.act(c1, format($q$insert into public.message_photos (message_id, lifter_id, thread, width, height, size_bytes) values (%L, %L, %L, 946, 2049, 300000)$q$, ph, m, c1));
+    perform pg_temp.ok('...and its record, waiting to be opened', r = 'ok 1' and (select state from public.message_photos where message_id = ph) = 'waiting', r);
+    r := pg_temp.act(l, format($q$insert into public.message_photos (message_id, lifter_id, thread) values (%L, %L, %L)$q$, ph2, m, c1));
+    perform pg_temp.ok('a record needs a photo message of the sender''s own', r like 'refused%', r);
+    perform pg_temp.ok('the lifter sees the record and can read the file', pg_temp.cnt(l, format($q$select * from public.message_photos where message_id = %L$q$, ph)) = 1
+      and pg_temp.cnt(l, format($q$select * from storage.objects where bucket_id = 'msg-photos' and name = %L$q$, fname)) = 1);
+    perform pg_temp.ok('...a stranger neither', pg_temp.cnt(x, format($q$select * from public.message_photos where message_id = %L$q$, ph)) = 0
+      and pg_temp.cnt(x, format($q$select * from storage.objects where bucket_id = 'msg-photos' and name = %L$q$, fname)) = 0);
+    v := pg_temp.val(c1, format($q$select public.photo_opened(%L)$q$, ph));
+    perform pg_temp.ok('the sender opening it changes nothing', v = 'mine' and (select state from public.message_photos where message_id = ph) = 'waiting', v);
+    v := pg_temp.val(x, format($q$select public.photo_opened(%L)$q$, ph));
+    perform pg_temp.ok('a stranger cannot open it', v like 'refused%', v);
+    v := pg_temp.val(l, format($q$select public.photo_opened(%L)$q$, ph));
+    perform pg_temp.ok('the lifter opens it: it is theirs now', v = 'opened' and (select opened_by from public.message_photos where message_id = ph) = l, v);
+    v := pg_temp.val(l, format($q$select public.photo_opened(%L)$q$, ph));
+    perform pg_temp.ok('...only once', v = 'opened', v);
+    r := pg_temp.act(l, format($q$delete from storage.objects where bucket_id = 'msg-photos' and name = %L$q$, fname));
+    perform pg_temp.ok('...and their device deletes the file from storage', r = 'ok 1', r);
+    r := pg_temp.act(l, format($q$update public.message_photos set state = 'waiting' where message_id = %L$q$, ph));
+    perform pg_temp.ok('nobody writes the record directly', (r like 'refused%' or r = 'ok 0') and (select state from public.message_photos where message_id = ph) = 'opened', r);
+    v := pg_temp.val(l, format($q$select public.unsend_photo(%L)$q$, ph));
+    perform pg_temp.ok('only the sender unsends', v like 'refused%', v);
+    v := pg_temp.val(c1, format($q$select public.unsend_photo(%L)$q$, ph));
+    perform pg_temp.ok('the sender unsends: the message is gone for everyone, the record says so',
+      coalesce(v, '') not like 'refused%' and not exists (select 1 from public.messages where id = ph) and (select state from public.message_photos where message_id = ph) = 'unsent', v);
+    delete from public.message_photos where message_id = ph;
+  end;
+
   -- Invite-only sign-up: what Supabase Auth asks before it creates an account
   perform pg_temp.ok('sign-up: an email nobody invited is refused',
     public.hook_before_user_created('{"user":{"email":"nobody@selftest.invalid"}}') ? 'error');

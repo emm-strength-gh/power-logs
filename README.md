@@ -479,6 +479,17 @@ The **Inbox** has its own read state for the same news: a lifter's row shows the
 to 30 days (`spotter.notices.v1`), are made as a sync brings in something someone else
 did (the first sync on a new device is silent), and are dropped on sign-out.
 
+## Photos in Messages
+
+The camera button beside the message box sends a photo (both ways: coach to lifter and lifter to coach; it needs a connection).
+
+- **Size:** the phone makes it a JPEG of at most **5 megapixels**, in its own shape (portrait, landscape or square, never enlarged), and at most **2 MB**: it uses the best quality that fits, and only if even the lowest quality is too big does it make the picture a little smaller. The server refuses anything bigger.
+- **Temporary on the server:** the file waits in a private storage bucket (`msg-photos`) only until someone it was sent to opens it. Opening it downloads it, marks it opened (`photo_opened`) and deletes the file from the server. In a thread with several coaches, the first person to open it gets it; the others see "Opened by …; no longer available".
+- **Memory only on the phone:** the picture is never written to the phone's storage. It stays in the app's memory until the app is closed, then it is gone for good, for the sender too. Reopened, the message says "Not on this device any more". The viewer has a header saying so, and a **Save** button to keep a copy on the phone (Photos, Files, AirDrop).
+- **Forward (coaches):** in the viewer, Forward sends the same photo to any of the coach's other lifters (each gets a new photo, opened once like any other).
+- **Unsend:** hold your own photo and tap **Unsend**: the message, the file and every copy, on every device, are deleted.
+- Push banners and the Inbox show it as "📷 Photo", never the picture.
+
 ## Reactions
 
 Eleven emoji, Instagram style: ❤️ heart, 👍 thumbs up, 💯, 🔥 fire, 😴 sleepy, 😫 tired, 😈 devil, 😞 sad, 😭 crying, 😊 happy and 😟 worried

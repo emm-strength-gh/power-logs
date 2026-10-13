@@ -1722,3 +1722,131 @@ create policy change on public.lifter_reactions for update to authenticated
       or (target_type = 'feedback' and private.is_athlete(lifter_id) and private.can_log(lifter_id)
           and (emoji is null or exists (select 1 from public.lifter_videos v where v.id::text = target_id and v.lifter_id = lifter_reactions.lifter_id and v.feedback is not null)))
       or (target_type = 'message' and private.can_log(lifter_id))));
+
+---------------------------------------------------------------- photos in messages (temporary)
+-- A photo sent in Messages is kept by the database only until someone it was sent to opens it: the file sits in the
+-- private bucket 'msg-photos' (<lifter id>/<message id>.jpg, JPEG of at most 5 megapixels, 2 MB at most) and the message row is flagged photo.
+-- message_photos says where each one is: 'waiting' (not opened yet), 'opened' (by opened_by: the file is then deleted
+-- by that device, and the sender's), or 'unsent' (the sender took it back: the message row is deleted and every device
+-- drops its copy). The devices keep the picture only in memory, so it is gone when the app closes.
+alter table public.messages add column if not exists photo boolean not null default false;
+
+create table if not exists public.message_photos (
+  message_id uuid primary key,
+  lifter_id  uuid not null references public.lifters(id) on delete cascade,
+  thread     text not null,
+  sender_id  uuid not null default auth.uid(),
+  width      integer check (width is null or width between 1 and 8000),
+  height     integer check (height is null or height between 1 and 8000),
+  size_bytes integer check (size_bytes is null or size_bytes between 1 and 2097152),
+  state      text not null default 'waiting' check (state in ('waiting', 'opened', 'unsent')),
+  opened_by  uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists message_photos_updated_idx on public.message_photos (updated_at);
+alter table public.message_photos drop constraint if exists message_photos_size_bytes_check;
+alter table public.message_photos add constraint message_photos_size_bytes_check check (size_bytes is null or size_bytes between 1 and 2097152);
+
+create or replace function private.message_photos_guard() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  new.sender_id := auth.uid();
+  new.state := 'waiting';
+  new.opened_by := null;
+  new.created_at := now();
+  new.updated_at := now();
+  return new;
+end $$;
+drop trigger if exists message_photos_guard on public.message_photos;
+create trigger message_photos_guard before insert on public.message_photos
+  for each row execute function private.message_photos_guard();
+
+alter table public.message_photos enable row level security;
+revoke all on public.message_photos from public, anon, authenticated;
+grant select, insert on public.message_photos to authenticated;
+drop policy if exists read on public.message_photos;
+create policy read on public.message_photos for select to authenticated
+  using (sender_id = (select auth.uid()) or private.can_read_msg(lifter_id, thread, created_at));
+drop policy if exists add on public.message_photos;
+create policy add on public.message_photos for insert to authenticated
+  with check (exists (select 1 from public.messages m
+                      where m.id = message_id and m.sender_id = (select auth.uid()) and m.photo
+                        and m.lifter_id = message_photos.lifter_id and m.thread = message_photos.thread));
+
+-- Someone it was sent to opens it: from now on it is theirs alone (their device deletes the file).
+create or replace function public.photo_opened(p_message uuid) returns text
+language plpgsql security definer set search_path = '' as $$
+declare p public.message_photos;
+begin
+  select * into p from public.message_photos where message_id = p_message;
+  if not found then return 'gone'; end if;
+  if p.sender_id = auth.uid() then return 'mine'; end if;
+  if not private.can_read_msg(p.lifter_id, p.thread, p.created_at) then raise exception 'not your message'; end if;
+  if p.state <> 'waiting' then return p.state; end if;
+  update public.message_photos set state = 'opened', opened_by = auth.uid(), updated_at = now() where message_id = p_message;
+  return 'opened';
+end $$;
+-- The sender takes it back: the message goes for everyone, and every device drops its copy.
+create or replace function public.unsend_photo(p_message uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not exists (select 1 from public.message_photos where message_id = p_message and sender_id = auth.uid()) then
+    raise exception 'only the sender can unsend a photo';
+  end if;
+  update public.message_photos set state = 'unsent', updated_at = now() where message_id = p_message;
+  delete from public.messages where id = p_message;
+end $$;
+revoke execute on function private.message_photos_guard() from public, anon, authenticated;
+revoke execute on function public.photo_opened(uuid), public.unsend_photo(uuid) from public, anon;
+grant execute on function public.photo_opened(uuid), public.unsend_photo(uuid) to authenticated;
+
+-- The files. Only names shaped <uuid>/<uuid>.jpg count.
+create or replace function private.photo_lifter(name text) returns uuid
+language plpgsql immutable set search_path = '' as $$
+begin
+  if name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jpg$' then
+    return split_part(name, '/', 1)::uuid;
+  end if;
+  return null;
+end $$;
+create or replace function private.photo_msg(name text) returns uuid
+language plpgsql immutable set search_path = '' as $$
+begin
+  if private.photo_lifter(name) is null then return null; end if;
+  return replace(split_part(name, '/', 2), '.jpg', '')::uuid;
+end $$;
+-- Adding: anyone who can post on that lifter's log (the lifter, their coaches); reading and deleting: the sender and
+-- whoever the message was sent to.
+create or replace function private.photo_can_add(name text) returns boolean
+language sql stable set search_path = '' as $$ select coalesce(private.can_log(private.photo_lifter(name)), false) $$;
+create or replace function private.photo_can_see(name text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.message_photos p
+                 where p.message_id = private.photo_msg(name) and p.lifter_id = private.photo_lifter(name)
+                   and (p.sender_id = auth.uid() or private.can_read_msg(p.lifter_id, p.thread, p.created_at)));
+$$;
+revoke execute on function private.photo_lifter(text), private.photo_msg(text), private.photo_can_add(text), private.photo_can_see(text) from public, anon;
+grant execute on function private.photo_lifter(text), private.photo_msg(text), private.photo_can_add(text), private.photo_can_see(text) to authenticated;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('msg-photos', 'msg-photos', false, 2097152, array['image/jpeg'])
+on conflict (id) do update set public = false, file_size_limit = 2097152, allowed_mime_types = array['image/jpeg'];
+drop policy if exists photo_read on storage.objects;
+create policy photo_read on storage.objects for select to authenticated
+  using (bucket_id = 'msg-photos' and private.photo_can_see(name));
+drop policy if exists photo_add on storage.objects;
+create policy photo_add on storage.objects for insert to authenticated
+  with check (bucket_id = 'msg-photos' and private.photo_can_add(name));
+drop policy if exists photo_remove on storage.objects;
+create policy photo_remove on storage.objects for delete to authenticated
+  using (bucket_id = 'msg-photos' and private.photo_can_see(name));
+
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (select 1 from pg_publication_tables
+                     where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'message_photos') then
+    alter publication supabase_realtime add table public.message_photos;
+  end if;
+end $$;

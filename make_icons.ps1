@@ -2,8 +2,8 @@
 #
 #   powershell -ExecutionPolicy Bypass -File make_icons.ps1
 #
-# _source.png is the full-bleed logo (a red 25 kg plate and a spiral notepad on a pastel
-# sage tile, the same sage as the app's theme). Everything is drawn from it:
+# _source.png is the full-bleed logo (a red 25 kg plate and a spiral notepad with a pen on a
+# mint tile). Everything is drawn from it:
 #   icon-192 / icon-512         purpose "any": rounded corners, transparent outside them
 #   icon-512-maskable           purpose "maskable": the art pulled into the centre 80% safe zone
 #   apple-touch-icon (180)      iOS applies its own mask: full bleed, no alpha
@@ -13,8 +13,8 @@ Add-Type -AssemblyName System.Drawing
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $src = [System.Drawing.Image]::FromFile((Join-Path $root "icons\_source.png"))
 # The tile's own gradient, so a smaller logo on a bigger canvas (maskable) melts into it.
-$top = [System.Drawing.Color]::FromArgb(0xDC, 0xEB, 0xE1)
-$bot = [System.Drawing.Color]::FromArgb(0xB8, 0xD2, 0xC2)
+$top = [System.Drawing.Color]::FromArgb(0xD2, 0xF6, 0xE5)
+$bot = [System.Drawing.Color]::FromArgb(0x71, 0xC5, 0xA3)
 
 function Build($size, $scale, $radius, $alpha) {
   $fmt = if ($alpha) { [System.Drawing.Imaging.PixelFormat]::Format32bppArgb } else { [System.Drawing.Imaging.PixelFormat]::Format24bppRgb }

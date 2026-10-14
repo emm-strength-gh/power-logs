@@ -216,6 +216,7 @@ leg press, @8, 3x15, this must be a single leg each set`;
 
   console.log("\nThe header's Manage Program button");
   const hb = () => ({ strip: $("hdrManage"), btn: $("hdrManageBtn"), space: $("hdrManageSpace") });
+  $("lifterSelect").value = "Tom"; $("lifterSelect").dispatchEvent(new w.Event("change")); await tick(100);   // Sam was only in the stand-in cloud, which keeps nothing
   navTo("Current Program"); await tick(100);
   check("it shows across the foot of the header on Current Program", !hb().strip.hidden && hb().btn.textContent === "Manage Program" && hb().strip.parentElement.tagName === "HEADER" && !hb().space.hidden);
   navTo("Week 1"); await tick(100);

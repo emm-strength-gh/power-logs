@@ -25,7 +25,7 @@
  * a file here: index.html downloads it from the database after sign-in and keeps it in IndexedDB.)
  */
 
-const CACHE_VERSION = "v17";
+const CACHE_VERSION = "v18";
 const CACHE_SHELL = `spotter-shell-${CACHE_VERSION}`;
 const CACHE_VENDOR = `spotter-vendor-${CACHE_VERSION}`;
 

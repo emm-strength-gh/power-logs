@@ -236,6 +236,10 @@ Each lifter also has a **Display Name**: the name everyone sees (the dropdown, t
 - Signing in on a device that has its own Tom: if it is the very same program as the account's Tom, they are the same lifter and join; a different program keeps its own entry beside it, so nothing is overwritten.
 - Programs saved before lifter IDs get one the next time the app starts (a synced lifter's ID is its cloud id). Only coaches can load files; a lifter whose coach gave them a program can't add lifters from files.
 
+## Which program opens
+
+Right after signing in nothing is chosen: a coach picks a lifter, a lifter picks a program. From then on, whichever program was chosen last on that device opens next time the app starts (the coach and the lifter still land on Home, with it already selected, so Current Program opens it). If that program is gone (deleted, or no longer shared with you), or you sign out, nothing is chosen again.
+
 ## Programs and their status
 
 Every program is **Open** or **Closed** (Open until a coach changes it). A coach sets it in Manage Program's *Lifter & program* card (Status), or by tapping the status on the Programs page; it is part of the program, so it syncs to the lifter, who sees it but can't change it.

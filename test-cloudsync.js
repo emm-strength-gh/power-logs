@@ -471,7 +471,7 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   D.btn("Sign out", D.$("acctBody")).click(); await tick(300);
   D.$("confirmYes").click();
   check("Tom's synced program leaves the phone", await until(() => !D.names().includes("Tom")));
-  check("what was only on the phone stays", D.names().join() === "Other");
+  check("what was only on the phone stays", await until(() => D.names().join() === "Other"), D.names().join());
   check("signed out again", await until(() => /\bout\b/.test(D.$("acctDot").className)) && /\bout\b/.test(D.$("acctDot").className) && D.$("unloadLabel").textContent === "Unload everything");
   await D.signIn("someone.else@test.invalid"); D.close();
   check("a different account on the same phone sees none of Tom's", !D.names().includes("Tom"));

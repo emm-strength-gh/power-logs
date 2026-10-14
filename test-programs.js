@@ -31,7 +31,7 @@ const SAM = csv("Sam", "Base", [[1, 1, "Squat", 120, 5, 5, 7, ""]]);
 (async () => {
   const server = await pgServer();
 
-  function boot(label, store, dev) {
+  function boot(label, store, dev, shell) {
     dev = dev || server.device(label);
     const errors = [];
     const dom = new JSDOM(html, {
@@ -40,6 +40,7 @@ const SAM = csv("Sam", "Base", [[1, 1, "Squat", 120, 5, 5, 7, ""]]);
       virtualConsole: new VirtualConsole().on("jsdomError", e => errors.push(e.message)).on("error", m => errors.push(String(m))),
       beforeParse(w) {
         w.__spotterCloud = dev;
+        if (shell) w.__spotterShell = {};   // started by the sign-in page, as on a phone
         w.Chart = class { static defaults = { font: {} }; constructor() {} destroy() {} };
         for (const k of Object.keys(store || {})) w.localStorage.setItem(k, store[k]);
       },
@@ -235,8 +236,19 @@ const SAM = csv("Sam", "Base", [[1, 1, "Squat", 120, 5, 5, 7, ""]]);
   check("Tom's Home shows one payments line, Paid", lines.length === 1 && /Paid/.test(lines[0].textContent) && !/Prep|Peak/.test(lines[0].textContent), lines.map(l => l.textContent).join(" | "));
 
   /* ------------------------------------------------------------ opening the app */
-  console.log("\nOpening the app again: nothing selected");
-  const O2 = boot("owner again", O.storage(), O.dev);
+  console.log("\nOpening the app again: the program chosen last opens again");
+  const lastO = JSON.parse(O.storage()["spotter.lastLifter"]);
+  const Ob = boot("owner reopened", O.storage(), O.dev);
+  await tick(400); await Ob.settle();
+  check("the coach lands on Home with the program chosen last time already chosen", Ob.active() === "viewHome" && Ob.$("lifterSelect").value === lastO && !!lastO, Ob.$("lifterSelect").value + " / " + lastO);
+  check("...still after the first sync", (Ob.sync(), await Ob.settle(), Ob.$("lifterSelect").value === lastO));
+  Ob.nav("Current Program"); await tick(150);
+  check("...so Current Program opens it straight away", Ob.active() === "viewOverview" && Ob.$("ovName").textContent.length > 0);
+
+  console.log("\nA fresh sign-in: nothing selected");
+  const O2 = boot("owner new phone", null, null, true);
+  await tick(200); await O2.signIn(OWNER_EMAIL);
+  if (O2.$("confirmScrim").classList.contains("show")) O2.$("confirmNo").click();
   await tick(400); await O2.settle();
   check("the coach lands on Home with no lifter chosen", O2.active() === "viewHome" && O2.$("lifterSelect").value === "" && /Select a lifter/.test(O2.$("lifterSelect").options[0].textContent), O2.active() + " / " + O2.$("lifterSelect").value);
   check("...even after the first sync", (O2.sync(), await O2.settle(), O2.$("lifterSelect").value === ""));
@@ -249,7 +261,8 @@ const SAM = csv("Sam", "Base", [[1, 1, "Squat", 120, 5, 5, 7, ""]]);
   O2.pick(O2.keyOf("Peak")); await tick(150);
   check("choosing one from the dropdown works as before", O2.active() === "viewOverview" && O2.$("lifterSelect").value === O2.keyOf("Peak") && !/Select a lifter/.test(O2.$("lifterSelect").textContent));
 
-  const T2 = boot("tom again", T.storage(), T.dev);
+  const T2 = boot("tom new phone", null, null, true);
+  await tick(200); await T2.signIn("tom@test.invalid");
   await tick(400); await T2.settle();
   check("the lifter opens with no program chosen either", T2.$("lifterSelect").value === "" && /Select a program/.test(T2.$("lifterSelect").options[0].textContent), T2.$("lifterSelect").value);
   T2.nav("Current Program"); await tick(150);
@@ -260,8 +273,26 @@ const SAM = csv("Sam", "Base", [[1, 1, "Squat", 120, 5, 5, 7, ""]]);
   check("...and so does Lifter's Analytics", T2.active() === "viewPrograms");
   T2.progRows().find(r => r.title === "Peak").el.querySelector(".msg-thread").click(); await tick(150);
   check("choosing one opens it, as before", T2.active() === "viewOverview" && T2.$("lifterSelect").value === T2.keyOf("Peak"));
+  const peakKey = T2.keyOf("Peak");
+  const T3 = boot("tom reopened", T2.storage(), T2.dev);
+  await tick(400); await T3.settle();
+  check("opened again, Tom's last program (Peak) is chosen", T3.$("lifterSelect").value === peakKey, T3.$("lifterSelect").value);
+  T3.pick(T3.keyOf("Prep")); await tick(150);
+  const T4 = boot("tom reopened again", T3.storage(), T3.dev);
+  await tick(400); await T4.settle();
+  check("with two programs, whichever he chose last is the one that opens (now Prep)", T4.$("lifterSelect").value === T4.keyOf("Prep"), T4.$("lifterSelect").value);
+  await rows("update public.lifters set deleted_at = now() where program->>'block' = 'Prep'");
+  const T5 = boot("tom after Prep went", T4.storage(), T4.dev);
+  await tick(400); T5.sync(); await T5.settle();
+  check("if that program is gone, nothing is chosen again", await until(() => T5.$("lifterSelect").value === "" && !T5.keyOf("Prep")) && /Select a program/.test(T5.$("lifterSelect").options[0].textContent), T5.$("lifterSelect").value);
+  check("...and it is forgotten, not chosen next time either", (() => { const v = T5.storage()["spotter.lastLifter"]; return !v || !JSON.parse(v); })());
+  T5.pick(T5.keyOf("Peak")); await tick(150);
+  T5.$("acctBtn").click(); await tick(100);
+  T5.btn("Sign out", T5.$("acctBody")).click(); await tick(300);
+  T5.$("confirmYes").click();
+  check("signing out forgets it too", await until(() => !T5.storage()["spotter.lastLifter"]));
 
-  check("no script errors", [O, T, O2, T2].every(a => a.real().length === 0), [O, T, O2, T2].map(a => a.real().join(" | ")).join(" // "));
+  check("no script errors", [O, T, Ob, O2, T2, T3, T4, T5].every(a => a.real().length === 0), [O, T, Ob, O2, T2, T3, T4, T5].map(a => a.real().join(" | ")).join(" // "));
   console.log(`\n${checks} checks · ${failures ? failures + " FAILED" : "ALL PASSED"}`);
   process.exit(failures ? 1 : 0);
 })();

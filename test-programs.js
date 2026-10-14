@@ -122,7 +122,7 @@ const SAM = csv("Sam", "Base", [[1, 1, "Squat", 120, 5, 5, 7, ""]]);
   check("tapping a program opens it", O.active() === "viewOverview" && O.$("lifterSelect").value === O.keyOf("Peak"));
   O.$("ovPrograms").click(); await tick(100);
   O.$("progsBack").click(); await tick(100);
-  check("Back from Programs returns to Current Program", O.active() === "viewOverview");
+  check("for a coach, Back from Programs says Lifters and goes there", O.$("progsBackTx").textContent === "Lifters" && O.active() === "viewLifters");
 
   console.log("\nThe Lifters page: one card per signed-in lifter");
   O.nav("Lifters"); await tick(150);

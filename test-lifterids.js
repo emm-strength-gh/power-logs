@@ -56,7 +56,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
       nav(l) { const b = [...doc.querySelectorAll("#sideNav .nav-item")].find(n => (n.querySelector(".nav-label") || {}).textContent === l); if (b) b.click(); return !!b; },
       pick(name) { $("lifterSelect").value = name; $("lifterSelect").dispatchEvent(new w.Event("change")); },
       btn: (text, root) => [...(root || doc).querySelectorAll("button")].find(b => b.textContent.trim() === text),
-      rows: () => [...$("wkList").querySelectorAll("li")],
+      rows: () => { let q; while ((q = $("wkList").querySelector(".day-lock:not(.open)"))) q.click(); return [...$("wkList").querySelectorAll("li")]; },   // unlock the day cards first, as a person would
       async load(text, fname) { const i = $("fileInput"); Object.defineProperty(i, "files", { value: [new w.File([text], fname)], configurable: true }); i.dispatchEvent(new w.Event("change")); await tick(300); },
       sync() { w.dispatchEvent(new w.Event("online")); },
       async settle() { await tick(900); await until(() => !/busy/.test($("acctDot").className), 8000); await tick(50); },

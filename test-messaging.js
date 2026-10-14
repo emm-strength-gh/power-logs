@@ -254,7 +254,19 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   console.log("\nTom finishes a day");
   const before = pushesTo("coach").length;
   L.nav("Week 1"); await tick();
-  const rows = () => [...L.$("wkList").querySelectorAll("li")];
+  const openDays = (D) => { let q; while ((q = D.$("wkList").querySelector(".day-lock:not(.open)"))) q.click(); };   // day cards start locked
+  const rows = () => { openDays(L); return [...L.$("wkList").querySelectorAll("li")]; };
+  const hideApp = (D, h) => { Object.defineProperty(D.doc, "hidden", { configurable: true, get: () => h }); D.doc.dispatchEvent(new D.w.Event("visibilitychange")); };
+  const doneCount = () => Object.values(L.store("spotter.done.v1") || {}).reduce((n, o) => n + Object.keys(o || {}).length, 0);
+  const lk = () => [...L.$("wkList").querySelectorAll(".day-lock")];
+  check("every day card starts locked", lk().length > 0 && lk().every(b => !b.classList.contains("open") && /Locked/.test(b.textContent)));
+  const n0 = doneCount();
+  L.$("wkList").querySelector("li").click(); await tick();
+  check("tapping a set on a locked day changes nothing", doneCount() === n0 && !L.$("wkList").querySelector("li.done"));
+  lk()[0].click(); await tick();
+  check("the lock opens that day only", lk()[0].classList.contains("open") && /Unlocked/.test(lk()[0].textContent) && lk().slice(1).every(b => !b.classList.contains("open")));
+  hideApp(L, true); hideApp(L, false); await tick();
+  check("a lifter's open day stays open when the app is minimised", lk()[0].classList.contains("open"));
   rows()[0].click(); await tick();
   L.sync(); await L.settle();
   check("half a day doesn't count", (await server.sql("select count(*)::int n from public.lifter_events"))[0].n === 0);
@@ -326,7 +338,9 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\nWeek,Day,Exercise,Weight (kg),Sets,Reps
   console.log("\nA problem with messages never holds up the training log");
   await server.sql("revoke select on public.messages from authenticated");
   C.nav("Week 2"); await tick();
-  C.$("wkList").querySelector("li").click(); await tick();
+  openDays(C); C.$("wkList").querySelector("li").click(); await tick();
+  hideApp(C, true); await tick(); hideApp(C, false);
+  check("a coach's open days lock again when the app is minimised", [...C.$("wkList").querySelectorAll(".day-lock")].every(x => !x.classList.contains("open")));
   C.sync(); await C.settle();
   const cs = C.store("spotter.cloud.v1");
   check("the tick still syncs, with the training log's status clear", cs.lastError === "" &&

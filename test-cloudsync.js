@@ -70,7 +70,7 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
       sync() { w.dispatchEvent(new w.Event("online")); },   // "back online" = sync now
       // sync() waits 200ms before starting, and live updates 800ms: let those fire first.
       async settle() { await tick(900); await until(() => !/busy/.test($("acctDot").className), 8000); await tick(50); },
-      rows: () => [...$("wkList").querySelectorAll("li")],
+      rows: () => { let q; while ((q = $("wkList").querySelector(".day-lock:not(.open)"))) q.click(); return [...$("wkList").querySelectorAll("li")]; },   // unlock the day cards first, as a person would
       btn: (text, root) => [...(root || doc).querySelectorAll("button")].find(b => b.textContent.trim() === text),
       async signIn(email, code = GOOD_CODE) {
         $("acctBtn").click();
@@ -190,9 +190,9 @@ const TOM = csv("Tom", "Prep", [[1, 1, "Deadlift", 200, 3, 3, 8, ""], [1, 2, "Sq
   B.rows()[1].click();                               // Done
   // the same exercise note on both: the later one to reach the server wins
   A.nav("Week 1"); B.nav("Week 1"); await tick();
-  A.w.document.querySelectorAll("#wkList li")[1].querySelectorAll(".act-btn")[1].click(); await tick();
+  A.rows()[1].querySelectorAll(".act-btn")[1].click(); await tick();
   A.$("noteArea").value = "Phone says"; A.$("noteArea").dispatchEvent(new A.w.Event("input")); A.$("noteDone").click();
-  B.w.document.querySelectorAll("#wkList li")[1].querySelectorAll(".act-btn")[1].click(); await tick();
+  B.rows()[1].querySelectorAll(".act-btn")[1].click(); await tick();
   B.$("noteArea").value = "PC says"; B.$("noteArea").dispatchEvent(new B.w.Event("input")); B.$("noteDone").click();
   A.sync(); await A.settle();
   check("offline: the change stays on the phone, flagged", /warn|err/.test(A.$("acctDot").className));

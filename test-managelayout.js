@@ -220,7 +220,12 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   check("adds the exercise to W8D1", rows().length === before + 1 && rows().some(r => /Leg press/.test(r.textContent)));
   check("form stays open for the next one", addex().classList.contains("open"));
   btn("Close", addex()).click();
-  check("Close folds it away and remembers", !addex().classList.contains("open") && w.localStorage.getItem("spotter.dmAddOpen.v3") === "false");
+  check("Close folds it away", !addex().classList.contains("open"));
+  addex().querySelector(".dm-addex-toggle").click();
+  $("hdrManageBtn").click(); await tick(100);
+  [...doc.querySelectorAll("#sideNav .nav-item")].find(n => /^Week 8/.test(n.textContent.trim().replace(/s+/g, " "))).click(); await tick(100);
+  $("hdrManageBtn").click(); await tick(150);
+  check("opening Manage Program again starts it folded", !!addex() && !addex().classList.contains("open"));
 
   console.log("\nDays & weeks");
   const tools = () => body().querySelector(".dm-cmp-col.is-current .dm-struct");

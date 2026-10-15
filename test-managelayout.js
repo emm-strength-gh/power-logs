@@ -94,6 +94,7 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   check("there is no Analytics dialog any more", !$("dmAnalyticsScrim"));
   // tick one Squat set Done in the week view first, so the Estimated 1RM card has a completed set to read
   [...doc.querySelectorAll("#sideNav .nav-item")].find(n => /^Week 8/.test(n.textContent.trim().replace(/\s+/g, " "))).click(); await tick(100);
+  $("wkList").querySelector(".day-lock").click(); await tick();   // day cards start locked
   $("wkList").querySelector("li").click(); await tick(100);
   check("a Squat set (100 kg x 5) is ticked Done", Object.keys(JSON.parse(w.localStorage.getItem("spotter.done.v1") || "{}")[NAME] || {}).length === 1);
   await openManage();
@@ -272,6 +273,29 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
   btn("Clear import", imp).click();
   await tick();
   check("Clear import returns to one column", body().querySelectorAll(".dm-cmp-col").length === 1 && caps().indexOf("Use the imported program") === -1);
+
+  console.log("\nEdit a day: the lifter's log");
+  const nav = label => { const b = [...doc.querySelectorAll("#sideNav .nav-item")].find(n => n.querySelector(".nav-label").textContent === label); if (b) b.click(); return !!b; };
+  nav("Week 9"); await tick(100);
+  { let q; while ((q = $("wkList").querySelector(".day-lock:not(.open)"))) q.click(); }
+  const li = () => [...$("wkList").querySelectorAll("li")];
+  li()[0].click(); await tick();
+  li()[1].querySelector(".act-btn").click(); await tick();
+  li()[2].querySelectorAll(".act-btn")[1].click(); await tick();
+  $("noteArea").value = "Felt heavy, belt on"; $("noteArea").dispatchEvent(new w.Event("input")); $("noteDone").click(); await tick();
+  $("hdrManageBtn").click(); await tick(150);
+  check("Edit a day has the Program / Lifter's log switch, on Program", !!$("dmLogSeg") && $("dmLogSeg").querySelector("button.on").textContent === "Program" && !!body().querySelector(".dm-cmp-col.is-current .dm-edit"));
+  check("...on W9D1", where() === "W9D1", where());
+  btn("Lifter\u2019s log", $("dmLogSeg")).click(); await tick();
+  const lr = () => [...body().querySelectorAll(".dm-cmp-col.is-current .dm-logrow")];
+  check("the log shows each exercise's state", lr().length >= 3 && lr()[0].getAttribute("data-state") === "done" && lr()[1].getAttribute("data-state") === "skip" && lr()[2].getAttribute("data-state") === "none",
+    lr().map(r => r.getAttribute("data-state")).join(","));
+  check("...the lifter's note", /Felt heavy, belt on/.test((lr()[2].querySelector(".dm-lognote") || {}).textContent || "") && !lr()[0].querySelector(".dm-lognote"));
+  check("...and a summary", /1 done/.test($("dmLogSum").textContent) && /1 skipped/.test($("dmLogSum").textContent) && /1 note\b/.test($("dmLogSum").textContent), $("dmLogSum").textContent);
+  const cur = body().querySelector(".dm-cmp-col.is-current");
+  check("read only: no drag, edit, delete or add", !cur.querySelector(".dm-grip, .dm-edit, .dm-del") && !btn("+ Add an exercise", cur) && !/Add an exercise/.test(cur.textContent));
+  btn("Program", $("dmLogSeg")).click(); await tick();
+  check("Program brings editing back", !!body().querySelector(".dm-cmp-col.is-current .dm-edit") && !body().querySelector(".dm-logrow"));
 
   console.log("\nCompare two programs");
   btn("Compare two programs", body()).click();

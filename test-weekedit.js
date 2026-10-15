@@ -64,6 +64,7 @@ leg press, @8, 3x15, this must be a single leg each set`;
 
   // Tick Week 1's squat, to see that it survives.
   navTo("Week 1"); await tick(150);
+  { let q; while ((q = $("wkList").querySelector(".day-lock:not(.open)"))) q.click(); }   // day cards start locked
   $("wkList").querySelector("li").click(); await tick(100);
   const squatRid = week(1).days[0].rows[0].rid, benchRid = week(1).days[0].rows[1].rid;
   check("set-up: Week 1's squat is ticked Done", done()[squatRid] === true);

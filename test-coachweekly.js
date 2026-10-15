@@ -44,9 +44,11 @@ const CSV = "#Name,Weekly Tom\r\n#Block,B\r\nWeek,Day,Exercise,Weight (kg),Sets,
   input.dispatchEvent(new w.Event("change"));
   await tick(400);
 
+  const openDays = () => { let q; while ((q = $("wkList").querySelector(".day-lock:not(.open)"))) q.click(); };   // day cards start locked
   // tick everything Done except Bench in week 2
   for (const wk of [1, 2, 3]) {
     nav("Week " + wk); await tick(100);
+    openDays();
     [...$("wkList").querySelectorAll("li")].forEach(li => { if (!(wk === 2 && /Bench/.test(li.textContent))) li.click(); });
     await tick(100);
   }
@@ -85,6 +87,7 @@ const CSV = "#Name,Weekly Tom\r\n#Block,B\r\nWeek,Day,Exercise,Weight (kg),Sets,
   // untick every set in the week views, then come back
   for (const wk of [1, 2, 3]) {
     nav("Week " + wk); await tick(100);
+    openDays();
     [...$("wkList").querySelectorAll("li")].forEach(li => { if (/\bdone\b/.test(li.className)) li.click(); });
     await tick(100);
   }

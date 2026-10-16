@@ -1850,3 +1850,74 @@ begin
     alter publication supabase_realtime add table public.message_photos;
   end if;
 end $$;
+
+---------------------------------------------------------------- rep maxes (1 to 8 reps, squat / bench / deadlift)
+-- The heaviest Done set at each rep count, kept per signed-in lifter (their sign-in id), not per program, so it
+-- outlives any program it came from. A coach records one from a Done set in a week they marked Completed; the
+-- server keeps it only when it is heavier than the record for that lift and rep count, and dates it from when
+-- that set was ticked Done (lifter_marks.updated_at).
+create table if not exists public.lifter_rep_maxes (
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  lift        text not null check (lift in ('squat', 'bench', 'deadlift')),
+  reps        integer not null check (reps between 1 and 8),
+  weight      numeric not null check (weight > 0 and weight < 1000),
+  achieved_at timestamptz not null default now(),
+  lifter_id   uuid,            -- the program it came from (no reference: the record stays if the program goes)
+  rid         text,
+  program     text,            -- that program's block name, as it was
+  week        text,
+  recorded_by uuid,
+  updated_at  timestamptz not null default now(),
+  primary key (user_id, lift, reps)
+);
+alter table public.lifter_rep_maxes enable row level security;
+revoke all on public.lifter_rep_maxes from public, anon, authenticated;
+grant select on public.lifter_rep_maxes to authenticated;
+-- The lifter and whoever coaches (or coached) one of their programs reads them; only record_rep_max writes.
+create or replace function private.reads_rep_maxes(uid uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select uid = auth.uid() or private.is_owner()
+      or exists (select 1 from public.lifters l where l.lifter_user_id = uid and private.coaches(l.id));
+$$;
+revoke execute on function private.reads_rep_maxes(uuid) from public, anon;
+grant execute on function private.reads_rep_maxes(uuid) to authenticated;
+drop policy if exists read on public.lifter_rep_maxes;
+create policy read on public.lifter_rep_maxes for select to authenticated using (private.reads_rep_maxes(user_id));
+
+-- 'new' (a first or heavier record), 'kept' (not heavier), 'not-signed-in' (the program has no lifter account).
+create or replace function public.record_rep_max(p_lifter uuid, p_rid text, p_lift text, p_reps integer, p_weight numeric, p_week text)
+returns text
+language plpgsql security definer set search_path = '' as $$
+declare uid uuid; blk text; at timestamptz; cur numeric;
+begin
+  if not private.can_coach_live(p_lifter) then raise exception 'not your lifter'; end if;
+  if p_lift not in ('squat', 'bench', 'deadlift') then raise exception 'squat, bench or deadlift only'; end if;
+  if p_reps is null or p_reps < 1 or p_reps > 8 then raise exception '1 to 8 reps only'; end if;
+  if p_weight is null or p_weight <= 0 or p_weight >= 1000 then raise exception 'not a weight'; end if;
+  select l.lifter_user_id, l.program->>'block' into uid, blk from public.lifters l where l.id = p_lifter;
+  if uid is null then return 'not-signed-in'; end if;
+  select m.updated_at into at from public.lifter_marks m where m.lifter_id = p_lifter and m.rid = p_rid and m.state = 'done';
+  if at is null then raise exception 'that set is not marked Done'; end if;
+  select r.weight into cur from public.lifter_rep_maxes r where r.user_id = uid and r.lift = p_lift and r.reps = p_reps;
+  if cur is not null and cur >= p_weight then return 'kept'; end if;
+  insert into public.lifter_rep_maxes (user_id, lift, reps, weight, achieved_at, lifter_id, rid, program, week, recorded_by, updated_at)
+  values (uid, p_lift, p_reps, p_weight, at, p_lifter, p_rid, blk, p_week, auth.uid(), now())
+  on conflict (user_id, lift, reps) do update
+    set weight = excluded.weight, achieved_at = excluded.achieved_at, lifter_id = excluded.lifter_id, rid = excluded.rid,
+        program = excluded.program, week = excluded.week, recorded_by = excluded.recorded_by, updated_at = now();
+  return 'new';
+end $$;
+revoke execute on function public.record_rep_max(uuid, text, text, integer, numeric, text) from public, anon;
+grant execute on function public.record_rep_max(uuid, text, text, integer, numeric, text) to authenticated;
+
+-- The records of the lifter a program belongs to (for the coach looking at that program).
+drop function if exists public.rep_maxes_for(uuid);
+create or replace function public.rep_maxes_for(p_lifter uuid)
+returns jsonb
+language sql stable security definer set search_path = '' as $$
+  select coalesce(jsonb_agg(to_jsonb(r) order by r.lift, r.reps), '[]'::jsonb) from public.lifter_rep_maxes r
+   where r.user_id = (select l.lifter_user_id from public.lifters l where l.id = p_lifter)
+     and private.reads_rep_maxes(r.user_id);
+$$;
+revoke execute on function public.rep_maxes_for(uuid) from public, anon;
+grant execute on function public.rep_maxes_for(uuid) to authenticated;

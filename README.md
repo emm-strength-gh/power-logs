@@ -54,6 +54,7 @@ Separate repo from the Program Hub. Same deploy pattern.
 | `test-replies.js` | Messages: the emoji picker and replies (the reply bar, quotes, jumping to the original, swiping, saved on the server) — `node test-replies.js`. |
 | `test-home.js` | The coach landing page: greeting, cards, the lifters list, Home buttons, who gets it and when — `node test-home.js`. |
 | `test-payments.js` | Payments and the lifter's Home, end to end on the real rules: marking months paid/unpaid, day, amount, currency, the lifter's read-only view, and co-coaches kept out — `node test-payments.js`. |
+| `test-repmax.js` | Week status (coaches only) and Rep maxes: Completed weeks, Done sets, heavier only, per sign-in, kept after a program is deleted — `node test-repmax.js`. |
 | `test-reactions.js` | Reactions: the eleven emoji, messages (lifter and coach), coaches-only notes and days, one per person, read-only for lifters, the rules, and the notices — `node test-reactions.js`. |
 | `test-chatdock.js` | The floating Messages window: minimised button and count, open/minimise, sending, replies, reactions, copy, where it shows, one set of ids on the page — `node test-chatdock.js`. |
 | `test-cloudfake.js` | Not a test: the stand-in Supabase the tests plug in (`window.__spotterCloud`), and the in-process runner for the notify function. |
@@ -637,6 +638,17 @@ That's why the dropdown opens a sheet instead.
    inside. The tabs underneath are Manage program, Warm up Calculator and Program Hub; the
    charts are only drawn while the Coach’s Analytics page is open. The **Analytics** in the left
    menu is the lifter's own, called **Lifter’s Analytics** to tell the two apart.
+
+## Week status and rep maxes (coaches)
+
+Every week of a program is **Incomplete** until a coach marks it **Completed**: tap the pill on the week's card on
+Current Program, beside the week's heading, or under the Week and Day pickers in Manage Program. Lifters never see
+it. The **Rep maxes** button in Manage Program opens a page (with **Back to Manage Program**) of the heaviest set
+done at 1 to 8 reps on squat, bench and deadlift, with the date it was ticked. A set counts only when it is ticked
+Done and its week is Completed; variations (pause squats, close grip and so on) don't count. The records belong to
+the lifter's sign-in, not the program, so every program of that lifter adds to them and they stay when a program is
+deleted. A record changes only when the same reps are done heavier; marking a week Incomplete again doesn't remove
+one. Programs with no signed-in lifter have none.
 
 ## Notes in Manage Program
 

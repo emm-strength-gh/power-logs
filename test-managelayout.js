@@ -70,7 +70,7 @@ const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
 
   console.log("\nThe two dialogs");
   const toolNames = [...$("dmTools").querySelectorAll(".dm-tool b")].map(b => b.textContent);
-  check("Sharing, Maxes and notes and Coach’s Analytics sit in that order, left to right", toolNames.join() === "Sharing,Maxes and notes,Coach’s Analytics", toolNames.join());
+  check("Sharing, Maxes and notes, Rep maxes and Coach’s Analytics sit in that order, left to right", toolNames.join() === "Sharing,Maxes and notes,Rep maxes,Coach’s Analytics", toolNames.join());
   check("each says what's in it", /Only on this device/.test($("dmShareBtn").textContent) && /Add your 1-rep maxes/.test($("dmMaxesBtn").textContent), $("dmShareBtn").textContent + " | " + $("dmMaxesBtn").textContent);
   check("both dialogs start closed", !$("shareScrim").classList.contains("show") && !$("maxesScrim").classList.contains("show"));
   $("dmShareBtn").click(); await tick(50);

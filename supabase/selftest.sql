@@ -861,6 +861,45 @@ begin
     delete from public.lifter_videos where id = vid;
   end;
 
+  -- Rep maxes: kept per signed-in lifter, from Done sets, heavier only
+  begin
+    insert into public.lifter_marks (lifter_id, rid, state, updated_at) values (m, 'RMr1', 'done', '2026-10-01 10:00+00')
+      on conflict (lifter_id, rid) do update set state = 'done', updated_at = excluded.updated_at;
+    insert into public.lifter_marks (lifter_id, rid, state) values (m, 'RMr2', 'skip')
+      on conflict (lifter_id, rid) do update set state = 'skip';
+    v := pg_temp.val(c1, format($q$select public.record_rep_max(%L, 'RMr1', 'squat', 3, 180, '4')$q$, m));
+    perform pg_temp.ok('rep maxes: a coach records a 3-rep max from a Done set, dated when it was ticked', v = 'new'
+      and (select weight from public.lifter_rep_maxes where user_id = l and lift = 'squat' and reps = 3) = 180
+      and (select achieved_at from public.lifter_rep_maxes where user_id = l and lift = 'squat' and reps = 3) = (select updated_at from public.lifter_marks where lifter_id = m and rid = 'RMr1'), v);
+    v := pg_temp.val(c1, format($q$select public.record_rep_max(%L, 'RMr1', 'squat', 3, 175, '5')$q$, m));
+    perform pg_temp.ok('...a lighter one leaves it as it is', v = 'kept' and (select weight from public.lifter_rep_maxes where user_id = l and lift = 'squat' and reps = 3) = 180, v);
+    v := pg_temp.val(c1, format($q$select public.record_rep_max(%L, 'RMr1', 'squat', 3, 182.5, '6')$q$, m));
+    perform pg_temp.ok('...a heavier one replaces it', v = 'new' and (select weight from public.lifter_rep_maxes where user_id = l and lift = 'squat' and reps = 3) = 182.5
+      and (select week from public.lifter_rep_maxes where user_id = l and lift = 'squat' and reps = 3) = '6', v);
+    v := pg_temp.val(c1, format($q$select public.record_rep_max(%L, 'RMr2', 'bench', 1, 120, '4')$q$, m));
+    perform pg_temp.ok('a set that is not Done is refused', v like 'refused%not marked Done%', v);
+    v := pg_temp.val(c1, format($q$select public.record_rep_max(%L, 'RMr1', 'squat', 9, 150, '4')$q$, m));
+    perform pg_temp.ok('...and so is 9 reps (1 to 8 only)', v like 'refused%', v);
+    v := pg_temp.val(c1, format($q$select public.record_rep_max(%L, 'RMr1', 'front squat', 3, 150, '4')$q$, m));
+    perform pg_temp.ok('...and any lift but squat, bench and deadlift', v like 'refused%', v);
+    v := pg_temp.val(l, format($q$select public.record_rep_max(%L, 'RMr1', 'squat', 3, 300, '4')$q$, m));
+    perform pg_temp.ok('the lifter cannot record their own', v like 'refused%', v);
+    v := pg_temp.val(x, format($q$select public.record_rep_max(%L, 'RMr1', 'squat', 3, 300, '4')$q$, m));
+    perform pg_temp.ok('...nor a stranger', v like 'refused%', v);
+    r := pg_temp.act(c1, format($q$insert into public.lifter_rep_maxes (user_id, lift, reps, weight) values (%L, 'deadlift', 1, 400)$q$, l));
+    perform pg_temp.ok('nobody writes the table directly', r like 'refused%', r);
+    perform pg_temp.ok('the coach and the lifter read them', pg_temp.val(c1, format($q$select jsonb_array_length(public.rep_maxes_for(%L))$q$, m)) = '1'
+      and pg_temp.cnt(l, format($q$select * from public.lifter_rep_maxes where user_id = %L$q$, l)) = 1);
+    perform pg_temp.ok('...a stranger does not', pg_temp.cnt(x, format($q$select * from public.lifter_rep_maxes where user_id = %L$q$, l)) = 0
+      and pg_temp.val(x, format($q$select jsonb_array_length(public.rep_maxes_for(%L))$q$, m)) = '0');
+    update public.lifters set deleted_at = now() where id = m;
+    perform pg_temp.ok('a deleted program leaves the record in place, still readable by the coach',
+      (select count(*) from public.lifter_rep_maxes where user_id = l) = 1 and pg_temp.cnt(c1, format($q$select * from public.lifter_rep_maxes where user_id = %L$q$, l)) = 1);
+    update public.lifters set deleted_at = null where id = m;
+    delete from public.lifter_rep_maxes where user_id = l;
+    delete from public.lifter_marks where lifter_id = m and rid in ('RMr1', 'RMr2');
+  end;
+
   -- Photos in messages: temporary, opened once, unsent by the sender
   declare ph uuid := gen_random_uuid(); ph2 uuid := gen_random_uuid(); fname text;
   begin

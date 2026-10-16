@@ -1868,8 +1868,10 @@ create table if not exists public.lifter_rep_maxes (
   week        text,
   recorded_by uuid,
   updated_at  timestamptz not null default now(),
+  manual      boolean not null default false,   -- typed in by a coach (set_rep_max), not taken from a Done set
   primary key (user_id, lift, reps)
 );
+alter table public.lifter_rep_maxes add column if not exists manual boolean not null default false;
 alter table public.lifter_rep_maxes enable row level security;
 revoke all on public.lifter_rep_maxes from public, anon, authenticated;
 grant select on public.lifter_rep_maxes to authenticated;
@@ -1888,7 +1890,7 @@ create policy read on public.lifter_rep_maxes for select to authenticated using 
 create or replace function public.record_rep_max(p_lifter uuid, p_rid text, p_lift text, p_reps integer, p_weight numeric, p_week text)
 returns text
 language plpgsql security definer set search_path = '' as $$
-declare uid uuid; blk text; at timestamptz; cur numeric;
+declare uid uuid; blk text; at timestamptz; cur numeric; curman boolean; curupd timestamptz;
 begin
   if not private.can_coach_live(p_lifter) then raise exception 'not your lifter'; end if;
   if p_lift not in ('squat', 'bench', 'deadlift') then raise exception 'squat, bench or deadlift only'; end if;
@@ -1898,17 +1900,45 @@ begin
   if uid is null then return 'not-signed-in'; end if;
   select m.updated_at into at from public.lifter_marks m where m.lifter_id = p_lifter and m.rid = p_rid and m.state = 'done';
   if at is null then raise exception 'that set is not marked Done'; end if;
-  select r.weight into cur from public.lifter_rep_maxes r where r.user_id = uid and r.lift = p_lift and r.reps = p_reps;
-  if cur is not null and cur >= p_weight then return 'kept'; end if;
-  insert into public.lifter_rep_maxes (user_id, lift, reps, weight, achieved_at, lifter_id, rid, program, week, recorded_by, updated_at)
-  values (uid, p_lift, p_reps, p_weight, at, p_lifter, p_rid, blk, p_week, auth.uid(), now())
+  select r.weight, r.manual, r.updated_at into cur, curman, curupd from public.lifter_rep_maxes r where r.user_id = uid and r.lift = p_lift and r.reps = p_reps;
+  -- a coach's own entry holds against sets ticked before it; only a heavier set ticked after it replaces it
+  if cur is not null and (cur >= p_weight or (curman and at <= curupd)) then return 'kept'; end if;
+  insert into public.lifter_rep_maxes (user_id, lift, reps, weight, achieved_at, lifter_id, rid, program, week, recorded_by, updated_at, manual)
+  values (uid, p_lift, p_reps, p_weight, at, p_lifter, p_rid, blk, p_week, auth.uid(), now(), false)
   on conflict (user_id, lift, reps) do update
     set weight = excluded.weight, achieved_at = excluded.achieved_at, lifter_id = excluded.lifter_id, rid = excluded.rid,
-        program = excluded.program, week = excluded.week, recorded_by = excluded.recorded_by, updated_at = now();
+        program = excluded.program, week = excluded.week, recorded_by = excluded.recorded_by, updated_at = now(), manual = false;
   return 'new';
 end $$;
 revoke execute on function public.record_rep_max(uuid, text, text, integer, numeric, text) from public, anon;
 grant execute on function public.record_rep_max(uuid, text, text, integer, numeric, text) to authenticated;
+
+-- A coach types a record in (or corrects one): any weight at all, on any date, and no weight removes it. 'set',
+-- 'removed' or 'not-signed-in'. Sets ticked Done before this edit don't undo it (see record_rep_max).
+create or replace function public.set_rep_max(p_lifter uuid, p_lift text, p_reps integer, p_weight numeric, p_date date)
+returns text
+language plpgsql security definer set search_path = '' as $$
+declare uid uuid; blk text;
+begin
+  if not private.can_coach_live(p_lifter) then raise exception 'not your lifter'; end if;
+  if p_lift not in ('squat', 'bench', 'deadlift') then raise exception 'squat, bench or deadlift only'; end if;
+  if p_reps is null or p_reps < 1 or p_reps > 8 then raise exception '1 to 8 reps only'; end if;
+  select l.lifter_user_id, l.program->>'block' into uid, blk from public.lifters l where l.id = p_lifter;
+  if uid is null then return 'not-signed-in'; end if;
+  if p_weight is null or p_weight <= 0 then
+    delete from public.lifter_rep_maxes where user_id = uid and lift = p_lift and reps = p_reps;
+    return 'removed';
+  end if;
+  if p_weight >= 1000 then raise exception 'not a weight'; end if;
+  insert into public.lifter_rep_maxes (user_id, lift, reps, weight, achieved_at, lifter_id, rid, program, week, recorded_by, updated_at, manual)
+  values (uid, p_lift, p_reps, p_weight, coalesce((p_date::timestamp + interval '12 hours') at time zone 'UTC', now()), p_lifter, null, blk, null, auth.uid(), now(), true)
+  on conflict (user_id, lift, reps) do update
+    set weight = excluded.weight, achieved_at = excluded.achieved_at, lifter_id = excluded.lifter_id, rid = null,
+        program = excluded.program, week = null, recorded_by = excluded.recorded_by, updated_at = now(), manual = true;
+  return 'set';
+end $$;
+revoke execute on function public.set_rep_max(uuid, text, integer, numeric, date) from public, anon;
+grant execute on function public.set_rep_max(uuid, text, integer, numeric, date) to authenticated;
 
 -- The records of the lifter a program belongs to (for the coach looking at that program).
 drop function if exists public.rep_maxes_for(uuid);

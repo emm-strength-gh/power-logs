@@ -108,11 +108,15 @@ const TOM_PEAK = csv("Tom", "Peak", [[1, 1, "Squat", 190, 2, 2, 8, ""], [1, 1, "
   T.nav("Current Program"); await tick(150);
   check("the lifter sees no week status", !!T.$("ovWeeks").querySelector(".week-card") && !T.$("ovWeeks").querySelector(".wk-st"));
   pill().click(); await tick(100);
+  check("tapping Incomplete asks first: Are you sure this has been completed?", O.$("confirmScrim").classList.contains("show") && /Are you sure this has been completed/.test(O.$("confirmBody").textContent) && pill().textContent === "Incomplete");
+  O.$("confirmNo").click(); await tick(100);
+  check("...Not yet leaves it Incomplete", pill().textContent === "Incomplete" && !O.$("confirmScrim").classList.contains("show"));
+  pill().click(); await tick(100); O.$("confirmYes").click(); await tick(100);
   check("tapping it marks the week Completed, and it is saved on the program", pill().textContent === "Completed" &&
     await until(async () => (await rows("select program->'weeks'->0->>'status' as s from public.lifters where program->>'block' = 'Prep'"))[0].s === "completed"));
   check("...without opening the week", O.active() === "viewOverview");
   pill().click(); await tick(100);
-  check("...and again marks it Incomplete", pill().textContent === "Incomplete" &&
+  check("...and back to Incomplete needs no question", !O.$("confirmScrim").classList.contains("show") && pill().textContent === "Incomplete" &&
     await until(async () => (await rows("select program->'weeks'->0->>'status' as s from public.lifters where program->>'block' = 'Prep'"))[0].s === null));
   O.nav("Week 1"); await tick(150);
   check("the week page shows it beside the heading", !!O.$("wkHead").querySelector(".wk-st"));
@@ -134,7 +138,7 @@ const TOM_PEAK = csv("Tom", "Peak", [[1, 1, "Squat", 190, 2, 2, 8, ""], [1, 1, "
   check("a Done set in a week not yet Completed doesn't count", O.kg("deadlift", 3) === null);
   O.$("rmBack").click(); await tick(100);
   check("Back returns to Manage Program", O.active() === "viewDayMgr");
-  O.$("dmWeekStatus").querySelector(".wk-st").click(); await tick(100);
+  O.$("dmWeekStatus").querySelector(".wk-st").click(); await tick(100); O.$("confirmYes").click(); await tick(100);
   O.sync(); await O.settle();
   O.$("dmRepMaxBtn").click();
   check("once Week 1 is Completed, its Done deadlift is the 3RM", await until(() => O.kg("deadlift", 3) === "200"), O.kg("deadlift", 3));
@@ -148,7 +152,7 @@ const TOM_PEAK = csv("Tom", "Peak", [[1, 1, "Squat", 190, 2, 2, 8, ""], [1, 1, "
   O.sync(); await O.settle();
   O.pick(O.keyOf("Peak")); await tick(100);
   O.nav("Current Program"); await tick(150);
-  pill().click(); await tick(100);
+  pill().click(); await tick(100); O.$("confirmYes").click(); await tick(100);
   O.sync(); await O.settle();
   O.nav("Manage program"); await tick(150);
   O.$("dmRepMaxBtn").click();
@@ -164,13 +168,45 @@ const TOM_PEAK = csv("Tom", "Peak", [[1, 1, "Squat", 190, 2, 2, 8, ""], [1, 1, "
   O.$("dmRepMaxBtn").click();
   check("a 205 kg 3-rep deadlift ticked later in that Completed week is the new 3RM", await until(() => O.kg("deadlift", 3) === "205"), O.kg("deadlift", 3));
 
+  console.log("\nTyping rep maxes in by hand");
+  const ed = (lift, reps) => O.cell(lift, reps).querySelector("input:not(.rm-date)");
+  const dt = (lift, reps) => O.cell(lift, reps).querySelector(".rm-date");
+  const type = (inp, v) => { inp.value = v; inp.dispatchEvent(new O.w.Event("input")); };
+  check("the page has an Edit button, and no boxes until it is pressed", !!O.$("rmEdit") && !O.$("rmGrid").querySelector("input"));
+  O.$("rmEdit").click(); await tick(100);
+  check("Edit shows a weight and a date box in every cell, with Cancel and Save", O.$("rmGrid").querySelectorAll("td[data-lift]").length === 24 && O.$("rmGrid").querySelectorAll("input:not(.rm-date)").length === 24
+    && !!O.$("rmCancel") && !!O.$("rmSave") && !O.$("rmEdit"));
+  check("...filled with what is recorded", ed("deadlift", 3).value === "205" && /^\d{4}-\d{2}-\d{2}$/.test(dt("deadlift", 3).value) && ed("bench", 5).value === "");
+  type(ed("bench", 5), "112.5"); dt("bench", 5).value = "2026-08-14";
+  type(ed("squat", 2), "180");
+  type(ed("deadlift", 3), "");
+  O.$("rmCancel").click(); await tick(100);
+  check("Cancel throws the changes away", !O.$("rmGrid").querySelector("input") && O.kg("bench", 5) === null && O.kg("squat", 2) === "190" && O.kg("deadlift", 3) === "205");
+  O.$("rmEdit").click(); await tick(100);
+  type(ed("bench", 5), "112.5"); dt("bench", 5).value = "2026-08-14";
+  type(ed("squat", 2), "180");
+  type(ed("deadlift", 3), "");
+  type(ed("squat", 6), "99999");
+  O.$("rmSave").click(); await tick(300);
+  check("a weight over 1000 kg is refused with nothing saved", !!O.$("rmGrid").querySelector("input") && (await rows("select count(*)::int n from public.lifter_rep_maxes where lift = 'bench'"))[0].n === 0);
+  type(ed("squat", 6), "");
+  O.$("rmSave").click();
+  check("Save writes them: a new bench 5RM, a lighter squat 2RM", await until(() => O.kg("bench", 5) === "112.5" && O.kg("squat", 2) === "180"), O.kg("bench", 5) + " " + O.kg("squat", 2));
+  check("...a cleared weight removes the record", O.kg("deadlift", 3) === null);
+  check("...and the page is back to reading, with the typed date", !O.$("rmGrid").querySelector("input") && !!O.$("rmEdit") && /2026/.test(O.cell("bench", 5).querySelector(".rm-when").textContent) && /Aug/.test(O.cell("bench", 5).querySelector(".rm-when").textContent));
+  check("...kept by the database as entered by hand", (await rows("select manual from public.lifter_rep_maxes where lift = 'bench' and reps = 5"))[0].manual === true);
+  O.sync(); await O.settle();
+  O.$("rmBack").click(); await tick(100);
+  O.$("dmRepMaxBtn").click(); await tick(800);
+  check("a Done set ticked before the edit doesn't undo the lighter squat 2RM", O.kg("squat", 2) === "180");
+
   console.log("\nA deleted program");
   await rows("update public.lifters set deleted_at = now() where program->>'block' = 'Peak'");
   O.sync(); await O.settle();
   O.pick(O.keyOf("Prep")); await tick(100);
   O.nav("Manage program"); await tick(150);
   O.$("dmRepMaxBtn").click();
-  check("the records made from it stay", await until(() => O.kg("squat", 2) === "190" && O.kg("deadlift", 3) === "205"), O.kg("squat", 2) + " " + O.kg("deadlift", 3));
+  check("the records made from it, and the typed ones, stay", await until(() => O.kg("squat", 2) === "180" && O.kg("bench", 5) === "112.5"), O.kg("squat", 2) + " " + O.kg("bench", 5));
 
   check("no script errors", [O, T].every(a => a.real().length === 0), [O, T].map(a => a.real().join(" | ")).join(" // "));
   console.log(`\n${checks} checks · ${failures === 0 ? "ALL PASSED" : failures + " FAILED"}\n`);

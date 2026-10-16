@@ -82,7 +82,7 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   check("the ⋯ menu has a Color theme item", !!item && /Color theme/.test(item.textContent));
   item.click(); await tick(50);
   check("it opens the picker with the five themes, in order", O.$("accentScrim").classList.contains("show")
-    && O.opts().map(b => b.getAttribute("data-accent")).join() === "sage,ocean,purple,amber,charcoal,rose,gold,lemon,beige,blood,noir,bee", O.opts().map(b => b.getAttribute("data-accent")).join());
+    && O.opts().map(b => b.getAttribute("data-accent")).join() === "sage,ocean,purple,amber,charcoal,rose,gold,lemon,beige,blood,noir,bee,olive,steel,plum,oni", O.opts().map(b => b.getAttribute("data-accent")).join());
   check("...named Sage Green, Ocean Blue, Purple Clean, Amber Warm and Charcoal Mode, each with its tagline", [["Sage Green", "Fresh & Calm"], ["Ocean Blue", "Trust & Focus"], ["Purple Clean", "Modern & Energetic"], ["Amber Warm", "Friendly & Inviting"], ["Charcoal Mode", "Sleek & Professional"]]
     .every(([n, s], i) => O.opts()[i].textContent.includes(n) && O.opts()[i].textContent.includes(s)));
   check("...each showing five swatches", O.opts().every(b => b.querySelectorAll(".accent-sw i").length === 5));

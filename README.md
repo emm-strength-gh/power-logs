@@ -197,7 +197,7 @@ On phones and tablets a see-through, blurred pill floats at the bottom of the sc
 
 ## Colour themes
 
-The **⋯** menu (and, on computers, a palette button in the header) has **Color theme**. Pick one of twelve: **Sage Green** (Fresh & Calm, the default), **Ocean Blue** (Trust & Focus), **Purple Clean** (Modern & Energetic), **Amber Warm** (Friendly & Inviting) **Charcoal Mode** (Sleek & Professional), **Rose Pink** (Soft & Romantic), **Gold Elegant Warm Ivory** (Luxurious & Sophisticated), **Lemon Chiffon** (Bright & Cheerful), **Beige** (Natural & Minimal), **Black & Yellow** (a yellow page with black, Bold & Energetic), or the two dark designs **Blood Red** (Bold & Passionate) and **Black + Blood Red** (Powerful & Dramatic), which look the same in light and dark mode. The accent colours the icon tiles, buttons, section captions and the floating bar, and the page gets a faint matching tint; dark mode works with every theme. The choice is per device (`localStorage` `spotter.accent`); nothing is synced.
+The **⋯** menu (and, on computers, a palette button in the header) has **Color theme**. Pick one of sixteen: **Sage Green** (Fresh & Calm, the default), **Ocean Blue** (Trust & Focus), **Purple Clean** (Modern & Energetic), **Amber Warm** (Friendly & Inviting) **Charcoal Mode** (Sleek & Professional), **Rose Pink** (Soft & Romantic), **Gold Elegant Warm Ivory** (Luxurious & Sophisticated), **Lemon Chiffon** (Bright & Cheerful), **Beige** (Natural & Minimal), **Black & Yellow** (a yellow page with black, Bold & Energetic), **Olive & Khaki** (Rugged & Focused), **Steel Blue** (Cool & Clear), **Plum & Slate** (Deep & Composed), or the three dark designs **Blood Red** (Bold & Passionate) **Black + Blood Red** (Powerful & Dramatic) and **ONI Black & Gold** (Sharp & Premium), which look the same in light and dark mode. The accent colours the icon tiles, buttons, section captions and the floating bar, and the page gets a faint matching tint; dark mode works with every theme. The choice is per device (`localStorage` `spotter.accent`); nothing is synced.
 
 ## Who is online (owner only)
 
@@ -648,7 +648,10 @@ done at 1 to 8 reps on squat, bench and deadlift, with the date it was ticked. A
 Done and its week is Completed; variations (pause squats, close grip and so on) don't count. The records belong to
 the lifter's sign-in, not the program, so every program of that lifter adds to them and they stay when a program is
 deleted. A record changes only when the same reps are done heavier; marking a week Incomplete again doesn't remove
-one. Programs with no signed-in lifter have none.
+one. Marking a week Completed asks "Are you sure this has been completed?" first. **Edit** on the Rep maxes page
+lets a coach type a weight and a date into any cell (or clear a weight to remove it); **Save** keeps the changes,
+**Cancel** drops them. A typed record isn't undone by sets that were ticked before it. Programs with no signed-in
+lifter have none.
 
 ## Notes in Manage Program
 

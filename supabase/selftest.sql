@@ -892,6 +892,27 @@ begin
       and pg_temp.cnt(l, format($q$select * from public.lifter_rep_maxes where user_id = %L$q$, l)) = 1);
     perform pg_temp.ok('...a stranger does not', pg_temp.cnt(x, format($q$select * from public.lifter_rep_maxes where user_id = %L$q$, l)) = 0
       and pg_temp.val(x, format($q$select jsonb_array_length(public.rep_maxes_for(%L))$q$, m)) = '0');
+    v := pg_temp.val(c1, format($q$select public.set_rep_max(%L, 'squat', 3, 170, '2026-09-20')$q$, m));
+    perform pg_temp.ok('a coach types a rep max in, lighter than the one there, with its date', v = 'set'
+      and (select weight from public.lifter_rep_maxes where user_id = l and lift = 'squat' and reps = 3) = 170
+      and (select achieved_at::date from public.lifter_rep_maxes where user_id = l and lift = 'squat' and reps = 3) = '2026-09-20'
+      and (select manual from public.lifter_rep_maxes where user_id = l and lift = 'squat' and reps = 3), v);
+    v := pg_temp.val(c1, format($q$select public.record_rep_max(%L, 'RMr1', 'squat', 3, 182.5, '6')$q$, m));
+    perform pg_temp.ok('...and a set ticked before the edit does not undo it', v = 'kept' and (select weight from public.lifter_rep_maxes where user_id = l and lift = 'squat' and reps = 3) = 170, v);
+    v := pg_temp.val(c1, format($q$select public.set_rep_max(%L, 'bench', 1, 0, null)$q$, m));
+    perform pg_temp.ok('no weight removes a record (and a missing one is no error)', v = 'removed', v);
+    v := pg_temp.val(c1, format($q$select public.set_rep_max(%L, 'squat', 3, NULL, null)$q$, m));
+    perform pg_temp.ok('...a squat 3RM removed', v = 'removed' and not exists (select 1 from public.lifter_rep_maxes where user_id = l and lift = 'squat' and reps = 3));
+    v := pg_temp.val(c1, format($q$select public.set_rep_max(%L, 'deadlift', 2, 250, null)$q$, m));
+    perform pg_temp.ok('no date means today', v = 'set' and (select achieved_at::date from public.lifter_rep_maxes where user_id = l and lift = 'deadlift' and reps = 2) = current_date, v);
+    perform pg_temp.ok('the lifter cannot edit their own', pg_temp.val(l, format($q$select public.set_rep_max(%L, 'squat', 1, 300, null)$q$, m)) like 'refused%');
+    perform pg_temp.ok('...nor a stranger', pg_temp.val(x, format($q$select public.set_rep_max(%L, 'squat', 1, 300, null)$q$, m)) like 'refused%');
+    perform pg_temp.ok('9 reps, a front squat and 1000 kg are refused', pg_temp.val(c1, format($q$select public.set_rep_max(%L, 'squat', 9, 100, null)$q$, m)) like 'refused%'
+      and pg_temp.val(c1, format($q$select public.set_rep_max(%L, 'front squat', 3, 100, null)$q$, m)) like 'refused%'
+      and pg_temp.val(c1, format($q$select public.set_rep_max(%L, 'squat', 3, 1000, null)$q$, m)) like 'refused%');
+    perform pg_temp.act(c1, format($q$select public.record_rep_max(%L, 'RMr1', 'squat', 3, 182.5, '6')$q$, m));
+    perform pg_temp.ok('(the squat 3RM from the set is back for the next check)', (select weight from public.lifter_rep_maxes where user_id = l and lift = 'squat' and reps = 3) = 182.5);
+    delete from public.lifter_rep_maxes where user_id = l and lift = 'deadlift';
     update public.lifters set deleted_at = now() where id = m;
     perform pg_temp.ok('a deleted program leaves the record in place, still readable by the coach',
       (select count(*) from public.lifter_rep_maxes where user_id = l) = 1 and pg_temp.cnt(c1, format($q$select * from public.lifter_rep_maxes where user_id = %L$q$, l)) = 1);

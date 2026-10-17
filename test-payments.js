@@ -331,7 +331,33 @@ const TOM = "#Name,Tom\r\n#Block,Prep\r\n#Bodyweight,82\r\n#Max,Squat,172.5\r\n#
   homeBtn(L, "View payments").click(); await tick(100);
   check("...and his months", active(L) === "viewPayments" && /£45\.50/.test(month(L, MK).textContent));
 
-  const bad = [C, L, J].reduce((a, x) => a.concat(x.real()), []);
+  console.log("\nAnother account's payments left on the device never show");
+  const STRANGER = "11111111-1111-4111-8111-111111111111";
+  const fakePay = { [STRANGER]: { label: "Stranger", by: "", months: { [MK]: { paid: true, on: "2026-10-06", amount: null, cur: "PHP" } } } };
+  const stJ = C.storage();
+  check("a signed-in device is stamped with its account", !!stJ["spotter.acctData.v1"]);
+  // 1) left behind by an older version: no stamp at all
+  const legacy = Object.assign({}, stJ, { "spotter.payments.v1": JSON.stringify(Object.assign({}, JSON.parse(stJ["spotter.payments.v1"] || "{}"), fakePay)) });
+  delete legacy["spotter.acctData.v1"];
+  const J2 = boot("owner reopened", { dev: C.dev, storage: legacy });
+  await tick(300); J2.sync(); await J2.settle();
+  J2.nav("Home"); await tick(150);
+  homeBtn(J2, "Payments").click(); await tick(100);
+  check("payments left by an older version are dropped; the lifters this account coaches stay", !/Stranger/.test(J2.$("payList").textContent) && /Tom/.test(J2.$("payList").textContent), J2.$("payList").textContent);
+  check("...and the stored copy is clean", !(J2.store("spotter.payments.v1") || {})[STRANGER]);
+  // 2) left by another account that used the device before
+  const other = Object.assign({}, J2.storage(), { "spotter.acctData.v1": JSON.stringify("22222222-2222-4222-8222-222222222222"), "spotter.payments.v1": JSON.stringify(fakePay) });
+  const J3 = boot("owner again", { dev: C.dev, storage: other });
+  await tick(300); J3.sync(); await J3.settle();
+  J3.nav("Home"); await tick(150);
+  homeBtn(J3, "Payments").click(); await tick(100);
+  check("another account's payments on the device are dropped when this one signs in", !/Stranger/.test(J3.$("payList").textContent) && /Tom/.test(J3.$("payList").textContent), J3.$("payList").textContent);
+  // 3) the same account keeps its own
+  const J4 = boot("owner same", { dev: C.dev, storage: J3.storage() });
+  await tick(300); J4.sync(); await J4.settle();
+  check("the same account keeps its stamp and its payments", JSON.parse(J4.storage()["spotter.acctData.v1"]) === JSON.parse(J3.storage()["spotter.acctData.v1"]) && !!(J4.store("spotter.payments.v1") || {})[tomUser]);
+
+  const bad = [C, L, J, J2, J3, J4].reduce((a, x) => a.concat(x.real()), []);
   check("no script errors on any device", bad.length === 0, bad.join(" | ").slice(0, 400));
   console.log(`\n${checks} checks · ${failures === 0 ? "ALL PASSED" : failures + " FAILED"}\n`);
   process.exit(failures === 0 ? 0 : 1);

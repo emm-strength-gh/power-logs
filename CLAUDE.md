@@ -245,7 +245,7 @@ private script kept outside it (`private.settings`).
   `troSync()` in `syncNow()`; table `user_payments` (RLS `private.pays_user` writes, `private.reads_pay` reads: the account, its lifters' coaches, the creator; old `lifter_payments` rows are copied over on sign-in). The month
   editor reuses the Trophies form dialog (`troOpenForm`). The list is the last twelve months plus
   any added one, minus `gone` entries (`lifter_payments.removed`, a flag rather than a delete so other
-  devices learn of it); swipe-to-delete is `paySwipe`/`payDelete`, the + button `payAddMonth`.
+  devices learn of it); swipe-to-delete is `paySwipe`/`payDelete`, the + button `payAddMonth`. `PAY` and `REACT` are stamped with the signed-in account (`spotter.acctData.v1`): `acctDataFor(uid)` (from `onSignedIn`) drops both when the stamp is another account's or missing, and sign-out runs `acctDataClear()`, so a device never shows a previous account's payments (`payPeople()` lists everyone in `PAY`). test-payments.js covers it.
 - New lifters from the app: `openNewLifter()` (Lifters page) → `createLifter()` builds the profile,
   `addEmptyWeek`/`addEmptyDay`, opens Manage Program and calls `uploadLifter()` when signed in as a
   coach. Weight class: `cleanClass()`/`setClass()` in the Lifter & program card. The Lifters page is one card per person (`lifterGroups()`: same `lifterMeta.userId`, else same display name, the grouping `programsOf` uses); a card opens `openPrograms(key)`; ⋯ (`moreButton`) is on each Programs-page row and on single-program cards. That ⋯
